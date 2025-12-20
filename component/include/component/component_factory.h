@@ -25,49 +25,29 @@ inline BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::Componen
         auto componentType = component.getClassName().toStdString();
         QString typeStr = QString::fromStdString(componentType);
 
-        // Check if it's a Folder
-        if (component.supportsInterface<daq::IFolder>())
-        {
-            auto folder = component.asPtr<daq::IFolder>();
-            return new FolderTreeElement(tree, folder, parent);
-        }
-
         // Check if it's a Device
-        if (component.supportsInterface<daq::IDevice>())
-        {
-            auto device = component.asPtr<daq::IDevice>();
-            // You can create a specialized DeviceTreeElement here if needed
-            return new ComponentTreeElement(tree, component, parent);
-        }
+        if (auto dev = component.asPtrOrNull<daq::IDevice>(); dev.assigned())
+            return new DeviceTreeElement(tree, dev, parent);
 
         // Check if it's a Channel
-        if (typeStr.contains("Channel", Qt::CaseInsensitive))
-        {
-            // For now, use ComponentTreeElement
-            // You can create ChannelTreeElement later
-            return new ComponentTreeElement(tree, component, parent);
-        }
-
-        // Check if it's a Signal
-        if (component.supportsInterface<daq::ISignal>())
-        {
-            auto signal = component.asPtr<daq::ISignal>();
-            return new SignalTreeElement(tree, signal, parent);
-        }
+        // if (auto ch = component.asPtrOrNull<daq::IChannel>(); ch.assigned())
+        //     return new ChannelBlockTreeElement(tree, ch, parent);
 
         // Check if it's a FunctionBlock
-        if (component.supportsInterface<daq::IFunctionBlock>())
-        {
-            auto functionBlock = component.asPtr<daq::IFunctionBlock>();
-            return new FunctionBlockTreeElement(tree, functionBlock, parent);
-        }
+        if (auto fb = component.asPtrOrNull<daq::IFunctionBlock>(); fb.assigned())
+            return new FunctionBlockTreeElement(tree, fb, parent);
+
+        // Check if it's a Folder
+        if (auto folder = component.asPtrOrNull<daq::IFolder>(); folder.assigned())
+            return new FolderTreeElement(tree, folder, parent);
+
+        // Check if it's a Signal
+        if (auto sig = component.asPtrOrNull<daq::ISignal>(); sig.assigned())
+            return new SignalTreeElement(tree, sig, parent);
 
         // Check if it's an InputPort
-        if (component.supportsInterface<daq::IInputPort>())
-        {
-            auto inputPort = component.asPtr<daq::IInputPort>();
-            return new InputPortTreeElement(tree, inputPort, parent);
-        }
+        if (auto ip = component.asPtrOrNull<daq::IInputPort>(); ip.assigned())
+            return new InputPortTreeElement(tree, ip, parent);
 
         // Default: create generic ComponentTreeElement
         return new ComponentTreeElement(tree, component, parent);

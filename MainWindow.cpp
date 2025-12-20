@@ -1,8 +1,6 @@
 #include "MainWindow.h"
 #include "DetachedWindow.h"
 #include "AppContext.h"
-#include "component/component_tree_element.h"
-#include "property/property_object_view.h"
 
 #include <QApplication>
 #include <QVBoxLayout>
@@ -312,10 +310,6 @@ void MainWindow::setupUI()
 
     // Initial tab group
     tabWidget = createTabGroup();
-    tabWidget->addTab(createPropertiesWidget(), "Properties");
-    tabWidget->addTab(createDeviceInfoWidget(), "Device Info");
-    tabWidget->addTab(createChannelsWidget(), "Channels");
-    tabWidget->addTab(createSignalsWidget(), "Signals");
     contentSplitter->addWidget(tabWidget);
 
     // Drop overlay (input-transparent tool window)
@@ -324,12 +318,14 @@ void MainWindow::setupUI()
     dropOverlay->hide();
 
     // Log panel
-    logTextEdit = new QTextEdit();
+    auto logTextEdit = new QTextEdit();
     logTextEdit->setReadOnly(true);
     logTextEdit->setPlaceholderText("Logging");
-    logTextEdit->append("Application started...");
-    logTextEdit->append("Tip: Drag tabs like in VSCode to move/split/detach.");
     verticalSplitter->addWidget(logTextEdit);
+    AppContext::instance()->setLogTextEdit(logTextEdit);
+    AppContext::instance()->addLogMessage("Application started...");
+    AppContext::instance()->addLogMessage("Tip: Drag tabs like in VSCode to move/split/detach.");
+
 
     verticalSplitter->setSizes({600, 200});
 
@@ -531,129 +527,13 @@ void MainWindow::clearSplitterRecursively(QSplitter* splitter)
     }
 }
 
-QWidget* MainWindow::createPropertiesWidget()
-{
-    QTableWidget* propertiesTable = new QTableWidget();
-    propertiesTable->setColumnCount(2);
-    propertiesTable->setHorizontalHeaderLabels({"Property", "Value"});
-    propertiesTable->horizontalHeader()->setStretchLastSection(true);
-    propertiesTable->verticalHeader()->setVisible(false);
-
-    propertiesTable->setRowCount(5);
-    propertiesTable->setItem(0, 0, new QTableWidgetItem("NumberOfChannels"));
-    propertiesTable->setItem(0, 1, new QTableWidgetItem("2"));
-    propertiesTable->setItem(1, 0, new QTableWidgetItem("GlobalSampleRate"));
-    propertiesTable->setItem(1, 1, new QTableWidgetItem("1000.0"));
-    propertiesTable->setItem(2, 0, new QTableWidgetItem("AcquisitionLoopTime"));
-    propertiesTable->setItem(2, 1, new QTableWidgetItem("20"));
-    propertiesTable->setItem(3, 0, new QTableWidgetItem("EnableCANChannel"));
-    propertiesTable->setItem(3, 1, new QTableWidgetItem("False"));
-    propertiesTable->setItem(4, 0, new QTableWidgetItem("EnableProtectedChannel"));
-    propertiesTable->setItem(4, 1, new QTableWidgetItem("False"));
-
-    return propertiesTable;
-}
-
-QWidget* MainWindow::createChannelsWidget()
-{
-    QWidget* channelsWidget = new QWidget();
-    QVBoxLayout* channelsLayout = new QVBoxLayout(channelsWidget);
-
-    QLabel* titleLabel = new QLabel("Available Channels");
-    titleLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
-    channelsLayout->addWidget(titleLabel);
-
-    QTableWidget* channelsTable = new QTableWidget();
-    channelsTable->setColumnCount(3);
-    channelsTable->setHorizontalHeaderLabels({"Channel", "Type", "Status"});
-    channelsTable->horizontalHeader()->setStretchLastSection(true);
-    channelsTable->verticalHeader()->setVisible(false);
-
-    channelsTable->setRowCount(3);
-    channelsTable->setItem(0, 0, new QTableWidgetItem("CH0"));
-    channelsTable->setItem(0, 1, new QTableWidgetItem("AI"));
-    channelsTable->setItem(0, 2, new QTableWidgetItem("Active"));
-
-    channelsTable->setItem(1, 0, new QTableWidgetItem("CH1"));
-    channelsTable->setItem(1, 1, new QTableWidgetItem("AI"));
-    channelsTable->setItem(1, 2, new QTableWidgetItem("Active"));
-
-    channelsTable->setItem(2, 0, new QTableWidgetItem("CH2"));
-    channelsTable->setItem(2, 1, new QTableWidgetItem("DI"));
-    channelsTable->setItem(2, 2, new QTableWidgetItem("Inactive"));
-
-    channelsLayout->addWidget(channelsTable);
-
-    return channelsWidget;
-}
-
-QWidget* MainWindow::createSignalsWidget()
-{
-    QWidget* signalsWidget = new QWidget();
-    QVBoxLayout* signalsLayout = new QVBoxLayout(signalsWidget);
-
-    QLabel* titleLabel = new QLabel("Available Signals");
-    titleLabel->setStyleSheet("font-weight: bold; font-size: 14px;");
-    signalsLayout->addWidget(titleLabel);
-
-    QTableWidget* signalsTable = new QTableWidget();
-    signalsTable->setColumnCount(4);
-    signalsTable->setHorizontalHeaderLabels({"Signal", "Value", "Unit", "Timestamp"});
-    signalsTable->horizontalHeader()->setStretchLastSection(true);
-    signalsTable->verticalHeader()->setVisible(false);
-
-    signalsLayout->addWidget(signalsTable);
-
-    signalsTable->setRowCount(6);
-    signalsTable->setItem(0, 0, new QTableWidgetItem("Temperature"));
-    signalsTable->setItem(0, 1, new QTableWidgetItem("25.3"));
-    signalsTable->setItem(0, 2, new QTableWidgetItem("°C"));
-    signalsTable->setItem(0, 3, new QTableWidgetItem("12:34:56"));
-
-    signalsTable->setItem(1, 0, new QTableWidgetItem("Pressure"));
-    signalsTable->setItem(1, 1, new QTableWidgetItem("101.3"));
-    signalsTable->setItem(1, 2, new QTableWidgetItem("kPa"));
-    signalsTable->setItem(1, 3, new QTableWidgetItem("12:34:56"));
-
-    signalsTable->setItem(2, 0, new QTableWidgetItem("Voltage"));
-    signalsTable->setItem(2, 1, new QTableWidgetItem("3.3"));
-    signalsTable->setItem(2, 2, new QTableWidgetItem("V"));
-    signalsTable->setItem(2, 3, new QTableWidgetItem("12:34:57"));
-
-    signalsTable->setItem(3, 0, new QTableWidgetItem("Current"));
-    signalsTable->setItem(3, 1, new QTableWidgetItem("0.5"));
-    signalsTable->setItem(3, 2, new QTableWidgetItem("A"));
-    signalsTable->setItem(3, 3, new QTableWidgetItem("12:34:57"));
-
-    signalsTable->setItem(4, 0, new QTableWidgetItem("Frequency"));
-    signalsTable->setItem(4, 1, new QTableWidgetItem("1000"));
-    signalsTable->setItem(4, 2, new QTableWidgetItem("Hz"));
-    signalsTable->setItem(4, 3, new QTableWidgetItem("12:34:58"));
-
-    signalsTable->setItem(5, 0, new QTableWidgetItem("Acceleration"));
-    signalsTable->setItem(5, 1, new QTableWidgetItem("9.81"));
-    signalsTable->setItem(5, 2, new QTableWidgetItem("m/s²"));
-    signalsTable->setItem(5, 3, new QTableWidgetItem("12:34:58"));
-
-    return signalsWidget;
-}
-
-QWidget* MainWindow::createDeviceInfoWidget()
-{
-    QWidget* deviceInfoWidget = new QWidget();
-    QVBoxLayout* deviceInfoLayout = new QVBoxLayout(deviceInfoWidget);
-    deviceInfoLayout->addWidget(new QLabel("Device information will be displayed here"));
-    deviceInfoLayout->addStretch();
-    return deviceInfoWidget;
-}
-
 // ============================================================================
 // Slots
 // ============================================================================
 
 void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoint& globalPos)
 {
-    logTextEdit->append(QString("Tab '%1' detached to new window").arg(title));
+    AppContext::instance()->addLogMessage(QString("Tab '%1' detached to new window").arg(title));
 
     auto* sourceWidget = qobject_cast<DetachableTabWidget*>(sender());
 
@@ -694,7 +574,7 @@ void MainWindow::onTabMoveCompleted(DetachableTabWidget* sourceWidget)
 
 void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& title)
 {
-    logTextEdit->append(QString("Detached window '%1' closed").arg(title));
+    AppContext::instance()->addLogMessage(QString("Detached window '%1' closed").arg(title));
 
     // Track the closed tab so it can be restored (creates a NEW widget instance)
     trackClosedTab(title);
@@ -712,7 +592,7 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
 void MainWindow::onViewSelectionChanged(int index)
 {
     const QString viewName = viewSelector->itemText(index);
-    logTextEdit->append(QString("View changed to: %1").arg(viewName));
+    AppContext::instance()->addLogMessage(QString("View changed to: %1").arg(viewName));
 
     // Update component type filter based on selection
     QStringList componentsToShow;
@@ -754,48 +634,16 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
     if (!element)
         return;
 
-    // Get the component from the element
-    auto componentElement = dynamic_cast<ComponentTreeElement*>(element);
-    if (!componentElement)
+    if (!tabWidget)
         return;
 
-    auto component = componentElement->getDaqComponent();
-    if (!component.assigned())
-        return;
-
-    // Check if component has properties
-    if (!component.supportsInterface<daq::IPropertyObject>())
-        return;
-
-    // Create a tab name from component name
-    QString tabName = element->getName() + " Properties";
-
-    // Check if tab already exists
-    if (tabWidget)
-    {
-        for (int i = 0; i < tabWidget->count(); ++i)
-        {
-            if (tabWidget->tabText(i) == tabName)
-            {
-                tabWidget->setCurrentIndex(i);
-                return;
-            }
-        }
-
-        // Create PropertyObjectView widget
-        auto propertyView = new PropertyObjectView(component.asPtr<daq::IPropertyObject>());
-
-        // Add as new tab
-        tabWidget->addTab(propertyView, tabName);
-        tabWidget->setCurrentIndex(tabWidget->count() - 1);
-
-        logTextEdit->append(QString("Opened properties for: %1").arg(element->getName()));
-    }
+    tabWidget->clear();
+    element->onSelected(tabWidget);
 }
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
 {
-    logTextEdit->append(QString("Show hidden components: %1").arg(checked ? "ON" : "OFF"));
+    AppContext::instance()->addLogMessage(QString("Show hidden components: %1").arg(checked ? "ON" : "OFF"));
 
     // Update the component tree to show/hide hidden components
     if (componentTreeWidget)
@@ -818,7 +666,7 @@ void MainWindow::onTabCloseRequested(int index)
     sourceWidget->removeTab(index);
     widget->deleteLater();
 
-    logTextEdit->append(QString("Tab '%1' closed").arg(tabName));
+    AppContext::instance()->addLogMessage(QString("Tab '%1' closed").arg(tabName));
 
     cleanupIfEmpty(sourceWidget);
 }
@@ -843,15 +691,6 @@ void MainWindow::trackClosedTab(const QString& title)
 void MainWindow::onRestoreTab(const QString& tabName)
 {
     QWidget* widget = nullptr;
-    if (tabName == "Properties") {
-        widget = createPropertiesWidget();
-    } else if (tabName == "Device Info") {
-        widget = createDeviceInfoWidget();
-    } else if (tabName == "Channels") {
-        widget = createChannelsWidget();
-    } else if (tabName == "Signals") {
-        widget = createSignalsWidget();
-    }
 
     if (widget && !tabWidgets.isEmpty()) {
         tabWidgets.first()->addTab(widget, tabName);
@@ -866,7 +705,7 @@ void MainWindow::onRestoreTab(const QString& tabName)
         }
         restoreTabMenu->setEnabled(!closedTabs.isEmpty());
 
-        logTextEdit->append(QString("Tab '%1' restored").arg(tabName));
+        AppContext::instance()->addLogMessage(QString("Tab '%1' restored").arg(tabName));
     }
 }
 
@@ -884,10 +723,6 @@ void MainWindow::restoreDefaultLayout()
     tabWidgets.clear();
 
     tabWidget = createTabGroup();
-    tabWidget->addTab(createPropertiesWidget(), "Properties");
-    tabWidget->addTab(createDeviceInfoWidget(), "Device Info");
-    tabWidget->addTab(createChannelsWidget(), "Channels");
-    tabWidget->addTab(createSignalsWidget(), "Signals");
     contentSplitter->setOrientation(Qt::Horizontal);
     contentSplitter->addWidget(tabWidget);
 
@@ -905,5 +740,5 @@ void MainWindow::restoreDefaultLayout()
 void MainWindow::onResetLayout()
 {
     restoreDefaultLayout();
-    logTextEdit->append("Layout reset to default");
+    AppContext::instance()->addLogMessage("Layout reset to default");
 }

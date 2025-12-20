@@ -1,4 +1,5 @@
 #pragma once
+#include "DetachableTabWidget.h"
 #include "base_tree_element.h"
 #include "property/property_object_view.h"
 #include "AppContext.h"
@@ -134,35 +135,25 @@ public:
     // Override onSelected to show component properties
     void onSelected(QWidget* mainContent) override
     {
-        // Clear previous content
-        QLayout* layout = mainContent->layout();
-        if (layout)
+        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+        QString tabName = getName() + " Properties";
+        auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IPropertyObject>());
+        addTab(tabWidget, propertyView, tabName);
+    }
+
+    void addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)
+    {
+        for (int i = 0; i < tabWidget->count(); ++i)
         {
-            QLayoutItem* item;
-            while ((item = layout->takeAt(0)) != nullptr)
+            if (tabWidget->tabText(i) == tabName)
             {
-                delete item->widget();
-                delete item;
+                tabWidget->setCurrentIndex(i);
+                return;
             }
         }
-        else
-        {
-            layout = new QVBoxLayout(mainContent);
-            mainContent->setLayout(layout);
-        }
 
-        // Create Properties section
-        QGroupBox* propertiesGroup = new QGroupBox("Properties");
-        QVBoxLayout* propertiesLayout = new QVBoxLayout(propertiesGroup);
-
-        // Add PropertyObjectView
-        auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IPropertyObject>());
-        propertiesLayout->addWidget(propertyView);
-
-        layout->addWidget(propertiesGroup);
-
-        // Add stretch to push content to top
-        static_cast<QVBoxLayout*>(layout)->addStretch();
+        tabWidget->addTab(tab, tabName);
+        tabWidget->setCurrentIndex(tabWidget->count() - 1);
     }
 
     // Get the underlying openDAQ component

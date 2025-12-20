@@ -9,6 +9,8 @@
 #include <QIcon>
 #include <memory>
 #include "icon_provider.h"
+#include <AppContext.h>
+
 
 // Forward declaration
 class BaseTreeElement;
@@ -54,10 +56,10 @@ public:
         // Create tree item
         if (!iconName.isEmpty())
         {
-            QIcon icon = IconProvider::instance().icon(iconName);
+            // QIcon icon = AppContext::instance()->icon(iconName);
             treeItem = new QTreeWidgetItem(parentTreeItem);
             treeItem->setText(0, name);
-            treeItem->setIcon(0, icon);
+            // treeItem->setIcon(0, icon);
         }
         else
         {
@@ -195,28 +197,6 @@ public:
     // Called when this element is selected in the tree
     virtual void onSelected(QWidget* mainContent)
     {
-        // Clear previous content
-        QLayout* layout = mainContent->layout();
-        if (layout)
-        {
-            QLayoutItem* item;
-            while ((item = layout->takeAt(0)) != nullptr)
-            {
-                delete item->widget();
-                delete item;
-            }
-        }
-        else
-        {
-            layout = new QVBoxLayout(mainContent);
-            mainContent->setLayout(layout);
-        }
-
-        // Add default label
-        QLabel* label = new QLabel(QString("You selected: %1 (%2)").arg(globalId, type));
-        label->setFont(QFont("Arial", 14));
-        layout->addWidget(label);
-        static_cast<QVBoxLayout*>(layout)->addStretch();
     }
 
     // Create right-click context menu

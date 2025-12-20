@@ -87,9 +87,6 @@ private:
     DetachableTabWidget* tabWidget = nullptr;
     QList<DetachableTabWidget*> tabWidgets; // Track all tab widgets
 
-    // Bottom log panel
-    QTextEdit* logTextEdit = nullptr;
-
     // Detached windows
     QList<DetachedWindow*> detachedWindows;
 

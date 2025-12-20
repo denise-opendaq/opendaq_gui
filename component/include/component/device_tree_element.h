@@ -1,55 +1,36 @@
 #pragma once
-#include "base_tree_element.h"
+#include "folder_tree_element.h"
 
 // Example derived class for Device elements
-class DeviceTreeElement : public BaseTreeElement
+class DeviceTreeElement : public FolderTreeElement
 {
     Q_OBJECT
+    using Super = FolderTreeElement;
+    
 
 public:
-    DeviceTreeElement(QTreeWidget* tree, const QString& deviceId, const QString& deviceName, QObject* parent = nullptr)
-        : BaseTreeElement(tree, parent)
+    DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QObject* parent = nullptr)
+        : Super(tree, daqDevice, parent)
     {
-        this->localId = deviceId;
-        this->globalId = "/" + deviceId;
-        this->name = deviceName;
         this->type = "Device";
-        this->iconName = "device";  // Will load :/icons/device.png
+        this->iconName = "device";
+        this->name = getStandardFolderName(this->name);
+    }
+
+    bool visible() const override
+    {
+        return true;
     }
 
     // Override onSelected to show device-specific content
     void onSelected(QWidget* mainContent) override
     {
-        // Clear previous content
-        QLayout* layout = mainContent->layout();
-        if (layout)
-        {
-            QLayoutItem* item;
-            while ((item = layout->takeAt(0)) != nullptr)
-            {
-                delete item->widget();
-                delete item;
-            }
-        }
-        else
-        {
-            layout = new QVBoxLayout(mainContent);
-            mainContent->setLayout(layout);
-        }
-
-        // Add device-specific widgets
-        QLabel* titleLabel = new QLabel(QString("Device: %1").arg(name));
-        titleLabel->setFont(QFont("Arial", 16, QFont::Bold));
-        layout->addWidget(titleLabel);
-
-        QLabel* idLabel = new QLabel(QString("ID: %1").arg(globalId));
-        layout->addWidget(idLabel);
-
-        QLabel* typeLabel = new QLabel(QString("Type: %1").arg(type));
-        layout->addWidget(typeLabel);
-
-        // Add stretch to push content to top
-        static_cast<QVBoxLayout*>(layout)->addStretch();
+        Super::onSelected(mainContent);
+    
+        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+        QString tabName = getName() + " device info";
+        auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo());
+        addTab(tabWidget, propertyView, tabName);
     }
 
     // Override to add device-specific context menu

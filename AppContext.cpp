@@ -9,6 +9,7 @@ public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
     QStringList componentTypes; // empty means show all
+    QTextEdit* logTextEdit = nullptr;
 };
 
 AppContext::AppContext(QObject* parent)
@@ -35,10 +36,24 @@ daq::InstancePtr AppContext::daqInstance() const
 
 void AppContext::setDaqInstance(const daq::InstancePtr& instance)
 {
-    if (d->daqInstance != instance) {
+    if (!d->daqInstance.assigned()) 
+    {
         d->daqInstance = instance;
         Q_EMIT daqInstanceChanged();
     }
+}
+
+void AppContext::setLogTextEdit(QTextEdit* logTextEdit)
+{
+    if (!d->logTextEdit)
+    {
+        d->logTextEdit = logTextEdit;
+    }
+}
+
+void AppContext::addLogMessage(const QString &text)
+{
+    d->logTextEdit->append(text);
 }
 
 daq::InstancePtr AppContext::daq()

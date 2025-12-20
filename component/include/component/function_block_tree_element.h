@@ -15,54 +15,6 @@ public:
         this->iconName = "function_block";
     }
 
-    // Override onSelected to display function block with horizontal split
-    void onSelected(QWidget* mainContent) override
-    {
-        // Clear previous content
-        QLayout* layout = mainContent->layout();
-        if (layout)
-        {
-            QLayoutItem* item;
-            while ((item = layout->takeAt(0)) != nullptr)
-            {
-                delete item->widget();
-                delete item;
-            }
-        }
-        else
-        {
-            layout = new QVBoxLayout(mainContent);
-            layout->setContentsMargins(0, 0, 0, 0);
-            mainContent->setLayout(layout);
-        }
-
-        // Create horizontal splitter
-        QSplitter* splitter = new QSplitter(Qt::Horizontal, mainContent);
-
-        // Left panel - Properties (use parent's onSelected)
-        QWidget* leftPanel = new QWidget(splitter);
-        leftPanel->setMinimumWidth(200);
-        FolderTreeElement::onSelected(leftPanel);
-
-        // Right panel - Empty for now (can be used for function block specific content)
-        QWidget* rightPanel = new QWidget(splitter);
-        rightPanel->setMinimumWidth(200);
-
-        // Add placeholder label to right panel
-        QVBoxLayout* rightLayout = new QVBoxLayout(rightPanel);
-        QLabel* placeholderLabel = new QLabel("Function Block Output Area");
-        placeholderLabel->setAlignment(Qt::AlignCenter);
-        placeholderLabel->setStyleSheet("color: #888;");
-        rightLayout->addWidget(placeholderLabel);
-        rightLayout->addStretch();
-
-        // Set splitter proportions (left panel slightly larger)
-        splitter->setStretchFactor(0, 3);
-        splitter->setStretchFactor(1, 2);
-
-        layout->addWidget(splitter);
-    }
-
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override
     {

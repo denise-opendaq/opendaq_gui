@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QTextEdit>
 
 // Forward declarations to avoid including openDAQ headers in Qt header files
 // This prevents conflicts between openDAQ's operator& and Qt's macros
@@ -21,6 +22,9 @@ public:
     // OpenDAQ instance access
     daq::InstancePtr daqInstance() const;
     void setDaqInstance(const daq::InstancePtr& instance);
+
+    void setLogTextEdit(QTextEdit* logTextEdit);
+    void addLogMessage(const QString &text);
 
     // Convenience method to get instance from anywhere
     static daq::InstancePtr daq();
