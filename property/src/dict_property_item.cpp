@@ -6,30 +6,6 @@
 // Helper functions to convert BaseObject to/from string
 // ============================================================================
 
-static QString baseObjectToString(const daq::BaseObjectPtr& obj)
-{
-    if (!obj.assigned())
-        return QStringLiteral("");
-
-    try
-    {
-        if (const auto intVal = obj.asPtrOrNull<daq::IInteger>(true); intVal.assigned())
-            return QString::number(static_cast<daq::Int>(intVal));
-        else if (const auto strVal = obj.asPtrOrNull<daq::IString>(true); strVal.assigned())
-            return QString::fromStdString(static_cast<std::string>(strVal));
-        else if (const auto boolVal = obj.asPtrOrNull<daq::IBoolean>(true); boolVal.assigned())
-            return static_cast<bool>(boolVal) ? QStringLiteral("True") : QStringLiteral("False");
-        else if (const auto floatVal = obj.asPtrOrNull<daq::IFloat>(true); floatVal.assigned())
-            return QString::number(static_cast<daq::Float>(floatVal));
-        else
-            return QStringLiteral("[complex]");
-    }
-    catch (...)
-    {
-        return QStringLiteral("[error]");
-    }
-}
-
 static daq::BaseObjectPtr stringToBaseObject(const QString& str, const daq::BaseObjectPtr& reference)
 {
     if (!reference.assigned())
@@ -108,8 +84,8 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
     for (const auto& [key, value] : dict)
     {
         auto* treeChild = new QTreeWidgetItem();
-        treeChild->setText(0, baseObjectToString(key));
-        treeChild->setText(1, baseObjectToString(value));
+        treeChild->setText(0, QString::fromStdString(key.toString()));
+        treeChild->setText(1, QString::fromStdString(value.toString()));
 
         // Make both columns editable
         treeChild->setFlags(treeChild->flags() | Qt::ItemIsEditable);
