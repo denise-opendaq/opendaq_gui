@@ -1,5 +1,8 @@
 #include "MainWindow.h"
 #include "DetachedWindow.h"
+#include "AppContext.h"
+#include "component/component_tree_element.h"
+#include "property/property_object_view.h"
 
 #include <QApplication>
 #include <QVBoxLayout>
@@ -277,21 +280,19 @@ void MainWindow::setupUI()
             this, &MainWindow::onViewSelectionChanged);
     leftLayout->addWidget(viewSelector);
 
-    componentTree = new QTreeWidget();
-    componentTree->setHeaderHidden(true);
-    componentTree->setIndentation(20);
-    componentTree->setAnimated(true);
-    connect(componentTree, &QTreeWidget::itemSelectionChanged,
-            this, &MainWindow::onTreeItemSelected);
-    leftLayout->addWidget(componentTree);
+    // Create ComponentTreeWidget and load openDAQ instance
+    componentTreeWidget = new ComponentTreeWidget();
+    auto instance = AppContext::instance()->daqInstance();
+    if (instance.assigned())
+    {
+        componentTreeWidget->loadInstance(instance);
+    }
 
-    QTreeWidgetItem* root = new QTreeWidgetItem(componentTree, {"OpenDAQClient"});
-    QTreeWidgetItem* devices = new QTreeWidgetItem(root, {"Devices"});
-    QTreeWidgetItem* device = new QTreeWidgetItem(devices, {"RefDev0"});
-    new QTreeWidgetItem(device, {"Function blocks"});
-    new QTreeWidgetItem(device, {"Input ports"});
-    new QTreeWidgetItem(device, {"Inputs/Outputs"});
-    componentTree->expandAll();
+    // Connect component selection to show properties
+    connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
+            this, &MainWindow::onComponentSelected);
+
+    leftLayout->addWidget(componentTreeWidget);
 
     mainSplitter->addWidget(leftWidget);
 
@@ -712,20 +713,95 @@ void MainWindow::onViewSelectionChanged(int index)
 {
     const QString viewName = viewSelector->itemText(index);
     logTextEdit->append(QString("View changed to: %1").arg(viewName));
+
+    // Update component type filter based on selection
+    QStringList componentsToShow;
+    if (viewName == "System Overview")
+    {
+        componentsToShow = {"Device", "Folder", "Signal", "Channel", "FunctionBlock"};
+    }
+    else if (viewName == "Signals")
+    {
+        componentsToShow = {"Device", "Signal"};
+    }
+    else if (viewName == "Channels")
+    {
+        componentsToShow = {"Device", "Channel"};
+    }
+    else if (viewName == "Function blocks")
+    {
+        componentsToShow = {"Device", "FunctionBlock"};
+    }
+    else if (viewName == "Full Topology")
+    {
+        componentsToShow = QStringList(); // Empty means show all
+    }
+
+    if (componentTreeWidget)
+    {
+        componentTreeWidget->setComponentTypeFilter(componentsToShow);
+    }
 }
 
 void MainWindow::onTreeItemSelected()
 {
-    const QList<QTreeWidgetItem*> selected = componentTree->selectedItems();
-    if (!selected.isEmpty()) {
-        const QString itemName = selected.first()->text(0);
-        logTextEdit->append(QString("Selected: %1").arg(itemName));
+    // This slot is no longer used since ComponentTreeWidget handles selection internally
+    // The tree selection is now managed by the ComponentTreeWidget
+}
+
+void MainWindow::onComponentSelected(BaseTreeElement* element)
+{
+    if (!element)
+        return;
+
+    // Get the component from the element
+    auto componentElement = dynamic_cast<ComponentTreeElement*>(element);
+    if (!componentElement)
+        return;
+
+    auto component = componentElement->getDaqComponent();
+    if (!component.assigned())
+        return;
+
+    // Check if component has properties
+    if (!component.supportsInterface<daq::IPropertyObject>())
+        return;
+
+    // Create a tab name from component name
+    QString tabName = element->getName() + " Properties";
+
+    // Check if tab already exists
+    if (tabWidget)
+    {
+        for (int i = 0; i < tabWidget->count(); ++i)
+        {
+            if (tabWidget->tabText(i) == tabName)
+            {
+                tabWidget->setCurrentIndex(i);
+                return;
+            }
+        }
+
+        // Create PropertyObjectView widget
+        auto propertyView = new PropertyObjectView(component.asPtr<daq::IPropertyObject>());
+
+        // Add as new tab
+        tabWidget->addTab(propertyView, tabName);
+        tabWidget->setCurrentIndex(tabWidget->count() - 1);
+
+        logTextEdit->append(QString("Opened properties for: %1").arg(element->getName()));
     }
 }
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
 {
     logTextEdit->append(QString("Show hidden components: %1").arg(checked ? "ON" : "OFF"));
+
+    // Update the component tree to show/hide hidden components
+    if (componentTreeWidget)
+    {
+        componentTreeWidget->setShowHidden(checked);
+    }
 }
 
 void MainWindow::onTabCloseRequested(int index)

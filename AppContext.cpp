@@ -1,11 +1,14 @@
 #include "AppContext.h"
 #include <opendaq/opendaq.h>
+#include <QStringList>
 
 // PIMPL to hide openDAQ headers from Qt headers
 class AppContext::Private
 {
 public:
     daq::InstancePtr daqInstance;
+    bool showInvisible = false;
+    QStringList componentTypes; // empty means show all
 };
 
 AppContext::AppContext(QObject* parent)
@@ -41,4 +44,24 @@ void AppContext::setDaqInstance(const daq::InstancePtr& instance)
 daq::InstancePtr AppContext::daq()
 {
     return instance()->daqInstance();
+}
+
+bool AppContext::showInvisibleComponents() const
+{
+    return d->showInvisible;
+}
+
+void AppContext::setShowInvisibleComponents(bool show)
+{
+    d->showInvisible = show;
+}
+
+QStringList AppContext::showComponentTypes() const
+{
+    return d->componentTypes;
+}
+
+void AppContext::setShowComponentTypes(const QStringList& types)
+{
+    d->componentTypes = types;
 }

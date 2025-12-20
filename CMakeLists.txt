@@ -5,7 +5,13 @@ project(opendaq_qt_gui VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 add_subdirectory(external)
+add_subdirectory(component)
+add_subdirectory(property)
 
 # Find Qt6 (fetched or system-installed in external/qt)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
@@ -49,6 +55,8 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt6::Core
         Qt6::Widgets
+        component
+        property
         daq::coreobjects
         daq::coretypes
         daq::opendaq

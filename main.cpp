@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
 
     // Create openDAQ instance
-    auto instance = Instance();
+    auto instance = InstanceBuilder().setModulePath("/Users/deniserokhin/projects/qt_gui/build/bin").build();
     instance.addDevice("daq://SonyUK_Denis");
 
     // Set it in global context so it's accessible from anywhere

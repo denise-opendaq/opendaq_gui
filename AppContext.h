@@ -25,6 +25,13 @@ public:
     // Convenience method to get instance from anywhere
     static daq::InstancePtr daq();
 
+    // Visibility settings
+    bool showInvisibleComponents() const;
+    void setShowInvisibleComponents(bool show);
+
+    QStringList showComponentTypes() const;
+    void setShowComponentTypes(const QStringList& types);
+
 Q_SIGNALS:
     // Emitted when openDAQ instance changes (pass as void* to avoid template in signal)
     void daqInstanceChanged();

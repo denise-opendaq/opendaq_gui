@@ -11,8 +11,10 @@
 
 #include "DetachableTabWidget.h"
 #include "DropOverlay.h"
+#include "component/component_tree_widget.h"
 
 class DetachedWindow;
+class BaseTreeElement;
 
 class MainWindow : public QMainWindow
 {
@@ -58,6 +60,7 @@ private Q_SLOTS:
     void onViewSelectionChanged(int index);
     void onTreeItemSelected();
     void onShowHiddenComponentsToggled(bool checked);
+    void onComponentSelected(BaseTreeElement* element);
 
     // Tab management
     void onTabDetached(QWidget* widget, const QString& title, const QPoint& globalPos);
@@ -78,7 +81,7 @@ private:
 
     // Left panel
     QComboBox* viewSelector = nullptr;
-    QTreeWidget* componentTree = nullptr;
+    ComponentTreeWidget* componentTreeWidget = nullptr;
 
     // Right panel - can have multiple tab widgets for split view
     DetachableTabWidget* tabWidget = nullptr;
