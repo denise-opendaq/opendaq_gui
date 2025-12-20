@@ -8,26 +8,25 @@
 class PropertySubtreeBuilder;
 
 // ============================================================================
-// DictPropertyItem — Property item for nested Dict
+// ListPropertyItem — Property item for nested List
 // ============================================================================
 
-class DictPropertyItem final : public BasePropertyItem
+class ListPropertyItem final : public BasePropertyItem
 {
 public:
-    DictPropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
+    ListPropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
         : BasePropertyItem(owner, prop)
-        , dict(prop.getValue())
+        , list(prop.getValue())
     {}
 
     QString showValue() const override
     {
-        if (!dict.assigned())
-            return QStringLiteral("Dict (null)");
+        if (!list.assigned())
+            return QStringLiteral("List (null)");
 
-        return QStringLiteral("Dict (%1 items)").arg(dict.getCount());
+        return QStringLiteral("List (%1 items)").arg(list.getCount());
     }
 
-    bool isKeyEditable() const override { return isValueEditable(); }
     bool hasSubtree() const override { return true; }
 
     void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self) override;
@@ -35,7 +34,7 @@ public:
     void handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos) override;
 
 private:
-    daq::DictPtr<daq::IBaseObject, daq::IBaseObject> dict;
+    daq::ListPtr<daq::IBaseObject> list;
     bool loaded = false;
-    std::map<QTreeWidgetItem*, daq::BaseObjectPtr> itemToKeyMap;
+    std::map<QTreeWidgetItem*, size_t> itemToKeyMap;
 };

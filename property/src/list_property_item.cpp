@@ -1,4 +1,4 @@
-#include "property/dict_property_item.h"
+#include "property/list_property_item.h"
 #include "property/property_object_view.h"
 #include "property/default_core_type.h"
 #include <QTreeWidgetItem>
@@ -6,12 +6,12 @@
 #include <QMessageBox>
 
 // ============================================================================
-// DictPropertyItem implementation
+// ListPropertyItem implementation
 // ============================================================================
 
-void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
+void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
 {
-    if (loaded || !dict.assigned())
+    if (loaded || !list.assigned())
         return;
 
     loaded = true;
@@ -21,15 +21,17 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         delete self->takeChild(0);
 
     itemToKeyMap.clear();
+
     auto isEditable = isValueEditable();
 
     // Add each key-value pair as a child item
     QPalette palette = builder.view.palette();
-    for (const auto& [key, value] : dict)
+    for (size_t i = 0; i < list.getCount(); i++)
     {
         auto* treeChild = new QTreeWidgetItem();
-        treeChild->setText(0, QString::fromStdString(key.toString()));
-        treeChild->setText(1, QString::fromStdString(value.toString()));
+        const QString key = QStringLiteral("[%1]").arg(i);
+        treeChild->setText(0, key);
+        treeChild->setText(1, QString::fromStdString(list[i].toString()));
 
         if (isEditable)
         {
@@ -45,58 +47,45 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         self->addChild(treeChild);
 
         // Map tree item to original key
-        itemToKeyMap[treeChild] = key;
+        itemToKeyMap[treeChild] = i;
     }
 }
 
-void DictPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
+void ListPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 {
     // Check if this is a child item (dict key-value pair)
     auto it = itemToKeyMap.find(item);
     if (it == itemToKeyMap.end())
         return; // Not a dict child item
 
-    const daq::BaseObjectPtr& originalKey = it->second;
+    const size_t index = it->second;
 
     // Refresh dict reference
-    dict = owner.getPropertyValue(getName());
-    if (!dict.assigned())
+    list = owner.getPropertyValue(getName());
+    if (!list.assigned())
         return;
 
-    daq::StringPtr newText = item->text(column).toStdString();
-
-    if (column == 0)
+    if (column == 1)
     {
-        // Edit key: remove old key, add new key with same value
-        auto key = originalKey;
-        auto value = dict.remove(key);
-
-        key = newText.convertTo(prop.getKeyType());
-        dict.set(key, value);
-
-        // Update the map with new key
-        itemToKeyMap[item] = key;
-    }
-    else if (column == 1)
-    {
+        daq::StringPtr newText = item->text(column).toStdString();
         const auto value = newText.convertTo(prop.getItemType());
-        dict.set(originalKey, value);
-    }
+        list.setItemAt(index, value);
 
-    // Save updated dict
-    owner.setPropertyValue(getName(), dict);
+        // Save updated list
+        owner.setPropertyValue(getName(), list);
+    }
 }
 
-void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
+void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
 {
-    // Refresh dict reference
-    dict = owner.getPropertyValue(getName());
-    if (!dict.assigned())
+    // Refresh list reference
+    list = owner.getPropertyValue(getName());
+    if (!list.assigned())
         return;
 
     QMenu menu(view);
 
-    // Check if right-click is on a child item (dict entry) or on the dict itself
+    // Check if right-click is on a child item (list element) or on the list itself
     auto it = itemToKeyMap.find(item);
     bool isChildItem = (it != itemToKeyMap.end());
 
@@ -112,13 +101,13 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
 
     if (selectedAction == addAction)
     {
-        // Add new item with default key "new_key" and empty value
+        // Add new item with empty value at the end
         try
         {
-            dict.set(createDefaultValue(prop.getKeyType()), createDefaultValue(prop.getItemType()));
+            list.pushBack(createDefaultValue(prop.getItemType()));
 
-            // Save updated dict
-            owner.setPropertyValue(getName(), dict);
+            // Save updated list
+            owner.setPropertyValue(getName(), list);
 
             // Reload only this subtree
             QTreeWidgetItem* parentItem = isChildItem ? item->parent() : item;
@@ -135,14 +124,14 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
     else if (selectedAction == removeAction && isChildItem)
     {
         // Remove item
-        const daq::BaseObjectPtr& keyToRemove = it->second;
+        const size_t indexToRemove = it->second;
 
         try
         {
-            dict.remove(keyToRemove);
+            list.removeAt(indexToRemove);
 
-            // Save updated dict
-            owner.setPropertyValue(getName(), dict);
+            // Save updated list
+            owner.setPropertyValue(getName(), list);
 
             // Reload only this subtree
             loaded = false;

@@ -25,8 +25,6 @@ public:
         return false; // Not editable via text, use double-click instead
     }
 
-    bool hasSubtree() const override { return false; }
-
     void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
 
     void commitEdit(QTreeWidgetItem*, int) override

@@ -25,11 +25,16 @@ public:
                 const auto index = owner.getPropertyValue(prop.getName());
                 if (static_cast<size_t>(index) < list.getCount())
                     return QString::fromStdString(list.getItemAt(index));
+                else
+                    return QString("Wrong value");
             }
             else if (const auto dict = selection.asPtrOrNull<daq::IDict>(true); dict.assigned())
             {
                 const auto key = owner.getPropertyValue(prop.getName());
-                return QString::fromStdString(dict[key]);
+                if (dict.hasKey(key))
+                    return QString::fromStdString(dict[key]);
+                else
+                    return QString("Wrong value");
             }
         }
     
@@ -40,8 +45,6 @@ public:
     {
         return !hasSelection();
     }
-
-    bool hasSubtree() const override { return false; }
 
     bool hasSelection() const
     {
@@ -61,16 +64,12 @@ public:
             if (const auto list = selection.asPtrOrNull<daq::IList>(true); list.assigned())
             {
                 for (size_t i = 0; i < list.getCount(); ++i)
-                {
                     result.append(QString::fromStdString(list.getItemAt(i)));
-                }
             }
             else if (const auto dict = selection.asPtrOrNull<daq::IDict>(true); dict.assigned())
             {
                 for (const auto& [key, value] : dict)
-                {
                     result.append(QString::fromStdString(value));
-                }
             }
         }
 

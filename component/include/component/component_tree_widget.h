@@ -47,8 +47,7 @@ public:
         try
         {
             // Create root element
-            rootElement = new FolderTreeElement(this, instance.asPtr<daq::IFolder>());
-            rootElement->setName("openDAQ Instance");
+            rootElement = new DeviceTreeElement(this, instance.getRootDevice());
             rootElement->init();
 
             // Expand the root

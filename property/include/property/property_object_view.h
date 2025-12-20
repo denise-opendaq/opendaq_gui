@@ -20,7 +20,6 @@ public:
     QTreeWidgetItem* addItem(QTreeWidgetItem* parent, std::unique_ptr<BasePropertyItem> item);
     void buildFromPropertyObject(QTreeWidgetItem* parent, const daq::PropertyObjectPtr& obj);
 
-private:
     PropertyObjectView& view;
 };
 
@@ -67,8 +66,6 @@ public Q_SLOTS:
 
         PropertySubtreeBuilder builder(*this);
         builder.buildFromPropertyObject(nullptr, root);
-
-        expandAll();
     }
 
 Q_SIGNALS:
@@ -85,18 +82,14 @@ protected:
         auto* logic = getLogic(item);
         if (!logic)
         {
-            // For items without logic (like dict children), check parent
+            // For items without logic (like list/dict children), check parent
             auto* parent = item->parent();
-            if (parent)
-            {
-                auto* parentLogic = getLogic(parent);
-                if (parentLogic)
-                {
-                    // Parent will handle editability via handleChildEdit
-                    return QTreeWidget::edit(index, trigger, event);
-                }
-            }
-            return false;
+            if (!parent)
+                return false;
+
+            logic = getLogic(parent);
+            if (!logic)
+                return false;
         }
 
         // Check editability based on column
@@ -190,7 +183,16 @@ private Q_SLOTS:
         if (!item)
             return;
 
-        if (auto* logic = getLogic(item))
+        auto* logic = getLogic(item);
+        if (!logic)
+        {
+            // For items without logic (like list/dict children), check parent
+            auto* parent = item->parent();
+            if (parent)
+                logic = getLogic(parent);
+        }
+
+        if (logic)
             logic->handle_right_click(this, item, viewport()->mapToGlobal(pos));
     }
 
@@ -213,14 +215,17 @@ inline QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
     it->setText(0, QString::fromStdString(logic->getName()));
     it->setText(1, logic->showValue());
 
-    // Editable only if allowed by logic; column-0 edit is blocked by PropertyObjectView::edit override.
-    Qt::ItemFlags flags = it->flags();
-    if (logic->isEditable())
-        flags |= Qt::ItemIsEditable;
+    // Editable only if allowed by logic; column edit is controlled by PropertyObjectView::edit override.
+    if (logic->isKeyEditable() || logic->isValueEditable())
+    {
+        it->setFlags(it->flags() |= Qt::ItemIsEditable);
+    }
     else
-        flags &= ~Qt::ItemIsEditable;
-
-    it->setFlags(flags);
+    {
+        QPalette palette = view.palette();
+        it->setForeground(0, palette.color(QPalette::Disabled, QPalette::Text));
+        it->setForeground(1, palette.color(QPalette::Disabled, QPalette::Text));
+    }
 
     if (logic->hasSubtree())
     {

@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 
     // Create openDAQ instance
     auto instance = InstanceBuilder().setModulePath("/Users/deniserokhin/projects/qt_gui/build/bin").build();
-    instance.addProperty(daq::DictProperty("dict", daq::Dict<daq::IString, daq::IInteger>({{"123", 1}, {"test", 123}})));
+    instance.addProperty(daq::DictProperty("dict", daq::Dict<daq::IBaseObject, daq::IBaseObject>({{"123", 1}, {"test", 123}})));
     instance.addProperty(daq::ListProperty("list", daq::List<IBaseObject>(1, "test")));
     instance.addDevice("daq://SonyUK_Denis");
 

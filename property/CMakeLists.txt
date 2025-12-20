@@ -21,7 +21,10 @@ set(HEADERS
     include/property/int_property_item.h
     include/property/bool_property_item.h
     include/property/dict_property_item.h
+    include/property/list_property_item.h
+    include/property/struct_property_item.h
     include/property/property_factory.h
+    include/property/default_core_type.h
 )
 
 # Source files
@@ -31,6 +34,8 @@ set(SOURCES
     src/object_property_item.cpp
     src/bool_property_item.cpp
     src/dict_property_item.cpp
+    src/list_property_item.cpp
+    src/struct_property_item.cpp
 )
 
 # Create library
@@ -55,11 +60,3 @@ target_link_libraries(${PROJECT_NAME}
         daq::coretypes
         daq::opendaq
 )
-
-# If you have openDAQ dependencies, add them here
-# target_link_libraries(${PROJECT_NAME}
-#     INTERFACE
-#         daq::coreobjects
-#         daq::coretypes
-#         daq::opendaq
-# )

@@ -59,13 +59,13 @@ public:
     // Can user edit value (column 1)?
     virtual bool isValueEditable() const
     {
-        return !prop.getReadOnly();
-    }
+        if (prop.getReadOnly())
+            return false;
 
-    // Legacy method - checks if column 1 is editable
-    virtual bool isEditable() const
-    {
-        return isValueEditable();
+        if (auto freezable = prop.asPtrOrNull<daq::IFreezable>(true); freezable.assigned() && freezable.isFrozen())
+            return false;
+
+        return true;
     }
 
     // Subtree for nested PropertyObject
