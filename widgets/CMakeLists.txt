@@ -17,12 +17,14 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 set(HEADERS
     include/widgets/signal_value_widget.h
     include/widgets/property_object_view.h
+    include/widgets/input_port_widget.h
 )
 
 # Source files
 set(SOURCES
     src/signal_value_widget.cpp
     src/property_object_view.cpp
+    src/input_port_widget.cpp
 )
 
 # Create library

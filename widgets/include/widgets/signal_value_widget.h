@@ -32,16 +32,17 @@ public:
     // IUpdatable interface
     void onScheduledUpdate() override;
 
-private:
-    void setupUI();
-    void updateSignalInfo();
-    bool isTimeDomainSignal();
-    QString getLastValue();
-
+protected:
     daq::SignalPtr signal;
     QLabel* valueLabel;
     QLabel* signalNameLabel;
     QLabel* signalUnitLabel;
     QLabel* signalTypeLabel;
     QLabel* signalOriginLabel;
+
+private:
+    void setupUI();
+    void updateSignalInfo();
+    bool isTimeDomainSignal();
+    QString getLastValue();
 };
