@@ -93,8 +93,8 @@ public:
     {
         if (column == 1)
         {
-            const QString newText = item->text(1);
-            owner.setPropertyValue(getName(), newText.toStdString());
+            const daq::StringPtr newText = item->text(1).toStdString();
+            owner.setPropertyValue(getName(), newText.convertTo(prop.getValueType()));
         }
     }
 

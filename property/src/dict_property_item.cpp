@@ -89,9 +89,7 @@ void DictPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 
 void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
 {
-    // Refresh dict reference
-    dict = owner.getPropertyValue(getName());
-    if (!dict.assigned())
+    if (!isValueEditable())
         return;
 
     QMenu menu(view);

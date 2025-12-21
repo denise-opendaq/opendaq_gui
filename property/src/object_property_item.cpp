@@ -16,5 +16,8 @@ void ObjectPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWid
     while (self->childCount() > 0)
         delete self->takeChild(0);
 
+    // Register this nested PropertyObject with this ObjectPropertyItem
+    builder.view.propertyObjectToLogic[nested] = this;
+
     builder.buildFromPropertyObject(self, nested);
 }

@@ -78,9 +78,7 @@ void ListPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 
 void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
 {
-    // Refresh list reference
-    list = owner.getPropertyValue(getName());
-    if (!list.assigned())
+    if (!isValueEditable())
         return;
 
     QMenu menu(view);

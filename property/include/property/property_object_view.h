@@ -1,10 +1,21 @@
 #pragma once
 
 #include "property_factory.h"
+#include "../../../AppContext.h"
 
 #include <memory>
 #include <vector>
 #include <utility>
+#include <unordered_map>
+
+// Custom hash function for PropertyObjectPtr that uses the object's address
+struct PropertyObjectPtrHash
+{
+    std::size_t operator()(const daq::PropertyObjectPtr& ptr) const noexcept
+    {
+        return std::hash<void*>{}(ptr.getObject());
+    }
+};
 
 // ============================================================================
 // PropertySubtreeBuilder — строит дерево в существующем QTreeWidget
@@ -54,6 +65,14 @@ public:
         connect(this, &QWidget::customContextMenuRequested, this, &PropertyObjectView::onContextMenu);
 
         refresh();
+        auto context = AppContext::instance()->daqInstance().getContext();
+        context.getOnCoreEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+    }
+
+    virtual ~PropertyObjectView()
+    {
+        auto context = AppContext::instance()->daqInstance().getContext();
+        context.getOnCoreEvent() -= daq::event(this, &PropertyObjectView::componentCoreEventCallback);
     }
 
 public Q_SLOTS:
@@ -63,6 +82,10 @@ public Q_SLOTS:
 
         clear();
         items.clear();
+        propertyObjectToLogic.clear();
+
+        // Register root with nullptr to handle top-level properties
+        propertyObjectToLogic[root] = nullptr;
 
         PropertySubtreeBuilder builder(*this);
         builder.buildFromPropertyObject(nullptr, root);
@@ -101,14 +124,82 @@ protected:
         return false;
     }
 
-private:
-    friend class PropertySubtreeBuilder;
+    void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs)
+    {
+        if (component != root)
+            return;
 
+        if (eventArgs.getEventName() != "PropertyValueChanged")
+            return;
+
+        daq::StringPtr path = eventArgs.getParameters()["Path"];
+        daq::StringPtr propertyName = eventArgs.getParameters()["Name"];
+
+        // Get the property object that owns this property
+        auto obj = root;
+        if (path.getLength())
+            obj = obj.getPropertyValue(path);
+
+        // Find the ObjectPropertyItem using the map
+        auto it = propertyObjectToLogic.find(obj);
+        if (it == propertyObjectToLogic.end())
+            return;
+
+        ObjectPropertyItem* parentLogic = it->second;
+        QSignalBlocker blocker(this);
+
+        // Find the tree item for this logic
+        QTreeWidgetItem* parentItem = nullptr;
+        if (parentLogic)
+        {
+            QTreeWidgetItemIterator iter(this);
+            while (*iter)
+            {
+                if (getLogic(*iter) == parentLogic)
+                {
+                    parentItem = *iter;
+                    break;
+                }
+                ++iter;
+            }
+        }
+
+        // Get the list of items to search
+        int childCount = parentItem ? parentItem->childCount() : topLevelItemCount();
+
+        // Find the property item
+        for (int i = 0; i < childCount; ++i)
+        {
+            QTreeWidgetItem* child = parentItem ? parentItem->child(i) : topLevelItem(i);
+            auto* logic = getLogic(child);
+            if (logic && logic->getName() == propertyName)
+            {
+                // Update the value display
+                child->setText(1, logic->showValue());
+
+                // If it has a subtree and is expanded, reload it
+                if (logic->hasSubtree() && child->isExpanded())
+                {
+                    PropertySubtreeBuilder builder(*this);
+                    logic->build_subtree(builder, child);
+                }
+                break;
+            }
+        }
+    }
+
+public:
+    // Used by PropertySubtreeBuilder
     BasePropertyItem* store(std::unique_ptr<BasePropertyItem> item)
     {
         items.emplace_back(std::move(item));
         return items.back().get();
     }
+
+    std::unordered_map<daq::PropertyObjectPtr, ObjectPropertyItem*, PropertyObjectPtrHash> propertyObjectToLogic;
+
+private:
+    friend class PropertySubtreeBuilder;
 
     static BasePropertyItem* getLogic(QTreeWidgetItem* it)
     {
