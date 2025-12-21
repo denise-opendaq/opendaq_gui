@@ -30,6 +30,7 @@ add_compile_definitions(QT_NO_KEYWORDS)
 set(SOURCES
     main.cpp
     AppContext.cpp
+    UpdateScheduler.cpp
     MainWindow.cpp
     DetachableTabWidget.cpp
     DetachedWindow.cpp
@@ -38,6 +39,7 @@ set(SOURCES
 
 set(HEADERS
     AppContext.h
+    UpdateScheduler.h
     MainWindow.h
     DetachableTabWidget.h
     DetachedWindow.h

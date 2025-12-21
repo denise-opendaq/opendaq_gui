@@ -9,6 +9,8 @@ namespace daq {
     class InstancePtr;
 }
 
+class UpdateScheduler;
+
 // Global application context - singleton for accessing openDAQ instance
 // from anywhere in the application
 class AppContext : public QObject
@@ -35,6 +37,9 @@ public:
 
     QStringList showComponentTypes() const;
     void setShowComponentTypes(const QStringList& types);
+
+    // Update scheduler for periodic widget updates
+    UpdateScheduler* updateScheduler() const;
 
 Q_SIGNALS:
     // Emitted when openDAQ instance changes (pass as void* to avoid template in signal)

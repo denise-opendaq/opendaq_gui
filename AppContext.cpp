@@ -1,4 +1,5 @@
 #include "AppContext.h"
+#include "UpdateScheduler.h"
 #include <opendaq/opendaq.h>
 #include <QStringList>
 
@@ -10,12 +11,14 @@ public:
     bool showInvisible = false;
     QStringList componentTypes; // empty means show all
     QTextEdit* logTextEdit = nullptr;
+    UpdateScheduler* scheduler = nullptr;
 };
 
 AppContext::AppContext(QObject* parent)
     : QObject(parent)
     , d(new Private())
 {
+    d->scheduler = new UpdateScheduler(this);
 }
 
 AppContext::~AppContext()
@@ -79,4 +82,9 @@ QStringList AppContext::showComponentTypes() const
 void AppContext::setShowComponentTypes(const QStringList& types)
 {
     d->componentTypes = types;
+}
+
+UpdateScheduler* AppContext::updateScheduler() const
+{
+    return d->scheduler;
 }

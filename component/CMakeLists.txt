@@ -23,13 +23,14 @@ set(HEADERS
     include/component/function_block_tree_element.h
     include/component/input_port_tree_element.h
     include/component/signal_tree_element.h
+    include/component/signal_value_widget.h
     include/component/component_factory.h
     include/component/component_tree_widget.h
 )
 
 # Source files (add your .cpp files here)
 set(SOURCES
-    # src/component.cpp  # Uncomment when you create the implementation
+    src/signal_value_widget.cpp
 )
 
 # Resource files
