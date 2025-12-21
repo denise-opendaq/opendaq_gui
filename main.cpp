@@ -29,10 +29,8 @@ int main(int argc, char *argv[])
     // Create openDAQ instance
     auto instance = InstanceBuilder().setGlobalLogLevel(daq::LogLevel::Info)
                                                        .setModulePath("/Users/deniserokhin/projects/qt_gui/build/bin")
+                                                       .setUsingSchedulerMainLoop(true)
                                                        .build();
-    instance.addProperty(daq::DictProperty("dict", daq::Dict<daq::IBaseObject, daq::IBaseObject>({{"123", 1}, {"test", 123}})));
-    instance.addProperty(daq::ListProperty("list", daq::List<IBaseObject>(1, "test")));
-    instance.addDevice("daq://SonyUK_Denis");
 
     // Set it in global context so it's accessible from anywhere
     AppContext::instance()->setDaqInstance(instance);

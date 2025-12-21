@@ -1,5 +1,6 @@
 #include "component/folder_tree_element.h"
 #include "component/component_factory.h"
+#include <QSet>
 
 FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
     : ComponentTreeElement(tree, daqFolder, parent)
@@ -32,6 +33,65 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     catch (const std::exception& e)
     {
         qWarning() << "Error initializing folder children:" << e.what();
+    }
+}
+
+void FolderTreeElement::refresh()
+{
+    try
+    {
+        auto folder = daqComponent.asPtr<daq::IFolder>();
+        auto items = folder.getItems();
+
+        // Add new items that don't exist yet
+        for (size_t i = 0; i < items.getCount(); ++i)
+        {
+            auto item = items[i];
+            QString itemLocalId = QString::fromStdString(item.getLocalId().toStdString());
+            
+            if (!children.contains(itemLocalId))
+            {
+                // This is a new item, add it
+                auto childElement = createTreeElement(tree, item, this);
+                if (childElement)
+                {
+                    addChild(childElement);
+                }
+            }
+        }
+
+        // Remove items that no longer exist in openDAQ structure
+        QList<BaseTreeElement*> toRemove;
+        for (auto* child : children.values())
+        {
+            QString childLocalId = child->getLocalId();
+            bool found = false;
+            
+            for (size_t i = 0; i < items.getCount(); ++i)
+            {
+                auto item = items[i];
+                QString itemLocalId = QString::fromStdString(item.getLocalId().toStdString());
+                if (itemLocalId == childLocalId)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            
+            if (!found)
+            {
+                toRemove.append(child);
+            }
+        }
+        
+        for (auto* child : toRemove)
+        {
+            removeChild(child);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        qWarning() << "Error refreshing folder children:" << e.what();
     }
 }
 

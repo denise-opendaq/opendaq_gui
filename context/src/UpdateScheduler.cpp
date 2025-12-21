@@ -1,4 +1,25 @@
 #include "context/UpdateScheduler.h"
+#include "context/AppContext.h"
+
+// Save Qt keywords and undefine them before including openDAQ
+#ifdef signals
+#pragma push_macro("signals")
+#pragma push_macro("slots")
+#pragma push_macro("emit")
+#undef signals
+#undef slots
+#undef emit
+#define QT_MACROS_PUSHED
+#endif
+
+#include <opendaq/opendaq.h>
+
+#ifdef QT_MACROS_PUSHED
+#pragma pop_macro("emit")
+#pragma pop_macro("slots")
+#pragma pop_macro("signals")
+#undef QT_MACROS_PUSHED
+#endif
 
 UpdateScheduler::UpdateScheduler(QObject* parent)
     : QObject(parent)
@@ -69,6 +90,16 @@ int UpdateScheduler::count() const
 
 void UpdateScheduler::onTimeout()
 {
+    // Run openDAQ scheduler main loop iteration to process events
+    try {
+        auto instance = AppContext::instance()->daqInstance();
+        if (instance.assigned()) {
+            instance.getContext().getScheduler().runMainLoopIteration();
+        }
+    } catch (const std::exception&) {
+        // Ignore exceptions from scheduler
+    }
+
     // Iterate through all registered objects
     // QPointer automatically becomes null if the object was deleted
     for (int i = updatables.size() - 1; i >= 0; --i)

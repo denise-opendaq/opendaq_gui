@@ -68,6 +68,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Core
         Qt6::Widgets
         context
+        dialogs
         property
         widgets
         daq::coreobjects

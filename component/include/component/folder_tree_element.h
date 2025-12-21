@@ -14,6 +14,9 @@ public:
 
     void init(BaseTreeElement* parent = nullptr) override;
 
+    // Refresh folder contents from openDAQ structure
+    void refresh();
+
     // Override visible: hide empty folders
     bool visible() const override;
 

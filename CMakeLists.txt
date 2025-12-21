@@ -13,6 +13,7 @@ add_subdirectory(external)
 add_subdirectory(context)
 add_subdirectory(property)
 add_subdirectory(widgets)
+add_subdirectory(dialogs)
 add_subdirectory(component)
 
 # Find Qt6 (fetched or system-installed in external/qt)
@@ -57,6 +58,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Widgets
         context
         component
+        dialogs
         property
         widgets
         daq::coreobjects
