@@ -7,6 +7,7 @@
 #include <QSplitter>
 #include <QList>
 #include <QStringList>
+#include <QMap>
 #include <QEvent>
 
 #include "DetachableTabWidget.h"
@@ -53,7 +54,8 @@ private:
     void clearSplitterRecursively(QSplitter* splitter);
 
     // Tab management
-    void trackClosedTab(const QString& title);
+    void updateAvailableTabsMenu(BaseTreeElement* element);
+    bool isTabOpen(const QString& tabName) const;
     void restoreDefaultLayout();
 
 private Q_SLOTS:
@@ -70,7 +72,7 @@ private Q_SLOTS:
     void onTabCloseRequested(int index);
 
     // Menu actions
-    void onRestoreTab(const QString& tabName);
+    void onOpenTab(const QString& tabName);
     void onResetLayout();
 
 private:
@@ -93,10 +95,10 @@ private:
     // Drop overlay for visual feedback during drag
     DropOverlay* dropOverlay = nullptr;
 
-    // Closed tabs tracking
-    QStringList closedTabs;
+    // Current selected element for available tabs menu
+    BaseTreeElement* currentSelectedElement = nullptr;
 
     // Menu
     QAction* showHiddenAction = nullptr;
-    QMenu* restoreTabMenu = nullptr;
+    QMenu* availableTabsMenu = nullptr;
 };

@@ -243,9 +243,9 @@ void MainWindow::setupMenuBar()
 
     viewMenu->addSeparator();
 
-    // Restore closed tabs submenu
-    restoreTabMenu = viewMenu->addMenu("Restore Tab");
-    restoreTabMenu->setEnabled(false);
+    // Available tabs submenu
+    availableTabsMenu = viewMenu->addMenu("Available Tabs");
+    availableTabsMenu->setEnabled(false);
 
     viewMenu->addSeparator();
 
@@ -548,6 +548,11 @@ void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoi
     window->show();
 
     cleanupIfEmpty(sourceWidget);
+
+    // Update available tabs menu if we have a selected element
+    if (currentSelectedElement) {
+        updateAvailableTabsMenu(currentSelectedElement);
+    }
 }
 
 void MainWindow::onTabSplitRequested(int index, Qt::Orientation orientation, DropZone zone)
@@ -576,9 +581,6 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
 {
     AppContext::instance()->addLogMessage(QString("Detached window '%1' closed").arg(title));
 
-    // Track the closed tab so it can be restored (creates a NEW widget instance)
-    trackClosedTab(title);
-
     // Find and remove the window from our list
     for (int i = 0; i < detachedWindows.size(); ++i) {
         if (detachedWindows[i]->contentWidget() == contentWidget) {
@@ -586,6 +588,11 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
             detachedWindows.removeAt(i);
             break;
         }
+    }
+
+    // Update available tabs menu if we have a selected element
+    if (currentSelectedElement) {
+        updateAvailableTabsMenu(currentSelectedElement);
     }
 }
 
@@ -637,8 +644,13 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
     if (!tabWidget)
         return;
 
+    currentSelectedElement = element;
+
     tabWidget->clear();
     element->onSelected(tabWidget);
+
+    // Update available tabs menu
+    updateAvailableTabsMenu(element);
 }
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
@@ -661,52 +673,93 @@ void MainWindow::onTabCloseRequested(int index)
     const QString tabName = sourceWidget->tabText(index);
     QWidget* widget = sourceWidget->widget(index);
 
-    trackClosedTab(tabName);
-
     sourceWidget->removeTab(index);
     widget->deleteLater();
 
     AppContext::instance()->addLogMessage(QString("Tab '%1' closed").arg(tabName));
 
     cleanupIfEmpty(sourceWidget);
+
+    // Update available tabs menu if we have a selected element
+    if (currentSelectedElement) {
+        updateAvailableTabsMenu(currentSelectedElement);
+    }
 }
 
-void MainWindow::trackClosedTab(const QString& title)
+bool MainWindow::isTabOpen(const QString& tabName) const
 {
-    if (closedTabs.contains(title))
+    // Check all tab widgets and detached windows
+    for (auto* tabWidget : tabWidgets) {
+        for (int i = 0; i < tabWidget->count(); ++i) {
+            if (tabWidget->tabText(i) == tabName) {
+                return true;
+            }
+        }
+    }
+
+    for (auto* window : detachedWindows) {
+        if (window->windowTitle() == tabName) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void MainWindow::updateAvailableTabsMenu(BaseTreeElement* element)
+{
+    if (!element || !availableTabsMenu)
         return;
 
-    closedTabs.append(title);
+    availableTabsMenu->clear();
 
-    restoreTabMenu->clear();
-    for (const QString& tabName : closedTabs) {
-        QAction* action = restoreTabMenu->addAction(tabName);
+    QStringList availableTabs = element->getAvailableTabNames();
+    if (availableTabs.isEmpty()) {
+        availableTabsMenu->setEnabled(false);
+        return;
+    }
+
+    // Filter out already open tabs
+    QStringList unopenedTabs;
+    for (const QString& tabName : availableTabs) {
+        if (!isTabOpen(tabName)) {
+            unopenedTabs << tabName;
+        }
+    }
+
+    if (unopenedTabs.isEmpty()) {
+        availableTabsMenu->setEnabled(false);
+        return;
+    }
+
+    availableTabsMenu->setEnabled(true);
+    for (const QString& tabName : unopenedTabs) {
+        QAction* action = availableTabsMenu->addAction(tabName);
         connect(action, &QAction::triggered, this, [this, tabName]() {
-            onRestoreTab(tabName);
+            onOpenTab(tabName);
         });
     }
-    restoreTabMenu->setEnabled(true);
 }
 
-void MainWindow::onRestoreTab(const QString& tabName)
+void MainWindow::onOpenTab(const QString& tabName)
 {
-    QWidget* widget = nullptr;
+    if (!currentSelectedElement || tabWidgets.isEmpty())
+        return;
 
-    if (widget && !tabWidgets.isEmpty()) {
-        tabWidgets.first()->addTab(widget, tabName);
-        closedTabs.removeOne(tabName);
-
-        restoreTabMenu->clear();
-        for (const QString& closedTab : closedTabs) {
-            QAction* action = restoreTabMenu->addAction(closedTab);
-            connect(action, &QAction::triggered, this, [this, closedTab]() {
-                onRestoreTab(closedTab);
-            });
-        }
-        restoreTabMenu->setEnabled(!closedTabs.isEmpty());
-
-        AppContext::instance()->addLogMessage(QString("Tab '%1' restored").arg(tabName));
+    // Find or create a tab widget to add the tab to
+    DetachableTabWidget* targetTabWidget = tabWidgets.first();
+    if (!targetTabWidget) {
+        targetTabWidget = createTabGroup();
+        contentSplitter->addWidget(targetTabWidget);
     }
+
+    // Open the specific tab
+    currentSelectedElement->openTab(tabName, targetTabWidget);
+
+    // Update the menu
+    updateAvailableTabsMenu(currentSelectedElement);
+
+    AppContext::instance()->addLogMessage(QString("Tab '%1' opened").arg(tabName));
 }
 
 void MainWindow::restoreDefaultLayout()
@@ -726,10 +779,10 @@ void MainWindow::restoreDefaultLayout()
     contentSplitter->setOrientation(Qt::Horizontal);
     contentSplitter->addWidget(tabWidget);
 
-    // Clear closed tabs list
-    closedTabs.clear();
-    restoreTabMenu->clear();
-    restoreTabMenu->setEnabled(false);
+    // Clear current selection
+    currentSelectedElement = nullptr;
+    availableTabsMenu->clear();
+    availableTabsMenu->setEnabled(false);
 
     if (dropOverlay) {
         dropOverlay->setTargetWidget(contentSplitter);

@@ -28,6 +28,27 @@ void DeviceTreeElement::onSelected(QWidget* mainContent)
     addTab(tabWidget, propertyView, tabName);
 }
 
+QStringList DeviceTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs = Super::getAvailableTabNames();
+    tabs << (getName() + " device info");
+    return tabs;
+}
+
+void DeviceTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+{
+    QString deviceInfoTabName = getName() + " device info";
+    if (tabName == deviceInfoTabName) {
+        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+        if (tabWidget) {
+            auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo());
+            addTab(tabWidget, propertyView, tabName);
+        }
+    } else {
+        Super::openTab(tabName, mainContent);
+    }
+}
+
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = new QMenu(parent);

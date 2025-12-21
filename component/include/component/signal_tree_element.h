@@ -12,4 +12,6 @@ public:
     SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QObject* parent = nullptr);
 
     void onSelected(QWidget* mainContent) override;
+    QStringList getAvailableTabNames() const override;
+    void openTab(const QString& tabName, QWidget* mainContent) override;
 };

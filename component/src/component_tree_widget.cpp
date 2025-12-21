@@ -1,6 +1,7 @@
 #include "component/component_tree_widget.h"
 #include "component/device_tree_element.h"
 #include "context/AppContext.h"
+#include <functional>
 
 ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)
     : QTreeWidget(parent)
@@ -61,6 +62,31 @@ BaseTreeElement* ComponentTreeWidget::getSelectedElement() const
     auto item = selectedItems.first();
     auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
     return static_cast<BaseTreeElement*>(elementPtr);
+}
+
+BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globalId) const
+{
+    if (!rootElement)
+        return nullptr;
+
+    // Helper lambda to recursively search
+    std::function<BaseTreeElement*(BaseTreeElement*)> search = [&](BaseTreeElement* element) -> BaseTreeElement* {
+        if (!element)
+            return nullptr;
+
+        if (element->getGlobalId() == globalId)
+            return element;
+
+        // Search in children
+        for (auto* child : element->getChildren().values()) {
+            if (auto* found = search(child))
+                return found;
+        }
+
+        return nullptr;
+    };
+
+    return search(rootElement);
 }
 
 void ComponentTreeWidget::setShowHidden(bool show)

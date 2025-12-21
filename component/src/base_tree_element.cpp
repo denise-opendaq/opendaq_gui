@@ -186,6 +186,18 @@ void BaseTreeElement::onSelected(QWidget* mainContent)
     Q_UNUSED(mainContent);
 }
 
+QStringList BaseTreeElement::getAvailableTabNames() const
+{
+    return QStringList(); // Base class returns empty list
+}
+
+void BaseTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+{
+    Q_UNUSED(tabName);
+    Q_UNUSED(mainContent);
+    // Base class does nothing
+}
+
 QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = new QMenu(parent);

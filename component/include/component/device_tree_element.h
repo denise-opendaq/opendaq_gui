@@ -15,6 +15,8 @@ public:
 
     // Override onSelected to show device-specific content
     void onSelected(QWidget* mainContent) override;
+    QStringList getAvailableTabNames() const override;
+    void openTab(const QString& tabName, QWidget* mainContent) override;
 
     // Override to add device-specific context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;

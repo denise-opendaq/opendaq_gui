@@ -30,6 +30,10 @@ public:
     // Override onSelected to show component properties
     void onSelected(QWidget* mainContent) override;
 
+    // Override to return available tabs
+    QStringList getAvailableTabNames() const override;
+    void openTab(const QString& tabName, QWidget* mainContent) override;
+
     void addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName);
 
     // Get the underlying openDAQ component

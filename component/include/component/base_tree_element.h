@@ -50,6 +50,12 @@ public:
     // Called when this element is selected in the tree
     virtual void onSelected(QWidget* mainContent);
 
+    // Get list of available tab names for this component
+    virtual QStringList getAvailableTabNames() const;
+
+    // Open a specific tab by name
+    virtual void openTab(const QString& tabName, QWidget* mainContent);
+
     // Create right-click context menu
     virtual QMenu* onCreateRightClickMenu(QWidget* parent);
 

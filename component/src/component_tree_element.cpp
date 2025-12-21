@@ -148,3 +148,23 @@ daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
     return daqComponent;
 }
 
+QStringList ComponentTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs;
+    tabs << (getName() + " Properties");
+    return tabs;
+}
+
+void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+{
+    auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+    if (!tabWidget)
+        return;
+
+    QString expectedName = getName() + " Properties";
+    if (tabName == expectedName) {
+        auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IPropertyObject>());
+        addTab(tabWidget, propertyView, tabName);
+    }
+}
+

@@ -20,6 +20,9 @@ public:
     // Get the selected BaseTreeElement
     BaseTreeElement* getSelectedElement() const;
 
+    // Find element by globalId
+    BaseTreeElement* findElementByGlobalId(const QString& globalId) const;
+
     // Set whether to show hidden components
     void setShowHidden(bool show);
 

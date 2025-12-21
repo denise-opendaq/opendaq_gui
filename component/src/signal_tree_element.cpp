@@ -22,3 +22,25 @@ void SignalTreeElement::onSelected(QWidget* mainContent)
     addTab(tabWidget, valueWidget, tabName);
 }
 
+QStringList SignalTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs = Super::getAvailableTabNames();
+    tabs << (getName() + " Value");
+    return tabs;
+}
+
+void SignalTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+{
+    QString valueTabName = getName() + " Value";
+    if (tabName == valueTabName) {
+        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+        if (tabWidget) {
+            auto daqSignal = daqComponent.asPtr<daq::ISignal>();
+            auto valueWidget = new SignalValueWidget(daqSignal);
+            addTab(tabWidget, valueWidget, tabName);
+        }
+    } else {
+        Super::openTab(tabName, mainContent);
+    }
+}
+
