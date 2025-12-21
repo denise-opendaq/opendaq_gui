@@ -1,6 +1,7 @@
 #include "widgets/signal_value_widget.h"
 #include "context/AppContext.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QGroupBox>
 #include <QDateTime>
 
@@ -66,17 +67,20 @@ void SignalValueWidget::onScheduledUpdate()
 
 void SignalValueWidget::setupUI()
 {
-    auto mainLayout = new QVBoxLayout(this);
+    auto mainLayout = new QHBoxLayout(this);
+    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(10, 10, 10, 10);
 
-    // Value group
+    // Value group (left side)
     auto valueGroup = new QGroupBox("Current Value", this);
     auto valueLayout = new QVBoxLayout(valueGroup);
     valueLabel = new QLabel("N/A", valueGroup);
     valueLabel->setStyleSheet("font-size: 24px; font-weight: bold;");
     valueLabel->setAlignment(Qt::AlignCenter);
     valueLayout->addWidget(valueLabel);
+    valueLayout->addStretch(); // Push value to center vertically
 
-    // Signal info group
+    // Signal info group (right side)
     auto infoGroup = new QGroupBox("Signal Information", this);
     auto infoLayout = new QVBoxLayout(infoGroup);
 
@@ -89,10 +93,11 @@ void SignalValueWidget::setupUI()
     infoLayout->addWidget(signalUnitLabel);
     infoLayout->addWidget(signalTypeLabel);
     infoLayout->addWidget(signalOriginLabel);
+    infoLayout->addStretch(); // Push info to top
 
-    mainLayout->addWidget(valueGroup);
-    mainLayout->addWidget(infoGroup);
-    mainLayout->addStretch();
+    // Add both groups to horizontal layout with equal stretch
+    mainLayout->addWidget(valueGroup, 1); // stretch factor 1
+    mainLayout->addWidget(infoGroup, 1);  // stretch factor 1
 
     setLayout(mainLayout);
 }

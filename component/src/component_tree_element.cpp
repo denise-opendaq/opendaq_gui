@@ -122,10 +122,11 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
 
 void ComponentTreeElement::onSelected(QWidget* mainContent)
 {
-    auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-    QString tabName = getName() + " Properties";
-    auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IPropertyObject>());
-    addTab(tabWidget, propertyView, tabName);
+    // Open all available tabs by calling openTab for each
+    QStringList availableTabs = getAvailableTabNames();
+    for (const QString& tabName : availableTabs) {
+        openTab(tabName, mainContent);
+    }
 }
 
 void ComponentTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)

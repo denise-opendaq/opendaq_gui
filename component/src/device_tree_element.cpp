@@ -20,12 +20,11 @@ bool DeviceTreeElement::visible() const
 
 void DeviceTreeElement::onSelected(QWidget* mainContent)
 {
-    Super::onSelected(mainContent);
-
-    auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-    QString tabName = getName() + " device info";
-    auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo());
-    addTab(tabWidget, propertyView, tabName);
+    // Open all available tabs by calling openTab for each
+    QStringList availableTabs = getAvailableTabNames();
+    for (const QString& tabName : availableTabs) {
+        openTab(tabName, mainContent);
+    }
 }
 
 QStringList DeviceTreeElement::getAvailableTabNames() const
