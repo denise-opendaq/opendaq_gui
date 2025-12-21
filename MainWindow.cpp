@@ -1,6 +1,6 @@
 #include "MainWindow.h"
 #include "DetachedWindow.h"
-#include "AppContext.h"
+#include "context/AppContext.h"
 
 #include <QApplication>
 #include <QVBoxLayout>

@@ -19,7 +19,7 @@
 #pragma pop_macro("slots")
 #pragma pop_macro("signals")
 
-#include "UpdateScheduler.h"
+#include "context/UpdateScheduler.h"
 
 class SignalValueWidget : public QWidget, public IUpdatable
 {

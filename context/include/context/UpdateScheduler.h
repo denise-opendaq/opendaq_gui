@@ -48,3 +48,4 @@ private:
     QTimer* timer;
     QList<QPointer<QObject>> updatables;
 };
+

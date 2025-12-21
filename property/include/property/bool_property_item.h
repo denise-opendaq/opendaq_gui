@@ -10,32 +10,13 @@ class QPoint;
 class BoolPropertyItem final : public BasePropertyItem
 {
 public:
-    BoolPropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
-        : BasePropertyItem(owner, prop)
-    {}
+    BoolPropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop);
 
-    QString showValue() const override
-    {
-        const auto value = owner.getPropertyValue(prop.getName());
-        return value ? QStringLiteral("True") : QStringLiteral("False");
-    }
-
-    bool isValueEditable() const override
-    {
-        return false; // Not editable via text, use double-click instead
-    }
-
+    QString showValue() const override;
+    bool isValueEditable() const override;
     void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
-
-    void commitEdit(QTreeWidgetItem*, int) override
-    {
-        // Not used, editing is done via double-click
-    }
+    void commitEdit(QTreeWidgetItem*, int) override;
 
 private:
-    void toggleValue()
-    {
-        const auto currentValue = owner.getPropertyValue(prop.getName());
-        owner.setPropertyValue(getName(), !static_cast<bool>(currentValue));
-    }
+    void toggleValue();
 };

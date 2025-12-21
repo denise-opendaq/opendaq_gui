@@ -3,6 +3,22 @@
 #include <QTreeWidget>
 #include <QMessageBox>
 
+BoolPropertyItem::BoolPropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
+    : BasePropertyItem(owner, prop)
+{
+}
+
+QString BoolPropertyItem::showValue() const
+{
+    const auto value = owner.getPropertyValue(prop.getName());
+    return value ? QStringLiteral("True") : QStringLiteral("False");
+}
+
+bool BoolPropertyItem::isValueEditable() const
+{
+    return false; // Not editable via text, use double-click instead
+}
+
 void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item)
 {
     try
@@ -23,4 +39,15 @@ void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
                              "Property Update Error",
                              "Failed to update property: unknown error");
     }
+}
+
+void BoolPropertyItem::commitEdit(QTreeWidgetItem*, int)
+{
+    // Not used, editing is done via double-click
+}
+
+void BoolPropertyItem::toggleValue()
+{
+    const auto currentValue = owner.getPropertyValue(prop.getName());
+    owner.setPropertyValue(getName(), !static_cast<bool>(currentValue));
 }

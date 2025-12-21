@@ -1,5 +1,5 @@
 #include "widgets/signal_value_widget.h"
-#include "AppContext.h"
+#include "context/AppContext.h"
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QDateTime>

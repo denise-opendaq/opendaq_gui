@@ -1,0 +1,125 @@
+#include "component/component_tree_widget.h"
+#include "component/device_tree_element.h"
+#include "context/AppContext.h"
+
+ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)
+    : QTreeWidget(parent)
+    , rootElement(nullptr)
+{
+    setupUI();
+}
+
+ComponentTreeWidget::~ComponentTreeWidget()
+{
+    if (rootElement)
+    {
+        delete rootElement;
+        rootElement = nullptr;
+    }
+}
+
+void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
+{
+    // Clear existing tree
+    clear();
+    if (rootElement)
+    {
+        delete rootElement;
+        rootElement = nullptr;
+    }
+
+    if (!instance.assigned())
+    {
+        qWarning() << "Cannot load null instance";
+        return;
+    }
+
+    try
+    {
+        // Create root element
+        rootElement = new DeviceTreeElement(this, instance.getRootDevice());
+        rootElement->init();
+
+        // Expand the root
+        if (rootElement->getTreeItem())
+        {
+            rootElement->getTreeItem()->setExpanded(true);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        qWarning() << "Error loading instance:" << e.what();
+    }
+}
+
+BaseTreeElement* ComponentTreeWidget::getSelectedElement() const
+{
+    auto selectedItems = this->selectedItems();
+    if (selectedItems.isEmpty())
+        return nullptr;
+
+    auto item = selectedItems.first();
+    auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
+    return static_cast<BaseTreeElement*>(elementPtr);
+}
+
+void ComponentTreeWidget::setShowHidden(bool show)
+{
+    AppContext::instance()->setShowInvisibleComponents(show);
+    refreshVisibility();
+}
+
+void ComponentTreeWidget::setComponentTypeFilter(const QStringList& types)
+{
+    AppContext::instance()->setShowComponentTypes(types);
+    refreshVisibility();
+}
+
+void ComponentTreeWidget::refreshVisibility()
+{
+    if (rootElement)
+    {
+        rootElement->showFiltered();
+    }
+}
+
+void ComponentTreeWidget::setupUI()
+{
+    setHeaderLabel("Components");
+    setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Connect signals
+    connect(this, &QTreeWidget::itemSelectionChanged,
+            this, &ComponentTreeWidget::onSelectionChanged);
+    connect(this, &QTreeWidget::customContextMenuRequested,
+            this, &ComponentTreeWidget::onContextMenuRequested);
+}
+
+void ComponentTreeWidget::onSelectionChanged()
+{
+    auto element = getSelectedElement();
+    if (element)
+    {
+        Q_EMIT componentSelected(element);
+    }
+}
+
+void ComponentTreeWidget::onContextMenuRequested(const QPoint& pos)
+{
+    auto item = itemAt(pos);
+    if (!item)
+        return;
+
+    auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
+    if (elementPtr)
+    {
+        auto element = static_cast<BaseTreeElement*>(elementPtr);
+        auto menu = element->onCreateRightClickMenu(this);
+        if (menu && menu->actions().count() > 0)
+        {
+            menu->exec(mapToGlobal(pos));
+        }
+        delete menu;
+    }
+}
+

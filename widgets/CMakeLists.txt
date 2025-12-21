@@ -44,6 +44,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
+        context
         property
         daq::coreobjects
         daq::coretypes

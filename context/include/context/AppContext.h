@@ -53,8 +53,9 @@ private:
     AppContext(const AppContext&) = delete;
     AppContext& operator=(const AppContext&) = delete;
     AppContext(AppContext&&) = delete;
-    AppContext& operator=(AppContext&&) = delete;
+    AppContext& operator=(const AppContext&&) = delete;
 
     class Private;
     Private* d;
 };
+

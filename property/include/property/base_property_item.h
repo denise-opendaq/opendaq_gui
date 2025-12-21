@@ -8,14 +8,16 @@
 #undef signals
 #undef slots
 #undef emit
+#define QT_MACROS_PUSHED
 #endif
 
 #include <opendaq/opendaq.h>
 
-#ifdef __cplusplus
+#ifdef QT_MACROS_PUSHED
 #pragma pop_macro("emit")
 #pragma pop_macro("slots")
 #pragma pop_macro("signals")
+#undef QT_MACROS_PUSHED
 #endif
 
 #include <QtWidgets>
@@ -31,72 +33,33 @@ class PropertySubtreeBuilder;
 class BasePropertyItem
 {
 public:
-    BasePropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
-        : owner(owner)
-        , prop(prop)
-    {}
-
+    BasePropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop);
     virtual ~BasePropertyItem() = default;
 
-    daq::StringPtr getName() const
-    {
-        return prop.getName();
-    }
+    daq::StringPtr getName() const;
 
     // What to show in "Value" column
-    virtual QString showValue() const
-    {
-        const auto value = owner.getPropertyValue(prop.getName());
-        return QString::fromStdString(value);
-    }
+    virtual QString showValue() const;
 
     // Can user edit key (column 0)?
-    virtual bool isKeyEditable() const
-    {
-        return false; // Keys are not editable by default
-    }
+    virtual bool isKeyEditable() const;
 
     // Can user edit value (column 1)?
-    virtual bool isValueEditable() const
-    {
-        if (prop.getReadOnly())
-            return false;
-
-        if (auto freezable = prop.asPtrOrNull<daq::IFreezable>(true); freezable.assigned() && freezable.isFrozen())
-            return false;
-
-        return true;
-    }
+    virtual bool isValueEditable() const;
 
     // Subtree for nested PropertyObject
-    virtual bool hasSubtree() const
-    {
-        return false;
-    }
+    virtual bool hasSubtree() const;
 
-    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*)
-    {
-    }
+    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*);
 
     // Events
-    virtual void handle_double_click(PropertyObjectView*, QTreeWidgetItem*)
-    {
-    }
+    virtual void handle_double_click(PropertyObjectView*, QTreeWidgetItem*);
 
-    virtual void handle_right_click(PropertyObjectView*, QTreeWidgetItem*, const QPoint&)
-    {
-    }
+    virtual void handle_right_click(PropertyObjectView*, QTreeWidgetItem*, const QPoint&);
 
     // Commit edit from tree widget item
     // By default, reads text from column 1 and sets property value
-    virtual void commitEdit(QTreeWidgetItem* item, int column)
-    {
-        if (column == 1)
-        {
-            const daq::StringPtr newText = item->text(1).toStdString();
-            owner.setPropertyValue(getName(), newText.convertTo(prop.getValueType()));
-        }
-    }
+    virtual void commitEdit(QTreeWidgetItem* item, int column);
 
 protected:
     daq::PropertyObjectPtr owner;

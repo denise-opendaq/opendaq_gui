@@ -10,6 +10,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(external)
+add_subdirectory(context)
 add_subdirectory(property)
 add_subdirectory(widgets)
 add_subdirectory(component)
@@ -30,8 +31,6 @@ add_compile_definitions(QT_NO_KEYWORDS)
 # Source files
 set(SOURCES
     main.cpp
-    AppContext.cpp
-    UpdateScheduler.cpp
     MainWindow.cpp
     DetachableTabWidget.cpp
     DetachedWindow.cpp
@@ -39,8 +38,6 @@ set(SOURCES
 )
 
 set(HEADERS
-    AppContext.h
-    UpdateScheduler.h
     MainWindow.h
     DetachableTabWidget.h
     DetachedWindow.h
@@ -58,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         Qt6::Core
         Qt6::Widgets
+        context
         component
         property
         widgets

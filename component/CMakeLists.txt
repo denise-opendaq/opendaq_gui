@@ -27,8 +27,19 @@ set(HEADERS
     include/component/component_tree_widget.h
 )
 
-# Source files (add your .cpp files here)
+# Source files
 set(SOURCES
+    src/base_tree_element.cpp
+    src/component_tree_element.cpp
+    src/component_tree_widget.cpp
+    src/folder_tree_element.cpp
+    src/device_tree_element.cpp
+    src/function_block_tree_element.cpp
+    src/signal_tree_element.cpp
+    src/input_port_tree_element.cpp
+    src/component_factory.cpp
+    src/icon_provider.cpp
+    src/component.cpp
 )
 
 # Resource files
@@ -56,6 +67,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
+        context
         property
         widgets
         daq::coreobjects

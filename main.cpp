@@ -1,5 +1,5 @@
 #include "MainWindow.h"
-#include "AppContext.h"
+#include "context/AppContext.h"
 #include <QApplication>
 #include <opendaq/opendaq.h>
 
