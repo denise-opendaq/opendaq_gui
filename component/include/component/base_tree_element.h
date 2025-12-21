@@ -32,6 +32,9 @@ public:
     // Set name and update tree item
     void setName(const QString& newName);
 
+    // Update icon for this element
+    void updateIcon();
+
     // Show/hide based on filter (placeholder for future filtering logic)
     virtual void showFiltered(QTreeWidgetItem* parentTreeItem = nullptr);
 

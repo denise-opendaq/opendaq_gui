@@ -1,4 +1,5 @@
 #include "component/base_tree_element.h"
+#include "component/icon_provider.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>
@@ -36,16 +37,8 @@ void BaseTreeElement::init(BaseTreeElement* parent)
     QTreeWidgetItem* parentTreeItem = parentElement ? parentElement->treeItem : nullptr;
 
     // Create tree item
-    if (!iconName.isEmpty())
-    {
-        treeItem = new QTreeWidgetItem(parentTreeItem);
-        treeItem->setText(0, name);
-    }
-    else
-    {
-        treeItem = new QTreeWidgetItem(parentTreeItem);
-        treeItem->setText(0, name);
-    }
+    treeItem = new QTreeWidgetItem(parentTreeItem);
+    treeItem->setText(0, name);
 
     // Store pointer to this element in tree item
     treeItem->setData(0, Qt::UserRole, QVariant::fromValue(static_cast<void*>(this)));
@@ -58,6 +51,9 @@ void BaseTreeElement::init(BaseTreeElement* parent)
     {
         tree->addTopLevelItem(treeItem);
     }
+
+    // Set icon after item is added to tree (ensures iconName is set by derived class constructor)
+    updateIcon();
 }
 
 bool BaseTreeElement::visible() const
@@ -71,6 +67,23 @@ void BaseTreeElement::setName(const QString& newName)
     if (treeItem)
     {
         treeItem->setText(0, name);
+    }
+}
+
+void BaseTreeElement::updateIcon()
+{
+    if (treeItem && !iconName.isEmpty())
+    {
+        QIcon icon = IconProvider::instance().icon(iconName);
+        // Check if icon has available sizes (more reliable than isNull())
+        if (icon.availableSizes().size() > 0)
+        {
+            treeItem->setIcon(0, icon);
+        }
+        else
+        {
+            qWarning() << "Failed to load icon:" << iconName << "for element:" << name;
+        }
     }
 }
 

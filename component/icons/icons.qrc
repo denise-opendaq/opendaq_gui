@@ -14,5 +14,19 @@
         <file>unlink.png</file>
         <file>right.png</file>
         <file>refresh.png</file>
+        <file>light_add.png</file>
+        <file>light_function_block.png</file>
+        <file>light_settings.png</file>
+        <file>light_link.png</file>
+        <file>light_input_port.png</file>
+        <file>light_signal.png</file>
+        <file>light_down.png</file>
+        <file>light_circle.png</file>
+        <file>light_folder.png</file>
+        <file>light_channel.png</file>
+        <file>light_device.png</file>
+        <file>light_unlink.png</file>
+        <file>light_right.png</file>
+        <file>light_refresh.png</file>
     </qresource>
 </RCC>
