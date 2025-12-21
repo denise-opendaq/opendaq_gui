@@ -1,6 +1,6 @@
 #pragma once
 #include "component_tree_element.h"
-#include "signal_value_widget.h"
+#include "widgets/signal_value_widget.h"
 #include <opendaq/opendaq.h>
 
 class SignalTreeElement : public ComponentTreeElement

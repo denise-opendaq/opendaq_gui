@@ -1,5 +1,5 @@
 #include "property/dict_property_item.h"
-#include "property/property_object_view.h"
+#include "widgets/property_object_view.h"
 #include "property/default_core_type.h"
 #include <QTreeWidgetItem>
 #include <QMenu>

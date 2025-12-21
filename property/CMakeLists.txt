@@ -15,7 +15,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Header files
 set(HEADERS
-    include/property/property_object_view.h
     include/property/base_property_item.h
     include/property/object_property_item.h
     include/property/int_property_item.h
@@ -29,7 +28,6 @@ set(HEADERS
 
 # Source files
 set(SOURCES
-    src/property_object_view.cpp
     src/int_property_item.cpp
     src/object_property_item.cpp
     src/bool_property_item.cpp
@@ -48,6 +46,7 @@ add_library(${PROJECT_NAME} STATIC
 target_include_directories(${PROJECT_NAME}
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../>
         $<INSTALL_INTERFACE:include>
 )
 
@@ -56,6 +55,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
+        widgets
         daq::coreobjects
         daq::coretypes
         daq::opendaq

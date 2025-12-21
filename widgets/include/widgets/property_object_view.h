@@ -1,7 +1,7 @@
 #pragma once
 
-#include "property_factory.h"
-#include "../../../AppContext.h"
+#include "property/property_factory.h"
+#include "AppContext.h"
 
 #include <memory>
 #include <vector>

@@ -1,4 +1,4 @@
-#include "component/signal_value_widget.h"
+#include "widgets/signal_value_widget.h"
 #include "AppContext.h"
 #include <QVBoxLayout>
 #include <QGroupBox>

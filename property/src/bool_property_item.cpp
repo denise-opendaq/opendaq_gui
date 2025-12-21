@@ -1,5 +1,5 @@
 #include "property/bool_property_item.h"
-#include "property/property_object_view.h"
+#include "widgets/property_object_view.h"
 #include <QTreeWidget>
 #include <QMessageBox>
 

@@ -10,8 +10,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(external)
-add_subdirectory(component)
 add_subdirectory(property)
+add_subdirectory(widgets)
+add_subdirectory(component)
 
 # Find Qt6 (fetched or system-installed in external/qt)
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
@@ -59,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Widgets
         component
         property
+        widgets
         daq::coreobjects
         daq::coretypes
         daq::opendaq

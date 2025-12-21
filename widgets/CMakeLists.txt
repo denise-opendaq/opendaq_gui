@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(component VERSION 1.0 LANGUAGES CXX)
+project(widgets VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,32 +15,20 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Header files
 set(HEADERS
-    include/component/base_tree_element.h
-    include/component/icon_provider.h
-    include/component/device_tree_element.h
-    include/component/component_tree_element.h
-    include/component/folder_tree_element.h
-    include/component/function_block_tree_element.h
-    include/component/input_port_tree_element.h
-    include/component/signal_tree_element.h
-    include/component/component_factory.h
-    include/component/component_tree_widget.h
+    include/widgets/signal_value_widget.h
+    include/widgets/property_object_view.h
 )
 
-# Source files (add your .cpp files here)
+# Source files
 set(SOURCES
-)
-
-# Resource files
-set(RESOURCES
-    icons/icons.qrc
+    src/signal_value_widget.cpp
+    src/property_object_view.cpp
 )
 
 # Create library
 add_library(${PROJECT_NAME} STATIC
     ${HEADERS}
     ${SOURCES}
-    ${RESOURCES}
 )
 
 # Include directories
@@ -57,7 +45,6 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Core
         Qt6::Widgets
         property
-        widgets
         daq::coreobjects
         daq::coretypes
         daq::opendaq
