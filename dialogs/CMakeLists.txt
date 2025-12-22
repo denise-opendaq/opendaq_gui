@@ -22,12 +22,14 @@ add_compile_definitions(QT_NO_KEYWORDS)
 set(HEADERS
     include/dialogs/add_device_dialog.h
     include/dialogs/add_device_config_dialog.h
+    include/dialogs/add_function_block_dialog.h
 )
 
 # Source files
 set(SOURCES
     src/add_device_dialog.cpp
     src/add_device_config_dialog.cpp
+    src/add_function_block_dialog.cpp
 )
 
 # Create library

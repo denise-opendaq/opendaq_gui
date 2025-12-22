@@ -1,4 +1,6 @@
 #include "dialogs/add_device_config_dialog.h"
+#include "coreobjects/property_factory.h"
+#include "opendaq/server_capability_ptr.h"
 #include "widgets/property_object_view.h"
 #include <QSplitter>
 #include <QListWidgetItem>
@@ -127,10 +129,37 @@ daq::StringPtr getPrefixFromConnectionString(const daq::StringPtr& connectionStr
 }
 
 void AddDeviceConfigDialog::initSelectionWidgets()
-{
+{ 
     config = parentDevice.createDefaultAddDeviceConfig();
-    daq::PropertyObjectPtr configurationTypes = config.getPropertyValue("Device");
-    daq::PropertyObjectPtr streamingTypes = config.getPropertyValue("Streaming");
+    daq::PropertyObjectPtr configurationTypes;
+    daq::PropertyObjectPtr streamingTypes;
+
+    if (config.hasProperty("Device"))
+    {
+        configurationTypes = config.getPropertyValue("Device");
+    }
+    else
+    {
+        configurationTypes = daq::PropertyObject();
+        for (const auto & [id, type] : parentDevice.getAvailableDeviceTypes())
+            configurationTypes.addProperty(daq::ObjectProperty(id, type.createDefaultConfig()));
+        config.addProperty(daq::ObjectProperty("Device", configurationTypes));
+    }
+
+    if (config.hasProperty("Streaming"))
+    {
+        streamingTypes = config.getPropertyValue("Streaming");
+    }
+    else
+    {
+        streamingTypes = daq::PropertyObject();
+        config.addProperty(daq::ObjectProperty("Streaming", streamingTypes));
+    }
+
+    if (!config.hasProperty("General"))
+    {
+        config.addProperty(daq::ObjectProperty("General", daq::PropertyObject()));
+    }
 
     try
     {
@@ -307,10 +336,14 @@ daq::StringPtr AddDeviceConfigDialog::getConnectionStringFromServerCapability(co
     
     try
     {
-        const daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-        const daq::StringPtr primaryAddressType = generalSection.getPropertyValue("PrimaryAddressType");
+        const auto caps = deviceInfo.getServerCapabilities();
+        if (caps.empty())
+            return deviceInfo.getConnectionString();
+
         const auto cap = deviceInfo.getServerCapability(protocolId.toStdString());
         
+        const daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
+        const daq::StringPtr primaryAddressType = generalSection.getPropertyValue("PrimaryAddressType");
         for (const auto & addressInfo : cap.getAddressInfo())
         {
             if (!primaryAddressType.getLength() || addressInfo.getType() == primaryAddressType)

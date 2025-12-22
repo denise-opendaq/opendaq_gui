@@ -33,7 +33,7 @@ private Q_SLOTS:
 
 private:
     void setupUI();
-    void updateAvailableDevices();
+    void initAvailableDevices();
     void updateConnectionString();
 
     daq::DevicePtr parentDevice;

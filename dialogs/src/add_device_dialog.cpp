@@ -16,7 +16,7 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     setMinimumSize(600, 400);
 
     setupUI();
-    updateAvailableDevices();
+    initAvailableDevices();
 }
 
 void AddDeviceDialog::setupUI()
@@ -85,7 +85,7 @@ void AddDeviceDialog::setupUI()
     setLayout(mainLayout);
 }
 
-void AddDeviceDialog::updateAvailableDevices()
+void AddDeviceDialog::initAvailableDevices()
 {
     deviceTree->clear();
 

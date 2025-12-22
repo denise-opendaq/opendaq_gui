@@ -1,7 +1,9 @@
 #include "component/function_block_tree_element.h"
+#include "dialogs/add_function_block_dialog.h"
 #include <QMenu>
 #include <QAction>
 #include <QDebug>
+#include <QMessageBox>
 
 FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent)
     : FolderTreeElement(tree, daqFunctionBlock, parent)
@@ -29,31 +31,62 @@ QMenu* FunctionBlockTreeElement::onCreateRightClickMenu(QWidget* parent)
 
 void FunctionBlockTreeElement::onRemove()
 {
-    // Remove this function block from parent
-    if (parentElement)
-    {
-        parentElement->removeChild(this);
-    }
+    auto parentDeviceElement = dynamic_cast<ComponentTreeElement*>(parentElement->getParent());
+    if (!parentDeviceElement)
+        return;
+
+    auto parentComponent = parentDeviceElement->getDaqComponent();
+    if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(); parentFb.assigned())
+        parentFb.removeFunctionBlock(daqComponent);
+    else if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(); parentDevice.assigned())
+        parentDevice.removeFunctionBlock(daqComponent);
+    else
+        return;
+
+    parentElement->removeChild(this);
 }
 
 void FunctionBlockTreeElement::onAddFunctionBlock()
 {
-    // TODO: Implement adding a new function block
-    // This would typically show a dialog to select function block type
-    // and then create it via openDAQ API
-    qDebug() << "Add function block requested for:" << name;
+    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>();
 
-    // Example placeholder:
-    // auto functionBlockType = showFunctionBlockTypeDialog();
-    // if (!functionBlockType.isEmpty()) {
-    //     try {
-    //         auto fb = daqComponent.addFunctionBlock(functionBlockType.toStdString());
-    //         auto childElement = new FunctionBlockTreeElement(tree, fb, this);
-    //         addChild(childElement);
-    //     } catch (const std::exception& e) {
-    //         QMessageBox::warning(nullptr, "Error",
-    //             QString("Failed to add function block: %1").arg(e.what()));
-    //     }
-    // }
+    AddFunctionBlockDialog dialog(functionBlock, nullptr);
+    if (dialog.exec() == QDialog::Accepted)
+    {
+        QString functionBlockType = dialog.getFunctionBlockType();
+        if (functionBlockType.isEmpty())
+        {
+            return;
+        }
+
+        try
+        {
+            // Get config if available (will be nullptr if not set)
+            daq::PropertyObjectPtr config = dialog.getConfig();
+            
+            // Add function block using IFunctionBlock interface
+            daq::FunctionBlockPtr newFunctionBlock = functionBlock.addFunctionBlock(functionBlockType.toStdString(), config);
+
+            // openDAQ automatically adds the function block to the "FB" folder in the structure
+            // We just need to refresh the FunctionBlocks folder to pick up the new function block
+            BaseTreeElement* functionBlocksFolder = getChild("FB");
+            
+            if (functionBlocksFolder)
+            {
+                // Refresh the folder to sync with openDAQ structure
+                // This will add the new function block without duplicates
+                auto folderElement = dynamic_cast<FolderTreeElement*>(functionBlocksFolder);
+                if (folderElement)
+                {
+                    folderElement->refresh();
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            QMessageBox::critical(nullptr, "Error",
+                QString("Failed to add function block '%1': %2").arg(functionBlockType, e.what()));
+        }
+    }
 }
 
