@@ -23,14 +23,23 @@
 
 UpdateScheduler::UpdateScheduler(QObject* parent)
     : QObject(parent)
+    , schedulerTimer(new QTimer(this))
     , timer(new QTimer(this))
 {
-    connect(timer, &QTimer::timeout, this, &UpdateScheduler::onTimeout);
+    // Scheduler timer runs every 10ms for openDAQ main loop
+    // Must run in main thread - timer is created in main thread so this is guaranteed
+    connect(schedulerTimer, &QTimer::timeout, this, &UpdateScheduler::onSchedulerTimeout);
+    schedulerTimer->setInterval(10);
+    schedulerTimer->start(); // Always running for openDAQ scheduler
+    
+    // Updatables timer runs every second
+    connect(timer, &QTimer::timeout, this, &UpdateScheduler::onUpdatablesTimeout);
     timer->setInterval(1000); // Default: update every second
 }
 
 UpdateScheduler::~UpdateScheduler()
 {
+    schedulerTimer->stop();
     timer->stop();
 }
 
@@ -48,7 +57,7 @@ void UpdateScheduler::registerUpdatable(QObject* updatable)
 
     updatables.append(QPointer<QObject>(updatable));
 
-    // Start timer if this is the first registered object
+    // Start updatables timer if this is the first registered object
     if (updatables.size() == 1)
     {
         timer->start();
@@ -66,7 +75,7 @@ void UpdateScheduler::unregisterUpdatable(QObject* updatable)
     // Clean up null pointers while we're at it
     updatables.removeAll(QPointer<QObject>());
 
-    // Stop timer if no more objects to update
+    // Stop updatables timer if no more objects to update
     if (updatables.isEmpty())
     {
         timer->stop();
@@ -88,9 +97,10 @@ int UpdateScheduler::count() const
     return updatables.size();
 }
 
-void UpdateScheduler::onTimeout()
+void UpdateScheduler::onSchedulerTimeout()
 {
     // Run openDAQ scheduler main loop iteration to process events
+    // Called every 10ms - MUST run in main thread
     try {
         auto instance = AppContext::instance()->daqInstance();
         if (instance.assigned()) {
@@ -99,9 +109,13 @@ void UpdateScheduler::onTimeout()
     } catch (const std::exception&) {
         // Ignore exceptions from scheduler
     }
+}
 
+void UpdateScheduler::onUpdatablesTimeout()
+{
     // Iterate through all registered objects
     // QPointer automatically becomes null if the object was deleted
+    // Called every second
     for (int i = updatables.size() - 1; i >= 0; --i)
     {
         QPointer<QObject> ptr = updatables[i];

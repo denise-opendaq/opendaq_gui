@@ -42,10 +42,12 @@ public:
     int count() const;
 
 private Q_SLOTS:
-    void onTimeout();
+    void onSchedulerTimeout();
+    void onUpdatablesTimeout();
 
 private:
-    QTimer* timer;
+    QTimer* schedulerTimer;  // Runs every 10ms for openDAQ scheduler
+    QTimer* timer;           // Runs every second for updatables
     QList<QPointer<QObject>> updatables;
 };
 
