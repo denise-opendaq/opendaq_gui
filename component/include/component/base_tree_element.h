@@ -8,7 +8,7 @@
 #include <QMap>
 #include <QIcon>
 #include <memory>
-#include "icon_provider.h"
+#include "context/icon_provider.h"
 #include "context/AppContext.h"
 
 

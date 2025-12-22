@@ -17,12 +17,14 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 set(HEADERS
     include/context/AppContext.h
     include/context/UpdateScheduler.h
+    include/context/icon_provider.h
 )
 
 # Source files
 set(SOURCES
     src/AppContext.cpp
     src/UpdateScheduler.cpp
+    src/icon_provider.cpp
 )
 
 # Create library

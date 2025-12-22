@@ -66,14 +66,8 @@ target_link_libraries(${PROJECT_NAME}
         daq::opendaq
 )
 
-# Set output directory
+# Disable macOS bundle to create a regular executable
+# This property is ignored on non-Apple platforms
 set_target_properties(${PROJECT_NAME} PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    MACOSX_BUNDLE FALSE
 )
-
-# For macOS bundle
-if(APPLE)
-    set_target_properties(${PROJECT_NAME} PROPERTIES
-        MACOSX_BUNDLE TRUE
-    )
-endif()

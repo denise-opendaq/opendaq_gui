@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
 
     // Create openDAQ instance
     auto instance = InstanceBuilder().setGlobalLogLevel(daq::LogLevel::Info)
-                                                       .setModulePath("/Users/deniserokhin/projects/qt_gui/build/bin")
                                                        .setUsingSchedulerMainLoop(true)
                                                        .build();
 

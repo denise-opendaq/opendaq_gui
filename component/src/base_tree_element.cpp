@@ -1,5 +1,5 @@
 #include "component/base_tree_element.h"
-#include "component/icon_provider.h"
+#include "context/icon_provider.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>

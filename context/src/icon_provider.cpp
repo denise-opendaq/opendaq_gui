@@ -1,4 +1,4 @@
-#include "component/icon_provider.h"
+#include "context/icon_provider.h"
 #include <QDebug>
 #include <QApplication>
 #include <QPalette>

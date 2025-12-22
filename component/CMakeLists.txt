@@ -16,7 +16,6 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 # Header files
 set(HEADERS
     include/component/base_tree_element.h
-    include/component/icon_provider.h
     include/component/device_tree_element.h
     include/component/component_tree_element.h
     include/component/folder_tree_element.h
@@ -38,13 +37,12 @@ set(SOURCES
     src/signal_tree_element.cpp
     src/input_port_tree_element.cpp
     src/component_factory.cpp
-    src/icon_provider.cpp
     src/component.cpp
 )
 
 # Resource files
 set(RESOURCES
-    icons/icons.qrc
+    ${CMAKE_SOURCE_DIR}/icons/icons.qrc
 )
 
 # Create library
