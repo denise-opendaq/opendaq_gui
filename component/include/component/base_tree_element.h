@@ -44,6 +44,9 @@ public:
     // Remove child element
     void removeChild(BaseTreeElement* child);
 
+    // Close all tabs associated with this component
+    void closeTabs();
+
     // Get child by path (similar to Python's get_child)
     BaseTreeElement* getChild(const QString& path);
 

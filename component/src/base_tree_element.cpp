@@ -1,8 +1,13 @@
 #include "component/base_tree_element.h"
 #include "context/icon_provider.h"
+#include "DetachableTabWidget.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>
+#include <QApplication>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QLabel>
 
 BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QObject* parent)
     : QObject(parent)
@@ -136,10 +141,58 @@ BaseTreeElement* BaseTreeElement::addChild(BaseTreeElement* child)
     return child;
 }
 
+void BaseTreeElement::closeTabs()
+{
+    // Find all DetachableTabWidget instances and replace content of tabs associated with this component
+    QWidgetList widgets = QApplication::allWidgets();
+    for (QWidget* widget : widgets)
+    {
+        DetachableTabWidget* tabWidget = qobject_cast<DetachableTabWidget*>(widget);
+        if (!tabWidget)
+            continue;
+
+        // Check all tabs and replace content for those that belong to this component
+        // Iterate backwards to avoid index issues when removing tabs
+        for (int i = tabWidget->count() - 1; i >= 0; --i)
+        {
+            QWidget* tabPage = tabWidget->widget(i);
+            if (tabPage)
+            {
+                QVariant tabGlobalId = tabPage->property("componentGlobalId");
+                if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
+                {
+                    // Save tab title before removing
+                    QString tabTitle = tabWidget->tabText(i);
+                    
+                    // Replace tab content with "Component removed" message
+                    QWidget* removedWidget = new QWidget();
+                    QVBoxLayout* layout = new QVBoxLayout(removedWidget);
+                    layout->setContentsMargins(20, 20, 20, 20);
+                    
+                    QLabel* label = new QLabel(QString("Component '%1' has been removed").arg(name), removedWidget);
+                    label->setAlignment(Qt::AlignCenter);
+                    label->setStyleSheet("QLabel { font-size: 14pt; color: #666; }");
+                    
+                    layout->addWidget(label);
+                    layout->addStretch();
+                    
+                    // Remove old widget and insert new one at the same index
+                    tabWidget->removeTab(i);
+                    tabWidget->insertTab(i, removedWidget, tabTitle);
+                    tabWidget->setCurrentIndex(i);
+                }
+            }
+        }
+    }
+}
+
 void BaseTreeElement::removeChild(BaseTreeElement* child)
 {
     if (children.contains(child->localId))
     {
+        // Close all tabs associated with this component before deleting
+        child->closeTabs();
+        
         children.remove(child->localId);
         delete child;
     }

@@ -132,8 +132,10 @@ void ComponentTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, 
         }
     }
 
-    tabWidget->addTab(tab, tabName);
-    tabWidget->setCurrentIndex(tabWidget->count() - 1);
+    int index = tabWidget->addTab(tab, tabName);
+    // Store component globalId as property on the tab widget so we can find and close tabs when component is removed
+    tab->setProperty("componentGlobalId", globalId);
+    tabWidget->setCurrentIndex(index);
 }
 
 daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
