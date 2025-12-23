@@ -18,6 +18,8 @@ set(HEADERS
     include/widgets/signal_value_widget.h
     include/widgets/property_object_view.h
     include/widgets/input_port_widget.h
+    include/widgets/input_port_signal_selector.h
+    include/widgets/function_block_widget.h
 )
 
 # Source files
@@ -25,6 +27,8 @@ set(SOURCES
     src/signal_value_widget.cpp
     src/property_object_view.cpp
     src/input_port_widget.cpp
+    src/input_port_signal_selector.cpp
+    src/function_block_widget.cpp
 )
 
 # Create library

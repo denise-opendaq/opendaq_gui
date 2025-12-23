@@ -216,7 +216,6 @@ void AddDeviceConfigDialog::initSelectionWidgets()
             configurationProtocolComboBox->addItem("-- Streaming only --", "");
 
             // Set default selection for streaming protocol
-            streamingProtocolsComboBox->setCurrentIndex(0);
             selectedStreamingProtocol = streamingProtocolsComboBox->currentText();
             selectedStreamingProtocolId = streamingProtocolsComboBox->currentData().toString();
         }
@@ -224,7 +223,6 @@ void AddDeviceConfigDialog::initSelectionWidgets()
         // Set default selection for configuration protocol
         if (configurationProtocolComboBox->count() > 0)
         {
-            configurationProtocolComboBox->setCurrentIndex(0);
             selectedConfigurationProtocol = configurationProtocolComboBox->currentText();
             selectedConfigurationProtocolId = configurationProtocolComboBox->currentData().toString();
         }

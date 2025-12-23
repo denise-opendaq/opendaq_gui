@@ -1,5 +1,8 @@
 #include "component/function_block_tree_element.h"
 #include "dialogs/add_function_block_dialog.h"
+#include "widgets/function_block_widget.h"
+#include "component/component_tree_widget.h"
+#include "DetachableTabWidget.h"
 #include <QMenu>
 #include <QAction>
 #include <QDebug>
@@ -88,5 +91,32 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
                 QString("Failed to add function block '%1': %2").arg(functionBlockType, e.what()));
         }
     }
+}
+
+QStringList FunctionBlockTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs = Super::getAvailableTabNames();
+    tabs << "Input Ports";
+    return tabs;
+}
+
+void FunctionBlockTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+{
+    if (tabName == "Input Ports") {
+        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
+        if (tabWidget) {
+            auto functionBlock = getFunctionBlock();
+            auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+            auto functionBlockWidget = new FunctionBlockWidget(functionBlock, componentTree);
+            addTab(tabWidget, functionBlockWidget, tabName);
+        }
+    } else {
+        Super::openTab(tabName, mainContent);
+    }
+}
+
+daq::FunctionBlockPtr FunctionBlockTreeElement::getFunctionBlock() const
+{
+    return daqComponent.asPtr<daq::IFunctionBlock>();
 }
 

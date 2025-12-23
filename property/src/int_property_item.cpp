@@ -55,12 +55,9 @@ void IntPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetI
     if (selectionValues.isEmpty())
         return;
 
-    int currentIndex = getCurrentSelectionIndex();
-
     // Create and show combobox as a popup
     auto* combo = new QComboBox(view);
     combo->addItems(selectionValues);
-    combo->setCurrentIndex(currentIndex);
 
     // Position combobox at the item's value column
     QRect itemRect = view->visualItemRect(item);
@@ -122,32 +119,6 @@ QStringList IntPropertyItem::getSelectionValues() const
     return result;
 }
 
-int IntPropertyItem::getCurrentSelectionIndex() const
-{
-    const auto selection = prop.getSelectionValues();
-    if (!selection.assigned())
-        return -1;
-
-    const auto currentValue = owner.getPropertyValue(prop.getName());
-
-    if (const auto list = selection.asPtrOrNull<daq::IList>(true); list.assigned())
-    {
-        return static_cast<int>(currentValue);
-    }
-    else if (const auto dict = selection.asPtrOrNull<daq::IDict>(true); dict.assigned())
-    {
-        int index = 0;
-        for (const auto& [key, value] : dict)
-        {
-            if (key == currentValue)
-                return index;
-            ++index;
-        }
-    }
-
-    return -1;
-}
-
 void IntPropertyItem::setBySelectionValue(const QString& value)
 {
     const auto selection = prop.getSelectionValues();
@@ -161,7 +132,7 @@ void IntPropertyItem::setBySelectionValue(const QString& value)
         // For list, find the index of the value
         for (size_t i = 0; i < list.getCount(); ++i)
         {
-            if (list.getItemAt(i) == valueStr)
+            if (list[i] == valueStr)
             {
                 owner.setPropertyValue(getName(), static_cast<int>(i));
                 return;
