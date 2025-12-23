@@ -2,6 +2,8 @@
 
 #include <QObject>
 #include <QTextEdit>
+#include <QSet>
+#include <QString>
 
 // Forward declarations to avoid including openDAQ headers in Qt header files
 // This prevents conflicts between openDAQ's operator& and Qt's macros
@@ -35,8 +37,8 @@ public:
     bool showInvisibleComponents() const;
     void setShowInvisibleComponents(bool show);
 
-    QStringList showComponentTypes() const;
-    void setShowComponentTypes(const QStringList& types);
+    QSet<QString> showComponentTypes() const;
+    void setShowComponentTypes(const QSet<QString>& types);
 
     // Update scheduler for periodic widget updates
     UpdateScheduler* updateScheduler() const;

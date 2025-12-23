@@ -27,7 +27,7 @@ public:
     void setShowHidden(bool show);
 
     // Set component type filter
-    void setComponentTypeFilter(const QStringList& types);
+    void setComponentTypeFilter(const QSet<QString>& types);
 
     // Refresh visibility based on current filters
     void refreshVisibility();

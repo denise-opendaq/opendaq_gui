@@ -36,6 +36,15 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     }
 }
 
+bool FolderTreeElement::visible() const
+{
+    if (children.isEmpty())
+    {
+        return false;
+    }
+    return ComponentTreeElement::visible();
+}
+
 void FolderTreeElement::refresh()
 {
     try
@@ -47,7 +56,7 @@ void FolderTreeElement::refresh()
         for (size_t i = 0; i < items.getCount(); ++i)
         {
             auto item = items[i];
-            QString itemLocalId = QString::fromStdString(item.getLocalId().toStdString());
+            QString itemLocalId = QString::fromStdString(item.getLocalId());
             
             if (!children.contains(itemLocalId))
             {
@@ -70,7 +79,7 @@ void FolderTreeElement::refresh()
             for (size_t i = 0; i < items.getCount(); ++i)
             {
                 auto item = items[i];
-                QString itemLocalId = QString::fromStdString(item.getLocalId().toStdString());
+                QString itemLocalId = QString::fromStdString(item.getLocalId());
                 if (itemLocalId == childLocalId)
                 {
                     found = true;
@@ -88,20 +97,14 @@ void FolderTreeElement::refresh()
         {
             removeChild(child);
         }
+        
+        // Update visibility after refresh
+        showFiltered();
     }
     catch (const std::exception& e)
     {
         qWarning() << "Error refreshing folder children:" << e.what();
     }
-}
-
-bool FolderTreeElement::visible() const
-{
-    if (children.isEmpty())
-    {
-        return false;
-    }
-    return ComponentTreeElement::visible();
 }
 
 QString FolderTreeElement::getStandardFolderName(const QString& componentName) const

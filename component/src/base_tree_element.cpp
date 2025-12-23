@@ -92,27 +92,41 @@ void BaseTreeElement::showFiltered(QTreeWidgetItem* parentTreeItem)
     bool isVisible = visible();
 
     // Show or hide this element
-    if (isVisible)
+    if (treeItem)
     {
-        if (treeItem)
+        treeItem->setHidden(!isVisible);
+        if (isVisible && parentTreeItem)
         {
-            treeItem->setHidden(false);
-        }
-    }
-    else
-    {
-        if (treeItem)
-        {
-            treeItem->setHidden(true);
+            // Move to correct parent if needed
+            QTreeWidgetItem* currentParent = treeItem->parent();
+            if (currentParent != parentTreeItem)
+            {
+                // Remove from current parent
+                if (currentParent)
+                {
+                    int index = currentParent->indexOfChild(treeItem);
+                    if (index >= 0)
+                        currentParent->takeChild(index);
+                }
+                else if (tree)
+                {
+                    // It's a top-level item
+                    int index = tree->indexOfTopLevelItem(treeItem);
+                    if (index >= 0)
+                        tree->takeTopLevelItem(index);
+                }
+                // Add to new parent
+                parentTreeItem->addChild(treeItem);
+            }
+            // Expand when visible
+            treeItem->setExpanded(true);
         }
     }
 
     // Recursively apply to children
     QTreeWidgetItem* childParent = isVisible ? treeItem : parentTreeItem;
     for (auto* child : children.values())
-    {
         child->showFiltered(childParent);
-    }
 }
 
 BaseTreeElement* BaseTreeElement::addChild(BaseTreeElement* child)

@@ -46,6 +46,9 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
         {
             rootElement->getTreeItem()->setExpanded(true);
         }
+        
+        // Apply visibility filters
+        refreshVisibility();
     }
     catch (const std::exception& e)
     {
@@ -95,7 +98,7 @@ void ComponentTreeWidget::setShowHidden(bool show)
     refreshVisibility();
 }
 
-void ComponentTreeWidget::setComponentTypeFilter(const QStringList& types)
+void ComponentTreeWidget::setComponentTypeFilter(const QSet<QString>& types)
 {
     AppContext::instance()->setShowComponentTypes(types);
     refreshVisibility();

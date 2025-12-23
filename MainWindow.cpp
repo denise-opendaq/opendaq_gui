@@ -602,7 +602,7 @@ void MainWindow::onViewSelectionChanged(int index)
     AppContext::instance()->addLogMessage(QString("View changed to: %1").arg(viewName));
 
     // Update component type filter based on selection
-    QStringList componentsToShow;
+    QSet<QString> componentsToShow;
     if (viewName == "System Overview")
     {
         componentsToShow = {"Device", "Folder", "Signal", "Channel", "FunctionBlock"};
@@ -618,10 +618,6 @@ void MainWindow::onViewSelectionChanged(int index)
     else if (viewName == "Function blocks")
     {
         componentsToShow = {"Device", "FunctionBlock"};
-    }
-    else if (viewName == "Full Topology")
-    {
-        componentsToShow = QStringList(); // Empty means show all
     }
 
     if (componentTreeWidget)

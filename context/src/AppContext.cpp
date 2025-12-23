@@ -21,7 +21,7 @@
 #undef QT_MACROS_PUSHED
 #endif
 
-#include <QStringList>
+#include <QSet>
 
 // PIMPL to hide openDAQ headers from Qt headers
 class AppContext::Private
@@ -29,7 +29,7 @@ class AppContext::Private
 public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
-    QStringList componentTypes; // empty means show all
+    QSet<QString> componentTypes; // empty means show all
     QTextEdit* logTextEdit = nullptr;
     UpdateScheduler* scheduler = nullptr;
 };
@@ -94,12 +94,12 @@ void AppContext::setShowInvisibleComponents(bool show)
     d->showInvisible = show;
 }
 
-QStringList AppContext::showComponentTypes() const
+QSet<QString> AppContext::showComponentTypes() const
 {
     return d->componentTypes;
 }
 
-void AppContext::setShowComponentTypes(const QStringList& types)
+void AppContext::setShowComponentTypes(const QSet<QString>& types)
 {
     d->componentTypes = types;
 }

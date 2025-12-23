@@ -54,22 +54,14 @@ bool ComponentTreeElement::visible() const
 
         // If component is not visible and we're not showing hidden, hide it
         if (!componentVisible && !AppContext::instance()->showInvisibleComponents())
-        {
             return false;
-        }
 
         // Check if we're filtering by component type
-        QStringList allowedTypes = AppContext::instance()->showComponentTypes();
-        if (!allowedTypes.isEmpty())
-        {
-            // If type filter is set, check if this component's type is allowed
-            if (!allowedTypes.contains(type))
-            {
-                return false;
-            }
-        }
+        QSet<QString> allowedTypes = AppContext::instance()->showComponentTypes();
+        if (allowedTypes.isEmpty())
+            return true;
 
-        return true;
+        return allowedTypes.contains(type);
     }
     catch (const std::exception&)
     {
@@ -86,7 +78,7 @@ void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEvent
         if (eventName == "AttributeChanged")
         {
             auto params = args.getParameters();
-            auto attributeName = params.get("AttributeName").toString();
+            auto attributeName = params.get("AttributeName");
 
             if (params.hasKey(attributeName))
             {
