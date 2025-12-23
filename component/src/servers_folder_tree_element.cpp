@@ -68,10 +68,6 @@ void ServersFolderTreeElement::onAddServer()
             
             // Add server using instance interface
             daq::ServerPtr newServer = instance.addServer(serverType.toStdString(), config);
-
-            // openDAQ automatically adds the server to the "Srv" folder in the structure
-            // We just need to refresh this folder to pick up the new server
-            refresh();
         }
         catch (const std::exception& e)
         {

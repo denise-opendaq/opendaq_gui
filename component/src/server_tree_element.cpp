@@ -44,9 +44,6 @@ void ServerTreeElement::onRemove()
     try
     {
         AppContext::instance()->daqInstance().removeServer(daqComponent);
-        // Note: Server removal might need to be handled differently
-        // depending on how servers are managed in openDAQ
-        parentElement->removeChild(this);
     }
     catch (const std::exception& e)
     {

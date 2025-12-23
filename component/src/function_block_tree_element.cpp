@@ -45,8 +45,6 @@ void FunctionBlockTreeElement::onRemove()
         parentDevice.removeFunctionBlock(daqComponent);
     else
         return;
-
-    parentElement->removeChild(this);
 }
 
 void FunctionBlockTreeElement::onAddFunctionBlock()
@@ -69,21 +67,6 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
             
             // Add function block using IFunctionBlock interface
             daq::FunctionBlockPtr newFunctionBlock = functionBlock.addFunctionBlock(functionBlockType.toStdString(), config);
-
-            // openDAQ automatically adds the function block to the "FB" folder in the structure
-            // We just need to refresh the FunctionBlocks folder to pick up the new function block
-            BaseTreeElement* functionBlocksFolder = getChild("FB");
-            
-            if (functionBlocksFolder)
-            {
-                // Refresh the folder to sync with openDAQ structure
-                // This will add the new function block without duplicates
-                auto folderElement = dynamic_cast<FolderTreeElement*>(functionBlocksFolder);
-                if (folderElement)
-                {
-                    folderElement->refresh();
-                }
-            }
         }
         catch (const std::exception& e)
         {

@@ -1,6 +1,7 @@
 #include "component/folder_tree_element.h"
 #include "component/component_factory.h"
 #include <QSet>
+#include <QMetaObject>
 
 FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
     : ComponentTreeElement(tree, daqFolder, parent)
@@ -97,13 +98,34 @@ void FolderTreeElement::refresh()
         {
             removeChild(child);
         }
-        
         // Update visibility after refresh
         showFiltered();
     }
     catch (const std::exception& e)
     {
         qWarning() << "Error refreshing folder children:" << e.what();
+    }
+}
+
+void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
+{
+    // First call parent implementation to handle AttributeChanged events
+    ComponentTreeElement::onCoreEvent(sender, args);
+
+    try
+    {
+        auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
+        
+        // Handle ComponentAdded and ComponentRemoved events to refresh the tree
+        if (eventId == daq::CoreEventId::ComponentAdded || eventId == daq::CoreEventId::ComponentRemoved)
+        {
+            // Refresh the folder to update the tree structure
+            QMetaObject::invokeMethod(this, "refresh", Qt::QueuedConnection);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        qWarning() << "Error handling folder core event:" << e.what();
     }
 }
 

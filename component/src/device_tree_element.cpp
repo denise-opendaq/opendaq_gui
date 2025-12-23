@@ -91,21 +91,6 @@ void DeviceTreeElement::onAddDevice()
             
             // Add device using IDevice interface
             daq::DevicePtr newDevice = device.addDevice(connectionString.toStdString(), config);
-
-            // openDAQ automatically adds the device to the "Dev" folder in the structure
-            // We just need to refresh the Devices folder to pick up the new device
-            BaseTreeElement* devicesFolder = getChild("Dev");
-            
-            if (devicesFolder)
-            {
-                // Refresh the folder to sync with openDAQ structure
-                // This will add the new device without duplicates
-                auto folderElement = dynamic_cast<FolderTreeElement*>(devicesFolder);
-                if (folderElement)
-                {
-                    folderElement->refresh();
-                }
-            }
         }
         catch (const std::exception& e)
         {
@@ -130,7 +115,6 @@ void DeviceTreeElement::onRemoveDevice()
         return;
 
     parentDevice.removeDevice(daqComponent);
-    parentElement->removeChild(this);
 }
 
 void DeviceTreeElement::onAddFunctionBlock()
@@ -153,21 +137,6 @@ void DeviceTreeElement::onAddFunctionBlock()
             
             // Add function block using IDevice interface
             daq::FunctionBlockPtr newFunctionBlock = device.addFunctionBlock(functionBlockType.toStdString(), config);
-
-            // openDAQ automatically adds the function block to the "FB" folder in the structure
-            // We just need to refresh the FunctionBlocks folder to pick up the new function block
-            BaseTreeElement* functionBlocksFolder = getChild("FB");
-            
-            if (functionBlocksFolder)
-            {
-                // Refresh the folder to sync with openDAQ structure
-                // This will add the new function block without duplicates
-                auto folderElement = dynamic_cast<FolderTreeElement*>(functionBlocksFolder);
-                if (folderElement)
-                {
-                    folderElement->refresh();
-                }
-            }
         }
         catch (const std::exception& e)
         {

@@ -22,7 +22,7 @@ public:
     bool visible() const override;
 
     // Handle core events from openDAQ component
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+    virtual void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     // Handle attribute changes
     void onChangedAttribute(const QString& attributeName, const daq::ObjectPtr<daq::IBaseObject>& value);
