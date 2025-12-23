@@ -28,6 +28,17 @@ bool ServersFolderTreeElement::isLocalDeviceFolder() const
     return true;
 }
 
+bool ServersFolderTreeElement::visible() const
+{
+    if (isLocalDeviceFolder())
+        return true;
+
+    if (children.isEmpty())
+        return false;
+
+    return ComponentTreeElement::visible();
+}
+
 QMenu* ServersFolderTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = FolderTreeElement::onCreateRightClickMenu(parent);

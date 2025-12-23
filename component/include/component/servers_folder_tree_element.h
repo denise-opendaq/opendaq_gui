@@ -11,6 +11,8 @@ public:
     ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent = nullptr);
     bool isLocalDeviceFolder() const;
 
+    bool visible() const override;
+
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
