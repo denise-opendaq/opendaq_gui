@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
 
     // Create openDAQ instance
     auto instance = InstanceBuilder().setGlobalLogLevel(daq::LogLevel::Info)
+                                                       .addDiscoveryServer("mdns")
                                                        .setUsingSchedulerMainLoop(true)
                                                        .build();
 

@@ -3,19 +3,17 @@
 #include <QSplitter>
 #include <opendaq/opendaq.h>
 
-class FunctionBlockTreeElement : public FolderTreeElement
+class ServerTreeElement : public FolderTreeElement
 {
     Q_OBJECT
 
 public:
-    FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent = nullptr);
+    ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QObject* parent = nullptr);
 
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
-public Q_SLOTS:
-    void onAddFunctionBlock();
-
 private Q_SLOTS:
     void onRemove();
 };
+

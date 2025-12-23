@@ -13,13 +13,22 @@ set(CMAKE_AUTOUIC ON)
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
+# Disable Qt keywords (signals/slots) to avoid conflicts with openDAQ
+# openDAQ uses 'signals' as parameter/variable names
+# Use Q_SIGNALS, Q_SLOTS, Q_EMIT instead in Qt code
+add_compile_definitions(QT_NO_KEYWORDS)
+
 # Header files
 set(HEADERS
     include/component/base_tree_element.h
     include/component/device_tree_element.h
     include/component/component_tree_element.h
     include/component/folder_tree_element.h
+    include/component/devices_folder_tree_element.h
+    include/component/function_blocks_folder_tree_element.h
+    include/component/servers_folder_tree_element.h
     include/component/function_block_tree_element.h
+    include/component/server_tree_element.h
     include/component/input_port_tree_element.h
     include/component/signal_tree_element.h
     include/component/component_factory.h
@@ -32,8 +41,12 @@ set(SOURCES
     src/component_tree_element.cpp
     src/component_tree_widget.cpp
     src/folder_tree_element.cpp
+    src/devices_folder_tree_element.cpp
+    src/function_blocks_folder_tree_element.cpp
+    src/servers_folder_tree_element.cpp
     src/device_tree_element.cpp
     src/function_block_tree_element.cpp
+    src/server_tree_element.cpp
     src/signal_tree_element.cpp
     src/input_port_tree_element.cpp
     src/component_factory.cpp

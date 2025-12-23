@@ -25,6 +25,7 @@ public:
 
 private Q_SLOTS:
     void onFunctionBlockSelected();
+    void onFunctionBlockDoubleClicked(QTreeWidgetItem* item, int column);
     void onAddClicked();
 
 private:

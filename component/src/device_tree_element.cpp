@@ -14,7 +14,6 @@ DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& da
 {
     this->type = "Device";
     this->iconName = "device";
-    this->name = getStandardFolderName(this->name);
 }
 
 bool DeviceTreeElement::visible() const

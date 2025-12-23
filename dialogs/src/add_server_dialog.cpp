@@ -1,29 +1,29 @@
-#include "dialogs/add_function_block_dialog.h"
+#include "dialogs/add_server_dialog.h"
 #include "widgets/property_object_view.h"
+#include "context/AppContext.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
 #include <QGroupBox>
 #include <QDebug>
 
-AddFunctionBlockDialog::AddFunctionBlockDialog(const daq::ComponentPtr& parent, QWidget* parentWidget)
+AddServerDialog::AddServerDialog(QWidget* parentWidget)
     : QDialog(parentWidget)
-    , parentComponent(parent)
     , config(nullptr)
     , availableTypes(nullptr)
-    , functionBlockList(nullptr)
+    , serverList(nullptr)
     , configView(nullptr)
     , addButton(nullptr)
 {
-    setWindowTitle("Add Function Block");
+    setWindowTitle("Add Server");
     resize(1000, 600);
     setMinimumSize(800, 500);
 
     setupUI();
-    initAvailableFunctionBlocks();
+    initAvailableServers();
 }
 
-void AddFunctionBlockDialog::setupUI()
+void AddServerDialog::setupUI()
 {
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
@@ -37,23 +37,23 @@ void AddFunctionBlockDialog::setupUI()
     leftLayout->setContentsMargins(5, 5, 5, 5);
     leftLayout->setSpacing(5);
 
-    // Function blocks list label
-    auto* listLabel = new QLabel("Available Function Blocks:", this);
+    // Servers list label
+    auto* listLabel = new QLabel("Available Servers:", this);
     listLabel->setStyleSheet("font-weight: bold;");
     leftLayout->addWidget(listLabel);
     
-    // Function blocks tree (with Name and Description columns)
-    functionBlockList = new QTreeWidget(this);
-    functionBlockList->setHeaderLabels(QStringList() << "Name" << "Description");
-    functionBlockList->setRootIsDecorated(false);
-    functionBlockList->setAlternatingRowColors(true);
-    functionBlockList->setSelectionMode(QAbstractItemView::SingleSelection);
-    functionBlockList->header()->setStretchLastSection(true);
-    functionBlockList->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    functionBlockList->header()->setSectionResizeMode(1, QHeaderView::Stretch);
-    connect(functionBlockList, &QTreeWidget::itemSelectionChanged, this, &AddFunctionBlockDialog::onFunctionBlockSelected);
-    connect(functionBlockList, &QTreeWidget::itemDoubleClicked, this, &AddFunctionBlockDialog::onFunctionBlockDoubleClicked);
-    leftLayout->addWidget(functionBlockList);
+    // Servers tree (with Name and Description columns)
+    serverList = new QTreeWidget(this);
+    serverList->setHeaderLabels(QStringList() << "Name" << "Description");
+    serverList->setRootIsDecorated(false);
+    serverList->setAlternatingRowColors(true);
+    serverList->setSelectionMode(QAbstractItemView::SingleSelection);
+    serverList->header()->setStretchLastSection(true);
+    serverList->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    serverList->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+    connect(serverList, &QTreeWidget::itemSelectionChanged, this, &AddServerDialog::onServerSelected);
+    connect(serverList, &QTreeWidget::itemDoubleClicked, this, &AddServerDialog::onServerDoubleClicked);
+    leftLayout->addWidget(serverList);
 
     leftPanel->setLayout(leftLayout);
     splitter->addWidget(leftPanel);
@@ -69,7 +69,7 @@ void AddFunctionBlockDialog::setupUI()
     configLabel->setStyleSheet("font-weight: bold;");
     rightLayout->addWidget(configLabel);
 
-    // Config view (will be created when function block is selected)
+    // Config view (will be created when server is selected)
     // Create empty PropertyObject for initial state
     auto emptyConfig = daq::PropertyObject();
     configView = new PropertyObjectView(emptyConfig, this);
@@ -90,10 +90,10 @@ void AddFunctionBlockDialog::setupUI()
     buttonLayout->setContentsMargins(5, 0, 5, 0);
     buttonLayout->addStretch();
     
-    addButton = new QPushButton("Add Function Block", this);
+    addButton = new QPushButton("Add Server", this);
     addButton->setDefault(true);
     addButton->setEnabled(false);
-    connect(addButton, &QPushButton::clicked, this, &AddFunctionBlockDialog::onAddClicked);
+    connect(addButton, &QPushButton::clicked, this, &AddServerDialog::onAddClicked);
     buttonLayout->addWidget(addButton);
     
     mainLayout->addLayout(buttonLayout);
@@ -102,7 +102,7 @@ void AddFunctionBlockDialog::setupUI()
     setLayout(mainLayout);
 }
 
-void AddFunctionBlockDialog::initAvailableFunctionBlocks()
+void AddServerDialog::initAvailableServers()
 {
     // Clear config view
     auto* parentWidget = configView->parentWidget();
@@ -118,24 +118,28 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
 
     try
     {
-        // Try to get available function block types from parent
-        // Both IDevice and IFunctionBlock have getAvailableFunctionBlockTypes()
-        if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(true); parentDevice.assigned())
-            availableTypes = parentDevice.getAvailableFunctionBlockTypes();
-        else if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(true); parentFb.assigned())
-            availableTypes = parentFb.getAvailableFunctionBlockTypes();
+        // Get instance from AppContext
+        auto instance = AppContext::instance()->daqInstance();
+        if (!instance.assigned())
+        {
+            qWarning() << "No openDAQ instance available";
+            return;
+        }
 
-        if (!availableTypes.assigned() ||availableTypes.getCount() == 0)
+        // Get available server types from instance
+        availableTypes = instance.getAvailableServerTypes();
+
+        if (!availableTypes.assigned() || availableTypes.getCount() == 0)
             return;
 
-        // Populate list with available function block types
+        // Populate list with available server types
         for (const auto& [id, type] : availableTypes)
         {
             QString typeId = QString::fromStdString(id.toStdString());
             QString typeName = QString::fromStdString(type.getName().toStdString());
             QString description = QString::fromStdString(type.getDescription().toStdString());
 
-            auto* item = new QTreeWidgetItem(functionBlockList);
+            auto* item = new QTreeWidgetItem(serverList);
             item->setText(0, typeName);
             item->setText(1, description);
             item->setData(0, Qt::UserRole, typeId);
@@ -144,54 +148,54 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error getting available function blocks:" << e.what();
+        qWarning() << "Error getting available servers:" << e.what();
     }
 }
 
-void AddFunctionBlockDialog::onFunctionBlockSelected()
+void AddServerDialog::onServerSelected()
 {
-    auto* selectedItem = functionBlockList->currentItem();
+    auto* selectedItem = serverList->currentItem();
     if (selectedItem)
-        selectedFunctionBlockType = selectedItem->data(0, Qt::UserRole).toString();
+        selectedServerType = selectedItem->data(0, Qt::UserRole).toString();
     else
-        selectedFunctionBlockType.clear();
+        selectedServerType.clear();
 
     // Create and display config
     updateConfigView();
 }
 
-void AddFunctionBlockDialog::onFunctionBlockDoubleClicked(QTreeWidgetItem* item, int column)
+void AddServerDialog::onServerDoubleClicked(QTreeWidgetItem* item, int column)
 {
     Q_UNUSED(column);
     if (!item)
         return;
 
     // Select the item first
-    functionBlockList->setCurrentItem(item);
+    serverList->setCurrentItem(item);
     
-    // Call onFunctionBlockSelected to update the selection and config
-    onFunctionBlockSelected();
+    // Call onServerSelected to update the selection and config
+    onServerSelected();
     
-    // Accept the dialog if a function block type was selected
-    if (!selectedFunctionBlockType.isEmpty())
+    // Accept the dialog if a server type was selected
+    if (!selectedServerType.isEmpty())
     {
         accept();
     }
 }
 
-void AddFunctionBlockDialog::updateConfigView()
+void AddServerDialog::updateConfigView()
 {
     try
     {
-        if (selectedFunctionBlockType.isEmpty())
+        if (selectedServerType.isEmpty())
         {
             config = daq::PropertyObject();
             addButton->setEnabled(false);
         }
         else
         {
-            daq::FunctionBlockTypePtr functionBlockType = availableTypes[selectedFunctionBlockType.toStdString()];
-            config = functionBlockType.createDefaultConfig();
+            daq::ServerTypePtr serverType = availableTypes[selectedServerType.toStdString()];
+            config = serverType.createDefaultConfig();
             if (!config.assigned())
                 config = daq::PropertyObject();
             addButton->setEnabled(true);
@@ -214,11 +218,11 @@ void AddFunctionBlockDialog::updateConfigView()
     }
 }
 
-void AddFunctionBlockDialog::onAddClicked()
+void AddServerDialog::onAddClicked()
 {
-    if (selectedFunctionBlockType.isEmpty())
+    if (selectedServerType.isEmpty())
     {
-        QMessageBox::warning(this, "Error", "Please select a function block type.");
+        QMessageBox::warning(this, "Error", "Please select a server type.");
         return;
     }
 
