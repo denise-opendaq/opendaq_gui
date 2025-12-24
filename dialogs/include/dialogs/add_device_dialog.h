@@ -9,6 +9,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QMenu>
+#include <QDialogButtonBox>
 #include <opendaq/opendaq.h>
 
 class AddDeviceDialog : public QDialog
@@ -26,18 +27,19 @@ private Q_SLOTS:
     void onDeviceSelected();
     void onAddClicked();
     void onConnectionStringChanged();
-    void onDeviceTreeDoubleClicked(QTreeWidgetItem* item, int column);
     void onDeviceTreeContextMenu(const QPoint& pos);
     void onAddFromContextMenu();
     void onAddWithConfigFromContextMenu();
+    void onShowDeviceInfo();
 
 private:
     void setupUI();
-    void initAvailableDevices();
+    void updateAvailableDevices();
     void updateConnectionString();
 
     daq::DevicePtr parentDevice;
     daq::PropertyObjectPtr config;
+    daq::ListPtr<daq::IDeviceInfo> availableDevices;
 
     QLineEdit* connectionStringEdit;
     QTreeWidget* deviceTree;

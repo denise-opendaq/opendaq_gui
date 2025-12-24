@@ -1,7 +1,12 @@
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_device_config_dialog.h"
+#include "widgets/property_object_view.h"
 #include <QHeaderView>
 #include <QTreeWidgetItem>
+#include <QVBoxLayout>
+#include <QDialogButtonBox>
+#include <QShortcut>
+#include <QKeySequence>
 
 AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* parent)
     : QDialog(parent)
@@ -16,7 +21,7 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     setMinimumSize(600, 400);
 
     setupUI();
-    initAvailableDevices();
+    updateAvailableDevices();
 }
 
 void AddDeviceDialog::setupUI()
@@ -49,7 +54,7 @@ void AddDeviceDialog::setupUI()
     deviceTree->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
     
     connect(deviceTree, &QTreeWidget::itemSelectionChanged, this, &AddDeviceDialog::onDeviceSelected);
-    connect(deviceTree, &QTreeWidget::itemDoubleClicked, this, &AddDeviceDialog::onDeviceTreeDoubleClicked);
+    connect(deviceTree, &QTreeWidget::itemDoubleClicked, this, &AddDeviceDialog::onAddFromContextMenu);
     connect(deviceTree, &QTreeWidget::customContextMenuRequested, this, &AddDeviceDialog::onDeviceTreeContextMenu);
     
     // Create context menu for device tree
@@ -58,6 +63,13 @@ void AddDeviceDialog::setupUI()
     connect(addAction, &QAction::triggered, this, &AddDeviceDialog::onAddFromContextMenu);
     addWithConfigAction = contextMenu->addAction("Add with config");
     connect(addWithConfigAction, &QAction::triggered, this, &AddDeviceDialog::onAddWithConfigFromContextMenu);
+    contextMenu->addSeparator();
+    auto* showDeviceInfoAction = contextMenu->addAction("Show Device Info");
+    connect(showDeviceInfoAction, &QAction::triggered, this, &AddDeviceDialog::onShowDeviceInfo);
+    
+    // Add F5 shortcut for refresh
+    auto* refreshShortcut = new QShortcut(QKeySequence(Qt::Key_F5), this);
+    connect(refreshShortcut, &QShortcut::activated, this, &AddDeviceDialog::updateAvailableDevices);
     
     mainLayout->addWidget(deviceTree);
 
@@ -85,7 +97,7 @@ void AddDeviceDialog::setupUI()
     setLayout(mainLayout);
 }
 
-void AddDeviceDialog::initAvailableDevices()
+void AddDeviceDialog::updateAvailableDevices()
 {
     deviceTree->clear();
 
@@ -97,19 +109,15 @@ void AddDeviceDialog::initAvailableDevices()
 
     try
     {
-        auto availableDevices = parentDevice.getAvailableDevices();
+        availableDevices = parentDevice.getAvailableDevices();
         if (availableDevices.getCount() == 0)
         {
             statusLabel->setText("No devices discovered. Enter connection string manually.");
             return;
         }
 
-        for (size_t i = 0; i < availableDevices.getCount(); ++i)
+        for (const auto & deviceInfo : availableDevices)
         {
-            auto deviceInfo = availableDevices[i];
-            if (!deviceInfo.assigned())
-                continue;
-
             QString name = QString::fromStdString(deviceInfo.getName().toStdString());
             QString connectionString = QString::fromStdString(deviceInfo.getConnectionString().toStdString());
 
@@ -135,32 +143,6 @@ void AddDeviceDialog::onDeviceSelected()
         QString connectionString = selectedItem->data(1, Qt::UserRole).toString();
         connectionStringEdit->setText(connectionString);
         updateConnectionString();
-    }
-}
-
-void AddDeviceDialog::onDeviceTreeDoubleClicked(QTreeWidgetItem* item, int column)
-{
-    Q_UNUSED(column);
-    if (item)
-    {
-        QString connectionString = item->data(1, Qt::UserRole).toString();
-        connectionStringEdit->setText(connectionString);
-        updateConnectionString();
-        
-        // Open config dialog on double click
-        AddDeviceConfigDialog configDialog(parentDevice, connectionString, this);
-        if (configDialog.exec() == QDialog::Accepted)
-        {
-            // Store the config
-            config = configDialog.getConfig();
-            // Update connection string in case it was changed in config dialog
-            QString finalConnectionString = configDialog.getConnectionString();
-            if (!finalConnectionString.isEmpty())
-            {
-                connectionStringEdit->setText(finalConnectionString);
-            }
-            accept();
-        }
     }
 }
 
@@ -305,5 +287,64 @@ void AddDeviceDialog::onAddWithConfigFromContextMenu()
 QString AddDeviceDialog::getConnectionString() const
 {
     return connectionStringEdit->text().trimmed();
+}
+
+void AddDeviceDialog::onShowDeviceInfo()
+{
+    auto* selectedItem = deviceTree->currentItem();
+    if (!selectedItem)
+        return;
+
+    // Get connection string from selected item
+    daq::StringPtr connectionString = selectedItem->data(1, Qt::UserRole).toString().toStdString();
+    if (!connectionString.getLength())
+        return;
+
+    // Find the deviceInfo by connection string
+    daq::DeviceInfoPtr info;
+    try
+    {
+        for (const auto & deviceInfo : availableDevices)
+        {
+            if (deviceInfo.getConnectionString() == connectionString)
+            {
+                info = deviceInfo;
+                break;
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        QMessageBox::warning(this, "Error", QString("Failed to get device info: %1").arg(e.what()));
+        return;
+    }
+
+    if (!info.assigned())
+    {
+        QMessageBox::warning(this, "Error", "Device info not found.");
+        return;
+    }
+
+    // Create dialog window to show device info
+    QDialog* infoDialog = new QDialog(this);
+    infoDialog->setWindowTitle("Device Info");
+    infoDialog->resize(800, 600);
+    infoDialog->setMinimumSize(600, 400);
+
+    auto* layout = new QVBoxLayout(infoDialog);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    // Create PropertyObjectView with deviceInfo
+    // DeviceInfoPtr can be used directly as PropertyObjectPtr
+    auto* propertyView = new PropertyObjectView(info, infoDialog);
+    layout->addWidget(propertyView);
+
+    // Add close button
+    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, infoDialog);
+    connect(buttonBox, &QDialogButtonBox::rejected, infoDialog, &QDialog::reject);
+    layout->addWidget(buttonBox);
+
+    infoDialog->setLayout(layout);
+    infoDialog->exec();
 }
 
