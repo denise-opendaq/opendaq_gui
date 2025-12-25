@@ -10,8 +10,11 @@
 // PropertyObjectView implementation
 // ============================================================================
 
-PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root, QWidget* parent)
+PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root, 
+                                       QWidget* parent,
+                                       const daq::ComponentPtr& owner)
     : QTreeWidget(parent)
+    , owner(owner)
     , root(root)
 {
     setColumnCount(2);
@@ -32,14 +35,14 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root, QWidg
     connect(this, &QWidget::customContextMenuRequested, this, &PropertyObjectView::onContextMenu);
 
     refresh();
-    auto context = AppContext::instance()->daqInstance().getContext();
-    context.getOnCoreEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+    if (owner.assigned())
+        owner.getOnComponentCoreEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
 }
 
 PropertyObjectView::~PropertyObjectView()
 {
-    auto context = AppContext::instance()->daqInstance().getContext();
-    context.getOnCoreEvent() -= daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+    if (owner.assigned())
+        owner.getOnComponentCoreEvent() -= daq::event(this, &PropertyObjectView::componentCoreEventCallback);
 }
 
 void PropertyObjectView::refresh()
@@ -87,19 +90,35 @@ bool PropertyObjectView::edit(const QModelIndex& index, EditTrigger trigger, QEv
 
 void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs)
 {
-    if (component != root)
+    if (component != owner)
         return;
 
-    if (eventArgs.getEventName() != "PropertyValueChanged")
+    std::string path = eventArgs.getParameters()["Path"];
+    
+    if (auto objPath = root.asPtr<daq::IPropertyObjectInternal>(true).getPath(); objPath.assigned() && objPath.getLength())
+    {
+        if (path.find(objPath.toStdString()) != 0)
+            return;
+        if (path.length() == objPath.getLength())
+            path = "";
+        else
+            path = path.substr(objPath.getLength() + 1);
+    }
+
+    const auto eventId = static_cast<daq::CoreEventId>(eventArgs.getEventId());
+    if (eventId != daq::CoreEventId::PropertyValueChanged)
         return;
 
-    daq::StringPtr path = eventArgs.getParameters()["Path"];
     daq::StringPtr propertyName = eventArgs.getParameters()["Name"];
 
     // Get the property object that owns this property
     auto obj = root;
-    if (path.getLength())
+    if (!path.empty())
+    {    
+        if (!obj.hasProperty(path))
+            return;
         obj = obj.getPropertyValue(path);
+    }
 
     // Find the ObjectPropertyItem using the map
     auto it = propertyObjectToLogic.find(obj);

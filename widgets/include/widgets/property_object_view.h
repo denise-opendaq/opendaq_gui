@@ -43,7 +43,9 @@ class PropertyObjectView : public QTreeWidget
     Q_OBJECT
 
 public:
-    explicit PropertyObjectView(const daq::PropertyObjectPtr& root, QWidget* parent = nullptr);
+    explicit PropertyObjectView(const daq::PropertyObjectPtr& root, 
+                                QWidget* parent = nullptr, 
+                                const daq::ComponentPtr& owner = nullptr);
     virtual ~PropertyObjectView();
 
 public Q_SLOTS:
@@ -80,6 +82,7 @@ private:
     void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
 
 private:
+    daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::vector<std::unique_ptr<BasePropertyItem>> items;
 };

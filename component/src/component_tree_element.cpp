@@ -158,7 +158,7 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 
     QString expectedName = getName() + " Properties";
     if (tabName == expectedName) {
-        auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IPropertyObject>());
+        auto propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
         addTab(tabWidget, propertyView, tabName);
     }
 }

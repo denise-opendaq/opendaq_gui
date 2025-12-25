@@ -43,7 +43,7 @@ void DeviceTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     if (tabName == deviceInfoTabName) {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
         if (tabWidget) {
-            auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo());
+            auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo(), nullptr, daqComponent);
             addTab(tabWidget, propertyView, tabName);
         }
     } else {
