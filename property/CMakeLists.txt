@@ -22,6 +22,7 @@ set(HEADERS
     include/property/dict_property_item.h
     include/property/list_property_item.h
     include/property/struct_property_item.h
+    include/property/enumeration_property_item.h
     include/property/property_factory.h
     include/property/default_core_type.h
 )
@@ -35,6 +36,7 @@ set(SOURCES
     src/dict_property_item.cpp
     src/list_property_item.cpp
     src/struct_property_item.cpp
+    src/enumeration_property_item.cpp
     src/property_factory.cpp
 )
 
