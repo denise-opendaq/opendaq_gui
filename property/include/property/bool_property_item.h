@@ -15,8 +15,4 @@ public:
     QString showValue() const override;
     bool isValueEditable() const override;
     void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
-    void commitEdit(QTreeWidgetItem*, int) override;
-
-private:
-    void toggleValue();
 };

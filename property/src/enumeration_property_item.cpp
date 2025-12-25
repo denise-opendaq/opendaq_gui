@@ -43,7 +43,13 @@ void EnumerationPropertyItem::handle_double_click(PropertyObjectView* view, QTre
     auto* combo = new QComboBox(view);
     combo->addItems(enumValues);
 
-    // Position combobox at the item's value column
+    // Set current value as selected
+    QString currentValue = showValue();
+    int currentIndex = enumValues.indexOf(currentValue);
+    if (currentIndex >= 0)
+        combo->setCurrentIndex(currentIndex);
+
+    // Position combobox at the item's value column, below the current item
     QRect itemRect = view->visualItemRect(item);
     int valueColumnX = view->columnViewportPosition(1);
     int valueColumnWidth = view->columnWidth(1);
