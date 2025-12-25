@@ -37,6 +37,8 @@ QString IntPropertyItem::showValue() const
 
 bool IntPropertyItem::isValueEditable() const
 {
+    if (!BasePropertyItem::isValueEditable())
+        return false;
     return !hasSelection();
 }
 

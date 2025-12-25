@@ -1,6 +1,6 @@
 #include "property/bool_property_item.h"
+#include "property/coretypes/bool_core_type_handler.h"
 #include "widgets/property_object_view.h"
-#include <QComboBox>
 #include <QTreeWidget>
 #include <QMessageBox>
 
@@ -11,61 +11,42 @@ BoolPropertyItem::BoolPropertyItem(const daq::PropertyObjectPtr& owner, const da
 
 QString BoolPropertyItem::showValue() const
 {
+    BoolCoreTypeHandler handler;
     const auto value = owner.getPropertyValue(prop.getName());
-    return value ? QStringLiteral("True") : QStringLiteral("False");
+    return handler.valueToString(value);
 }
 
 bool BoolPropertyItem::isValueEditable() const
 {
-    return false; // Not editable via text, use double-click with combobox
+    return false; // Not editable via text, use double-click to toggle
 }
 
 void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item)
 {
-    // Create and show combobox as a popup
-    auto* combo = new QComboBox(view);
-    combo->addItem("True");
-    combo->addItem("False");
+    try
+    {
+        if (!prop.getReadOnly())
+            return;
 
-    // Set current value as selected
-    QString currentValue = showValue();
-    int currentIndex = (currentValue == "True") ? 0 : 1;
-    combo->setCurrentIndex(currentIndex);
+        BoolCoreTypeHandler handler;
+        const auto currentValue = owner.getPropertyValue(prop.getName());
 
-    // Position combobox at the item's value column, below the current item
-    QRect itemRect = view->visualItemRect(item);
-    int valueColumnX = view->columnViewportPosition(1);
-    int valueColumnWidth = view->columnWidth(1);
-    combo->setGeometry(valueColumnX, itemRect.y(), valueColumnWidth, itemRect.height());
-
-    // Connect to handle selection
-    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, item, view](int index) {
-        try
-        {
-            bool newValue = (index == 0); // True if index 0, False if index 1
+        // Use handler to toggle the value
+        handler.handleDoubleClick(view, item, currentValue, [this, item, view](const daq::BaseObjectPtr& newValue) {
             owner.setPropertyValue(getName(), newValue);
-            item->setText(1, showValue());
             Q_EMIT view->propertyChanged(QString::fromStdString(getName()), showValue());
-        }
-        catch (const std::exception& e)
-        {
-            QMessageBox::warning(view,
-                                 "Property Update Error",
-                                 QString("Failed to update property: %1").arg(e.what()));
-        }
-        catch (...)
-        {
-            QMessageBox::warning(view,
-                                 "Property Update Error",
-                                 "Failed to update property: unknown error");
-        }
-        combo->deleteLater();
-    });
-
-    // Delete combobox when focus is lost
-    QObject::connect(combo, &QComboBox::destroyed, combo, &QComboBox::deleteLater);
-
-    combo->show();
-    combo->setFocus();
-    combo->showPopup();
+        });
+    }
+    catch (const std::exception& e)
+    {
+        QMessageBox::warning(view,
+                             "Property Update Error",
+                             QString("Failed to update property: %1").arg(e.what()));
+    }
+    catch (...)
+    {
+        QMessageBox::warning(view,
+                             "Property Update Error",
+                             "Failed to update property: unknown error");
+    }
 }

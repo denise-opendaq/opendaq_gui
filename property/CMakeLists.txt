@@ -25,6 +25,11 @@ set(HEADERS
     include/property/enumeration_property_item.h
     include/property/property_factory.h
     include/property/default_core_type.h
+    include/property/coretypes/base_core_type_handler.h
+    include/property/coretypes/bool_core_type_handler.h
+    include/property/coretypes/enumeration_core_type_handler.h
+    include/property/coretypes/default_core_type_handler.h
+    include/property/coretypes/core_type_factory.h
 )
 
 # Source files
@@ -38,6 +43,11 @@ set(SOURCES
     src/struct_property_item.cpp
     src/enumeration_property_item.cpp
     src/property_factory.cpp
+    src/coretypes/base_core_type_handler.cpp
+    src/coretypes/bool_core_type_handler.cpp
+    src/coretypes/enumeration_core_type_handler.cpp
+    src/coretypes/default_core_type_handler.cpp
+    src/coretypes/core_type_factory.cpp
 )
 
 # Create library

@@ -28,6 +28,7 @@ public:
 
     void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self) override;
     void commitEdit(QTreeWidgetItem* item, int column) override;
+    void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
 
 private:
     daq::StructPtr structObj;

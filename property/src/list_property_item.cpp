@@ -1,6 +1,7 @@
 #include "property/list_property_item.h"
 #include "widgets/property_object_view.h"
 #include "property/default_core_type.h"
+#include "property/coretypes/core_type_factory.h"
 #include <QTreeWidgetItem>
 #include <QMenu>
 #include <QMessageBox>
@@ -22,20 +23,27 @@ void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
 
     itemToKeyMap.clear();
 
-    auto isEditable = isValueEditable();
+    auto listEditable = isValueEditable();
 
-    // Add each key-value pair as a child item
+    // Add each element as a child item
     QPalette palette = builder.view.palette();
     for (size_t i = 0; i < list.getCount(); i++)
     {
         auto* treeChild = new QTreeWidgetItem();
         const QString key = QStringLiteral("[%1]").arg(i);
         treeChild->setText(0, key);
-        treeChild->setText(1, QString::fromStdString(list[i].toString()));
 
-        if (isEditable)
+        // Use handler to display value
+        auto value = list[i];
+        auto valueHandler = CoreTypeFactory::createHandler(value, prop.getItemType());
+        treeChild->setText(1, valueHandler->valueToString(list[i]));
+
+        if (listEditable)
         {
-            treeChild->setFlags(treeChild->flags() | Qt::ItemIsEditable);
+            // Set editable flag only if value handler is editable
+            // Selection-based types (bool, enum) will use double-click instead
+            if (valueHandler->isEditable())
+                treeChild->setFlags(treeChild->flags() | Qt::ItemIsEditable);
         }
         else
         {
@@ -46,30 +54,34 @@ void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
 
         self->addChild(treeChild);
 
-        // Map tree item to original key
+        // Map tree item to index
         itemToKeyMap[treeChild] = i;
     }
 }
 
 void ListPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 {
-    // Check if this is a child item (dict key-value pair)
+    // Check if this is a child item (list element)
     auto it = itemToKeyMap.find(item);
     if (it == itemToKeyMap.end())
-        return; // Not a dict child item
+        return; // Not a list child item
 
     const size_t index = it->second;
 
-    // Refresh dict reference
+    // Refresh list reference
     list = owner.getPropertyValue(getName());
     if (!list.assigned())
         return;
 
     if (column == 1)
     {
-        daq::StringPtr newText = item->text(column).toStdString();
-        const auto value = newText.convertTo(prop.getItemType());
-        list.setItemAt(index, value);
+        // Edit value
+        QString newText = item->text(column);
+        auto currentValue = list[index];
+        auto valueHandler = CoreTypeFactory::createHandler(currentValue, prop.getItemType());
+
+        daq::BaseObjectPtr newValue = valueHandler->stringToValue(newText);
+        list.setItemAt(index, newValue);
 
         // Save updated list
         owner.setPropertyValue(getName(), list);
@@ -140,6 +152,42 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
         {
             QMessageBox::warning(view, "Error Removing Item",
                                QString("Failed to remove item: %1").arg(e.what()));
+        }
+    }
+}
+
+void ListPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item)
+{
+    // Check if this is a child item (list element)
+    auto it = itemToKeyMap.find(item);
+    if (it == itemToKeyMap.end())
+        return; // Not a list child item
+
+    if (!isValueEditable())
+        return;
+
+    const size_t index = it->second;
+
+    // Refresh list reference
+    list = owner.getPropertyValue(getName());
+    if (!list.assigned())
+        return;
+
+    // Get the column that was double-clicked
+    int column = view->currentColumn();
+
+    if (column == 1)
+    {
+        // Double-click on value
+        auto currentValue = list[index];
+        auto valueHandler = CoreTypeFactory::createHandler(currentValue, prop.getItemType());
+
+        if (valueHandler->hasSelection())
+        {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, index, valueHandler](const daq::BaseObjectPtr& newValue) {
+                list.setItemAt(index, newValue);
+                owner.setPropertyValue(getName(), list);
+            });
         }
     }
 }

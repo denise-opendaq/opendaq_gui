@@ -236,7 +236,16 @@ void PropertyObjectView::handleEditError(QTreeWidgetItem* item, int column, Base
 
 void PropertyObjectView::onItemDoubleClicked(QTreeWidgetItem* item, int /*column*/)
 {
-    if (auto* logic = getLogic(item))
+    auto* logic = getLogic(item);
+    if (!logic)
+    {
+        // For items without logic (like list/dict/struct children), check parent
+        auto* parent = item->parent();
+        if (parent)
+            logic = getLogic(parent);
+    }
+
+    if (logic)
         logic->handle_double_click(this, item);
 }
 
@@ -273,13 +282,15 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
     it->setText(0, QString::fromStdString(logic->getName()));
     it->setText(1, logic->showValue());
 
-    // Editable only if allowed by logic; column edit is controlled by PropertyObjectView::edit override.
-    if (logic->isKeyEditable() || logic->isValueEditable())
+    // Editable only if allowed by logic AND not a container (containers edit their children, not the header)
+    // Column edit is controlled by PropertyObjectView::edit override.
+    if (!logic->hasSubtree() && (logic->isKeyEditable() || logic->isValueEditable()))
     {
         it->setFlags(it->flags() |= Qt::ItemIsEditable);
     }
-    else
+    else if (!logic->isValueEditable())
     {
+        // Set inactive color only for truly non-editable items (not containers)
         QPalette palette = view.palette();
         it->setForeground(0, palette.color(QPalette::Disabled, QPalette::Text));
         it->setForeground(1, palette.color(QPalette::Disabled, QPalette::Text));

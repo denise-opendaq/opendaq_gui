@@ -33,6 +33,7 @@ public:
     void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self) override;
     void commitEdit(QTreeWidgetItem* item, int column) override;
     void handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos) override;
+    void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
 
 private:
     daq::DictPtr<daq::IBaseObject, daq::IBaseObject> dict;
