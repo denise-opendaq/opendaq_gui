@@ -96,21 +96,21 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
     if (component != owner)
         return;
 
-    std::string path = eventArgs.getParameters()["Path"];
-
-    if (auto objPath = root.asPtr<daq::IPropertyObjectInternal>(true).getPath(); objPath.assigned() && objPath.getLength())
-    {
-        if (path.find(objPath.toStdString()) != 0)
-            return;
-        if (path.length() == objPath.getLength())
-            path = "";
-        else
-            path = path.substr(objPath.getLength() + 1);
-    }
-
     const auto eventId = static_cast<daq::CoreEventId>(eventArgs.getEventId());
     if (eventId == daq::CoreEventId::PropertyValueChanged)
     {
+        std::string path = eventArgs.getParameters()["Path"];
+
+        if (auto objPath = root.asPtr<daq::IPropertyObjectInternal>(true).getPath(); objPath.assigned() && objPath.getLength())
+        {
+            if (path.find(objPath.toStdString()) != 0)
+                return;
+            if (path.length() == objPath.getLength())
+                path = "";
+            else
+                path = path.substr(objPath.getLength() + 1);
+        }
+
         daq::StringPtr propertyName = eventArgs.getParameters()["Name"];
 
         // Get the property object that owns this property

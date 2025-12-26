@@ -21,6 +21,8 @@ private Q_SLOTS:
     void updateSignal();
 
 private:
+    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+
     daq::InputPortPtr inputPort;
     ComponentTreeWidget* componentTree;
     InputPortSignalSelector* signalSelector;
