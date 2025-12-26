@@ -125,7 +125,8 @@ void ComponentTreeElement::onSelected(QWidget* mainContent)
 {
     // Open all available tabs by calling openTab for each
     QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs) {
+    for (const QString& tabName : availableTabs)
+    {
         openTab(tabName, mainContent);
     }
 }
@@ -180,4 +181,3 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
         addTab(tabWidget, propertyView, tabName);
     }
 }
-

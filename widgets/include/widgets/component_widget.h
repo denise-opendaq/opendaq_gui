@@ -19,7 +19,13 @@ private:
     void setupUI();
     void createComponentPropertyObject();
     void setupPropertyHandlers();
+    void updateStatuses();
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+    
+    // Async handlers for core events to avoid deadlocks
+    void handleAttributeChangedAsync(const daq::StringPtr& attributeName, const daq::BaseObjectPtr& value);
+    void handleTagsChangedAsync(const daq::TagsPtr& tags);
+    void handleStatusChangedAsync();
 
     daq::ComponentPtr component;
     PropertyObjectView* propertyView;

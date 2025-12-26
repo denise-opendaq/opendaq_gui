@@ -1,8 +1,6 @@
 #pragma once
 #include "DetachableTabWidget.h"
 #include "base_tree_element.h"
-#include "widgets/property_object_view.h"
-#include "context/AppContext.h"
 #include <opendaq/opendaq.h>
 #include <QVBoxLayout>
 #include <QGroupBox>

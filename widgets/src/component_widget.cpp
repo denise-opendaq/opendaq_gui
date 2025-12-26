@@ -2,6 +2,8 @@
 #include "widgets/property_object_view.h"
 #include "context/AppContext.h"
 #include <QMetaObject>
+#include <QTimer>
+#include <QPointer>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
@@ -141,6 +143,9 @@ void ComponentWidget::createComponentPropertyObject()
             .build();
         componentPropertyObject.addProperty(localIdProp);
 
+        // Add Statuses property (read-only, as dict)
+        updateStatuses();
+
         // Set up read/write handlers for each property
         setupPropertyHandlers();
 
@@ -211,6 +216,67 @@ void ComponentWidget::setupPropertyHandlers()
     }
 }
 
+void ComponentWidget::updateStatuses()
+{
+    if (!component.assigned() || !componentPropertyObject.assigned())
+        return;
+
+    try
+    {
+        daq::ComponentStatusContainerPtr statusContainer = component.getStatusContainer();
+        if (!statusContainer.assigned())
+            return;
+
+        // Get all statuses
+        auto statuses = statusContainer.getStatuses();
+        if (!statuses.assigned())
+            return;
+
+        // Create a dict with status names and their string values
+        daq::DictPtr<daq::IString, daq::IString> statusDict = daq::Dict<daq::IString, daq::IString>();
+        for (const auto& [name, statusEnum] : statuses)
+        {
+            QString statusValue = QString::fromStdString(statusEnum.getValue().toStdString());
+            QString statusMessage;
+            try
+            {
+                daq::StringPtr messagePtr = statusContainer.getStatusMessage(name);
+                if (messagePtr.assigned() && !messagePtr.toStdString().empty())
+                {
+                    statusMessage = QString::fromStdString(messagePtr.toStdString());
+                    statusValue += QString(" (%1)").arg(statusMessage);
+                }
+            }
+            catch (...)
+            {
+                // If message is not available, just use the value
+            }
+            statusDict.set(name, daq::String(statusValue.toStdString()));
+        }
+
+        // Check if Statuses property already exists
+        if (componentPropertyObject.hasProperty("Statuses"))
+        {
+            UpdateGuard guard(updatingFromComponent);
+            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
+            protectedObj.setProtectedPropertyValue("Statuses", statusDict);
+        }
+        else
+        {
+            // Add Statuses property (read-only, as dict)
+            auto statusesProp = daq::DictPropertyBuilder("Statuses", statusDict)
+                .setReadOnly(true)
+                .build();
+            componentPropertyObject.addProperty(statusesProp);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating statuses: {}", e.what());
+    }
+}
+
 void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
     if (sender != component)
@@ -223,28 +289,47 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
     try
     {
         const auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
+        
+        // Process events asynchronously to avoid deadlocks when working with remote components
+        // Use QTimer::singleShot to queue the update in the Qt event loop
+        // Use QPointer for weak reference to avoid issues if widget is destroyed
+        QPointer<ComponentWidget> weakThis(this);
+        
         if (eventId == daq::CoreEventId::AttributeChanged)
         {
             const daq::StringPtr attributeName = args.getParameters().get("AttributeName");
-            const auto attributeValue = args.getParameters().get(attributeName);
-            const auto currentValue = componentPropertyObject.getPropertyValue(attributeName);
+            const daq::BaseObjectPtr attributeValue = args.getParameters().get(attributeName);
 
-            UpdateGuard guard(updatingFromComponent);
-            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-            protectedObj.setProtectedPropertyValue(attributeName, attributeValue);
+            // Schedule async update
+            QTimer::singleShot(0, this, [weakThis, attributeName, attributeValue]() 
+            {
+                if (!weakThis)
+                    return;
+                weakThis->handleAttributeChangedAsync(attributeName, attributeValue);
+            });
         }
         else if (eventId == daq::CoreEventId::TagsChanged)
         {
             // Update Tags from component as list
             daq::TagsPtr tags = args.getParameters()["Tags"];
 
-            UpdateGuard guard(updatingFromComponent);
-            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-            protectedObj.setProtectedPropertyValue("Tags", tags.getList());
+            // Schedule async update
+            QTimer::singleShot(0, this, [weakThis, tags]() 
+            {
+                if (!weakThis)
+                    return;
+                weakThis->handleTagsChangedAsync(tags);
+            });
         }
-        else 
+        else if (eventId == daq::CoreEventId::StatusChanged)
         {
-            return;
+            // Schedule async update
+            QTimer::singleShot(0, this, [weakThis]() 
+            {
+                if (!weakThis)
+                    return;
+                weakThis->handleStatusChangedAsync();
+            });
         }
     }
     catch (const std::exception& e)
@@ -252,4 +337,48 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
         const auto loggerComponent = AppContext::getLoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
+}
+
+void ComponentWidget::handleAttributeChangedAsync(const daq::StringPtr& attributeName, const daq::BaseObjectPtr& value)
+{
+    if (updatingFromComponent > 0 || !componentPropertyObject.assigned())
+        return;
+
+    try
+    {
+        UpdateGuard guard(updatingFromComponent);
+        auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
+        protectedObj.setProtectedPropertyValue(attributeName, value);
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error handling attribute changed async: {}", e.what());
+    }
+}
+
+void ComponentWidget::handleTagsChangedAsync(const daq::TagsPtr& tags)
+{
+    if (updatingFromComponent > 0 || !componentPropertyObject.assigned())
+        return;
+
+    try
+    {
+        UpdateGuard guard(updatingFromComponent);
+        auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
+        protectedObj.setProtectedPropertyValue("Tags", tags.getList());
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error handling tags changed async: {}", e.what());
+    }
+}
+
+void ComponentWidget::handleStatusChangedAsync()
+{
+    if (updatingFromComponent > 0)
+        return;
+
+    updateStatuses();
 }
