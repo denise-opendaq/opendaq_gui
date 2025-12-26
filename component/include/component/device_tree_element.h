@@ -19,6 +19,8 @@ public:
     // Override to add device-specific context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
+    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args) override;
+
 public Q_SLOTS:
     void onAddDevice();
     void onAddFunctionBlock();

@@ -23,6 +23,23 @@ bool DeviceTreeElement::visible() const
     return true;
 }
 
+
+void DeviceTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
+{
+    Super::onCoreEvent(sender, args);
+
+    auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
+    if (eventId == daq::CoreEventId::ConnectionStatusChanged)
+    {
+        const daq::EnumerationPtr statusEnum = args.getParameters()["StatusValue"];
+        const daq::StringPtr statusValue = statusEnum.getValue();
+        if (statusValue == "Connected")
+            setName(QString::fromStdString(daqComponent.getName()));
+        else
+            setName(QString::fromStdString(daqComponent.getName() + " [" + statusValue +"]"));
+    }
+}
+
 void DeviceTreeElement::onSelected(QWidget* mainContent)
 {
     // Open all available tabs by calling openTab for each

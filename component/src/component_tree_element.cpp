@@ -73,9 +73,8 @@ void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEvent
 {
     try
     {
-        auto eventName = args.getEventName();
-
-        if (eventName == "AttributeChanged")
+        auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
+        if (eventId == daq::CoreEventId::AttributeChanged)
         {
             auto params = args.getParameters();
             auto attributeName = params.get("AttributeName");

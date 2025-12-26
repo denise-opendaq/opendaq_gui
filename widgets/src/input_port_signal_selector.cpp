@@ -277,10 +277,10 @@ void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEv
     }
 
     try {
-        auto eventName = args.getEventName();
-        
+        auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
         // Check for SignalConnected or SignalDisconnected events
-        if (eventName == "SignalConnected" || eventName == "SignalDisconnected") {
+        if (eventId == daq::CoreEventId::SignalConnected || eventId == daq::CoreEventId::SignalDisconnected)
+        {
             // Core events come from openDAQ thread, need to invoke populateSignals in main Qt thread
             QMetaObject::invokeMethod(this, "populateSignals", Qt::QueuedConnection);
         }

@@ -115,8 +115,6 @@ void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     try
     {
         auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
-        
-        // Handle ComponentAdded and ComponentRemoved events to refresh the tree
         if (eventId == daq::CoreEventId::ComponentAdded || eventId == daq::CoreEventId::ComponentRemoved)
         {
             // Refresh the folder to update the tree structure
