@@ -70,6 +70,11 @@ daq::InstancePtr AppContext::daq()
     return instance()->daqInstance();
 }
 
+daq::LoggerComponentPtr AppContext::getLoggerComponent()
+{
+    return daq().getContext().getLogger().getOrAddComponent("openDAQ GUI");
+}
+
 bool AppContext::showInvisibleComponents() const
 {
     return d->showInvisible;

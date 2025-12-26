@@ -2,6 +2,7 @@
 #include "component/device_tree_element.h"
 #include "context/AppContext.h"
 #include <functional>
+#include <opendaq/custom_log.h>
 
 ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)
     : QTreeWidget(parent)
@@ -31,7 +32,8 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
     if (!instance.assigned())
     {
-        qWarning() << "Cannot load null instance";
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Cannot load null instance");
         return;
     }
 
@@ -52,7 +54,8 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error loading instance:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error loading instance: {}", e.what());
     }
 }
 

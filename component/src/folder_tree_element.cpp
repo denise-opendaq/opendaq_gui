@@ -1,5 +1,6 @@
 #include "component/folder_tree_element.h"
 #include "component/component_factory.h"
+#include <opendaq/custom_log.h>
 #include <QSet>
 #include <QMetaObject>
 
@@ -33,7 +34,8 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error initializing folder children:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error initializing folder children: {}", e.what());
     }
 }
 
@@ -103,7 +105,8 @@ void FolderTreeElement::refresh()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error refreshing folder children:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error refreshing folder children: {}", e.what());
     }
 }
 
@@ -123,7 +126,8 @@ void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error handling folder core event:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error handling folder core event: {}", e.what());
     }
 }
 

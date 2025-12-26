@@ -2,6 +2,7 @@
 #include <QTextEdit>
 #include <QMetaObject>
 #include <QString>
+#include <QColor>
 #include <spdlog/details/log_msg.h>
 #include <coretypes/ctutils.h>
 
@@ -27,9 +28,53 @@ void QTextEditSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
     if (message.endsWith('\n'))
         message.chop(1);
 
+    // Get color based on log level
+    QString color;
+    switch (msg.level)
+    {
+        case spdlog::level::trace:
+            color = "#808080"; // gray
+            break;
+        case spdlog::level::debug:
+            color = "#0066CC"; // light blue
+            break;
+        case spdlog::level::info:
+            // Use default system color
+            color = "";
+            break;
+        case spdlog::level::warn:
+            color = "#FF8800"; // orange
+            break;
+        case spdlog::level::err:
+            color = "#CC0000"; // red
+            break;
+        case spdlog::level::critical:
+            color = "#990000"; // dark red
+            break;
+        default:
+            color = "";
+            break;
+    }
+
+    // Escape HTML special characters
+    message.replace("&", "&amp;");
+    message.replace("<", "&lt;");
+    message.replace(">", "&gt;");
+    
+    // Wrap in color tag only if color is specified
+    QString coloredMessage;
+    if (color.isEmpty())
+    {
+        coloredMessage = message;
+    }
+    else
+    {
+        coloredMessage = QString("<span style=\"color:%1;\">%2</span>").arg(color, message);
+    }
+
     // Use QMetaObject::invokeMethod to ensure thread-safe GUI updates
-    QMetaObject::invokeMethod(textEdit, [this, message]() {
-        textEdit->append(message);
+    QMetaObject::invokeMethod(textEdit, [this, coloredMessage]() {
+        textEdit->append(coloredMessage);
     }, Qt::QueuedConnection);
 }
 

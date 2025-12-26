@@ -6,6 +6,8 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QMetaObject>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 InputPortWidget::InputPortWidget(const daq::InputPortPtr& inputPort, ComponentTreeWidget* componentTree, QWidget* parent)
     : SignalValueWidget(inputPort.assigned() ? inputPort.getSignal() : daq::SignalPtr(), parent)
@@ -126,7 +128,8 @@ void InputPortWidget::updateSignal()
             }
         }
     } catch (const std::exception& e) {
-        qWarning() << "Error updating signal:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating signal: {}", e.what());
     }
 }
 

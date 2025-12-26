@@ -1,7 +1,10 @@
 #include "context/icon_provider.h"
+#include "context/AppContext.h"
 #include <QDebug>
 #include <QApplication>
 #include <QPalette>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 IconProvider& IconProvider::instance()
 {
@@ -68,7 +71,8 @@ QIcon IconProvider::icon(const QString& iconName) const
     }
 
     // Return empty icon if not found
-    qWarning() << "IconProvider: Failed to load icon from path:" << path;
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_W("IconProvider: Failed to load icon from path: {}", path.toStdString());
     return QIcon();
 }
 

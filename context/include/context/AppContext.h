@@ -11,6 +11,7 @@ namespace daq {
     class InstancePtr;
     class SinkPtr;
     class LoggerSinkPtr;
+    class LoggerComponentPtr;
 }
 
 class UpdateScheduler;
@@ -35,6 +36,9 @@ public:
 
     // Convenience method to get instance from anywhere
     static daq::InstancePtr daq();
+
+    // Logger component helper for easy logging
+    static daq::LoggerComponentPtr getLoggerComponent();
 
     // Visibility settings
     bool showInvisibleComponents() const;

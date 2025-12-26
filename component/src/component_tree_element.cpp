@@ -3,6 +3,7 @@
 #include "DetachableTabWidget.h"
 #include "widgets/property_object_view.h"
 #include <opendaq/opendaq.h>
+#include <opendaq/custom_log.h>
 
 ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QObject* parent)
     : BaseTreeElement(tree, parent)
@@ -25,7 +26,9 @@ void ComponentTreeElement::init(BaseTreeElement* parent)
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Failed to subscribe to component events:" << e.what();
+        const auto context = daqComponent.getContext();
+        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        LOG_W("Failed to subscribe to component events: {}", e.what());
     }
 }
 
@@ -41,7 +44,9 @@ ComponentTreeElement::~ComponentTreeElement()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Failed to unsubscribe from component events:" << e.what();
+        const auto context = daqComponent.getContext();
+        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        LOG_W("Failed to unsubscribe from component events: {}", e.what());
     }
 }
 
@@ -91,7 +96,9 @@ void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEvent
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error handling core event:" << e.what();
+        const auto context = daqComponent.getContext();
+        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        LOG_W("Error handling core event: {}", e.what());
     }
 }
 
@@ -106,7 +113,9 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
         }
         catch (const std::exception& e)
         {
-            qWarning() << "Error updating name:" << e.what();
+            const auto context = daqComponent.getContext();
+            const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+            LOG_W("Error updating name: {}", e.what());
         }
     }
 }

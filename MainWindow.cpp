@@ -16,6 +16,7 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QCursor>
+#include <opendaq/custom_log.h>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -321,8 +322,10 @@ void MainWindow::setupUI()
     auto logTextEdit = AppContext::instance()->getLogTextEdit();
     if(logTextEdit)
         verticalSplitter->addWidget(logTextEdit);
-    qWarning() << "Application started...";
-    qWarning() << "Tip: Drag tabs like in VSCode to move/split/detach.";
+
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Application started...");
+    LOG_I("Tip: Drag tabs like in VSCode to move/split/detach.");
 
 
     verticalSplitter->setSizes({600, 200});
@@ -531,7 +534,8 @@ void MainWindow::clearSplitterRecursively(QSplitter* splitter)
 
 void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoint& globalPos)
 {
-    qWarning() << QString("Tab '%1' detached to new window").arg(title);
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Tab '{}' detached to new window", title.toStdString());
 
     auto* sourceWidget = qobject_cast<DetachableTabWidget*>(sender());
 
@@ -577,7 +581,8 @@ void MainWindow::onTabMoveCompleted(DetachableTabWidget* sourceWidget)
 
 void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& title)
 {
-    qWarning() << QString("Detached window '%1' closed").arg(title);
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Detached window '{}' closed", title.toStdString());
 
     // Find and remove the window from our list
     for (int i = 0; i < detachedWindows.size(); ++i) {
@@ -597,7 +602,8 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
 void MainWindow::onViewSelectionChanged(int index)
 {
     const QString viewName = viewSelector->itemText(index);
-    qWarning() << QString("View changed to: %1").arg(viewName);
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("View changed to: {}", viewName.toStdString());
 
     // Update component type filter based on selection
     QSet<QString> componentsToShow;
@@ -649,7 +655,8 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
 {
-    qWarning() << QString("Show hidden components: %1").arg(checked ? "ON" : "OFF");
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Show hidden components: {}", checked ? "ON" : "OFF");
 
     // Update the component tree to show/hide hidden components
     if (componentTreeWidget)
@@ -670,7 +677,8 @@ void MainWindow::onTabCloseRequested(int index)
     sourceWidget->removeTab(index);
     widget->deleteLater();
 
-    qWarning() << QString("Tab '%1' closed").arg(tabName);
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Tab '{}' closed", tabName.toStdString());
 
     cleanupIfEmpty(sourceWidget);
 
@@ -753,7 +761,8 @@ void MainWindow::onOpenTab(const QString& tabName)
     // Update the menu
     updateAvailableTabsMenu(currentSelectedElement);
 
-    qWarning() << QString("Tab '%1' opened").arg(tabName);
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Tab '{}' opened", tabName.toStdString());
 }
 
 void MainWindow::restoreDefaultLayout()
@@ -787,5 +796,6 @@ void MainWindow::restoreDefaultLayout()
 void MainWindow::onResetLayout()
 {
     restoreDefaultLayout();
-    qWarning() << "Layout reset to default";
+    const auto loggerComponent = AppContext::getLoggerComponent();
+    LOG_I("Layout reset to default");
 }

@@ -9,12 +9,15 @@
 #include "component/signal_tree_element.h"
 #include "component/input_port_tree_element.h"
 #include "component/component_tree_element.h"
+#include "context/AppContext.h"
+#include <opendaq/custom_log.h>
 
 BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QObject* parent)
 {
     if (!component.assigned())
     {
-        qWarning() << "Cannot create tree element: component is null";
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Cannot create tree element: component is null");
         return nullptr;
     }
 
@@ -72,7 +75,8 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error creating tree element:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error creating tree element: {}", e.what());
         return nullptr;
     }
 }

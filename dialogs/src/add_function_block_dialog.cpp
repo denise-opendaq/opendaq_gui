@@ -5,6 +5,9 @@
 #include <QHeaderView>
 #include <QGroupBox>
 #include <QDebug>
+#include <opendaq/custom_log.h>
+#include "context/AppContext.h"
+#include <opendaq/logger_component_ptr.h>
 
 AddFunctionBlockDialog::AddFunctionBlockDialog(const daq::ComponentPtr& parent, QWidget* parentWidget)
     : QDialog(parentWidget)
@@ -144,7 +147,8 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error getting available function blocks:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error getting available function blocks: {}", e.what());
     }
 }
 
@@ -209,7 +213,8 @@ void AddFunctionBlockDialog::updateConfigView()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error creating configuration:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error creating configuration: {}", e.what());
         addButton->setEnabled(false);
     }
 }

@@ -4,6 +4,8 @@
 #include <QHBoxLayout>
 #include <QGroupBox>
 #include <QDateTime>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 SignalValueWidget::SignalValueWidget(const daq::SignalPtr& sig, QWidget* parent)
     : QWidget(parent)
@@ -153,7 +155,8 @@ void SignalValueWidget::updateSignalInfo()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error updating signal info:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating signal info: {}", e.what());
     }
 }
 

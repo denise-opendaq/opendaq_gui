@@ -6,6 +6,8 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QMetaObject>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputPort, ComponentTreeWidget* componentTree, QWidget* parent)
     : QWidget(parent)
@@ -22,7 +24,8 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
         try {
             inputPort.getOnComponentCoreEvent() += daq::event(this, &InputPortSignalSelector::onCoreEvent);
         } catch (const std::exception& e) {
-            qWarning() << "Failed to subscribe to input port events:" << e.what();
+            const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Failed to subscribe to input port events: {}", e.what());
         }
     }
 
@@ -37,7 +40,8 @@ InputPortSignalSelector::~InputPortSignalSelector()
         try {
             inputPort.getOnComponentCoreEvent() -= daq::event(this, &InputPortSignalSelector::onCoreEvent);
         } catch (const std::exception& e) {
-            qWarning() << "Failed to unsubscribe from input port events:" << e.what();
+            const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Failed to unsubscribe from input port events: {}", e.what());
         }
     }
 }
@@ -228,7 +232,8 @@ void InputPortSignalSelector::onSignalSelected(int index)
 
         connectSignal(signal);
     } catch (const std::exception& e) {
-        qWarning() << "Failed to find signal by path:" << path << "Error:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Failed to find signal by path: {} Error: {}", path.toStdString(), e.what());
         // Refresh combo box to restore previous selection
         populateSignals();
     }
@@ -281,7 +286,8 @@ void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEv
             QMetaObject::invokeMethod(this, "populateSignals", Qt::QueuedConnection);
         }
     } catch (const std::exception& e) {
-        qWarning() << "Error handling core event:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error handling core event: {}", e.what());
     }
 }
 

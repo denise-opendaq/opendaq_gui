@@ -6,6 +6,8 @@
 #include <QHeaderView>
 #include <QGroupBox>
 #include <QDebug>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 AddServerDialog::AddServerDialog(QWidget* parentWidget)
     : QDialog(parentWidget)
@@ -122,7 +124,8 @@ void AddServerDialog::initAvailableServers()
         auto instance = AppContext::instance()->daqInstance();
         if (!instance.assigned())
         {
-            qWarning() << "No openDAQ instance available";
+            const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("No openDAQ instance available");
             return;
         }
 
@@ -148,7 +151,8 @@ void AddServerDialog::initAvailableServers()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error getting available servers:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error getting available servers: {}", e.what());
     }
 }
 
@@ -213,7 +217,8 @@ void AddServerDialog::updateConfigView()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error creating configuration:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error creating configuration: {}", e.what());
         addButton->setEnabled(false);
     }
 }

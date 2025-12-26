@@ -1,5 +1,6 @@
 #include "component/base_tree_element.h"
 #include "context/icon_provider.h"
+#include "context/AppContext.h"
 #include "DetachableTabWidget.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
@@ -8,6 +9,8 @@
 #include <QWidget>
 #include <QVBoxLayout>
 #include <QLabel>
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QObject* parent)
     : QObject(parent)
@@ -87,7 +90,8 @@ void BaseTreeElement::updateIcon()
         }
         else
         {
-            qWarning() << "Failed to load icon:" << iconName << "for element:" << name;
+            const auto loggerComponent = AppContext::getLoggerComponent();
+            LOG_W("Failed to load icon: {} for element: {}", iconName.toStdString(), name.toStdString());
         }
     }
 }
@@ -219,7 +223,8 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
         }
         else
         {
-            qWarning() << "No child found at path:" << path;
+            const auto loggerComponent = AppContext::getLoggerComponent();
+            LOG_W("No child found at path: {}", path.toStdString());
             return nullptr;
         }
     }
@@ -233,7 +238,8 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
     QString firstPart = parts[0];
     if (!children.contains(firstPart))
     {
-        qWarning() << "No child found with id:" << firstPart;
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("No child found with id: {}", firstPart.toStdString());
         return nullptr;
     }
 

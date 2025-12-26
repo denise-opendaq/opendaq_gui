@@ -6,6 +6,9 @@
 #include <QListWidgetItem>
 #include <QCheckBox>
 #include <QGroupBox>
+#include <opendaq/custom_log.h>
+#include "context/AppContext.h"
+#include <opendaq/logger_component_ptr.h>
 
 AddDeviceConfigDialog::AddDeviceConfigDialog(const daq::DevicePtr& parentDevice, const QString& connectionString, QWidget* parent)
     : QDialog(parent)
@@ -229,7 +232,8 @@ void AddDeviceConfigDialog::initSelectionWidgets()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error updating selection widgets:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating selection widgets: {}", e.what());
     }
 }
 
@@ -273,7 +277,8 @@ void AddDeviceConfigDialog::updateConfigTabs()
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error updating config tabs:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating config tabs: {}", e.what());
     }
 }
 
@@ -321,7 +326,8 @@ void AddDeviceConfigDialog::onStreamingProtocolSelected(int index)
         }
         catch (const std::exception& e)
         {
-            qWarning() << "Error updating PrioritizedStreamingProtocols:" << e.what();
+            const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error updating PrioritizedStreamingProtocols: {}", e.what());
         }
     }
     
@@ -372,12 +378,14 @@ daq::StringPtr AddDeviceConfigDialog::getConnectionStringFromServerCapability(co
             
         if (!connectionString.assigned())
         {
-            qWarning() << "No connection string found for protocol:" << protocolId;
+            const auto loggerComponent = AppContext::getLoggerComponent();
+            LOG_W("No connection string found for protocol: {}", protocolId.toStdString());
         }
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error getting address types from server capability:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error getting address types from server capability: {}", e.what());
     }
 
     return connectionString;

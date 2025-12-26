@@ -6,6 +6,9 @@
 #include <QMetaObject>
 #include <QMap>
 #include <QSet>
+#include <opendaq/custom_log.h>
+#include "context/AppContext.h"
+#include <opendaq/logger_component_ptr.h>
 
 // FunctionBlockWidget implementation
 FunctionBlockWidget::FunctionBlockWidget(const daq::FunctionBlockPtr& functionBlock, ComponentTreeWidget* componentTree, QWidget* parent)
@@ -187,7 +190,8 @@ void FunctionBlockWidget::updateInputPorts()
             }
             catch (const std::exception& e)
             {
-                qWarning() << "Failed to process input port" << i << ":" << e.what();
+                const auto loggerComponent = AppContext::getLoggerComponent();
+                LOG_W("Failed to process input port {}: {}", i, e.what());
             }
         }
     }
@@ -195,7 +199,8 @@ void FunctionBlockWidget::updateInputPorts()
     {
         auto label = new QLabel(QString("Error getting input ports: %1").arg(e.what()), this);
         mainLayout->addWidget(label);
-        qWarning() << "Error getting input ports:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error getting input ports: {}", e.what());
     }
 }
 
@@ -214,7 +219,8 @@ void FunctionBlockWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventA
     }
     catch (const std::exception& e)
     {
-        qWarning() << "Error handling function block core event:" << e.what();
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error handling function block core event: {}", e.what());
     }
 }
 
