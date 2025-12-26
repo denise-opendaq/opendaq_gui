@@ -10,9 +10,9 @@
 // ListPropertyItem implementation
 // ============================================================================
 
-void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
+void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (loaded || !list.assigned())
+    if (!force && (loaded || !list.assigned()))
         return;
 
     loaded = true;
@@ -90,7 +90,7 @@ void ListPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 
 void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
 {
-    if (!isValueEditable())
+    if (isReadOnly())
         return;
 
     QMenu menu(view);
@@ -162,9 +162,6 @@ void ListPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
     auto it = itemToKeyMap.find(item);
     if (it == itemToKeyMap.end())
         return; // Not a list child item
-
-    if (!isValueEditable())
-        return;
 
     const size_t index = it->second;
 

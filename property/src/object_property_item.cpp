@@ -26,9 +26,9 @@ bool ObjectPropertyItem::hasSubtree() const
     return true;
 }
 
-void ObjectPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
+void ObjectPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (loaded || !nested.assigned())
+    if (!force && (loaded || !nested.assigned()))
         return;
 
     loaded = true;

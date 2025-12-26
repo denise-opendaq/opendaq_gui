@@ -37,6 +37,9 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     refresh();
     if (owner.assigned())
         owner.getOnComponentCoreEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+
+    // Connect to AppContext to refresh when showInvisible changes
+    connect(AppContext::instance(), &AppContext::showInvisibleChanged, this, &PropertyObjectView::refresh);
 }
 
 PropertyObjectView::~PropertyObjectView()
@@ -94,7 +97,7 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         return;
 
     std::string path = eventArgs.getParameters()["Path"];
-    
+
     if (auto objPath = root.asPtr<daq::IPropertyObjectInternal>(true).getPath(); objPath.assigned() && objPath.getLength())
     {
         if (path.find(objPath.toStdString()) != 0)
@@ -106,65 +109,72 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
     }
 
     const auto eventId = static_cast<daq::CoreEventId>(eventArgs.getEventId());
-    if (eventId != daq::CoreEventId::PropertyValueChanged)
+    if (eventId == daq::CoreEventId::PropertyValueChanged)
+    {
+        daq::StringPtr propertyName = eventArgs.getParameters()["Name"];
+
+        // Get the property object that owns this property
+        auto obj = root;
+        if (!path.empty())
+        {
+            if (obj.hasProperty(path))
+                obj = obj.getPropertyValue(path);
+            else
+                return;
+        }
+
+        onPropertyValueChanged(obj, true);  // force=true because this is from event callback
+    }
+}
+
+void PropertyObjectView::onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force)
+{
+    // Skip if owner is assigned and force is false (event will trigger update automatically)
+    if (!force && owner.assigned())
         return;
 
-    daq::StringPtr propertyName = eventArgs.getParameters()["Name"];
-
-    // Get the property object that owns this property
-    auto obj = root;
-    if (!path.empty())
-    {    
-        if (!obj.hasProperty(path))
-            return;
-        obj = obj.getPropertyValue(path);
-    }
-
-    // Find the ObjectPropertyItem using the map
+    // Find the ObjectPropertyItem for this property object using the map
+    // obj is the property object that contains the changed property
     auto it = propertyObjectToLogic.find(obj);
     if (it == propertyObjectToLogic.end())
         return;
 
-    ObjectPropertyItem* parentLogic = it->second;
+    ObjectPropertyItem* objLogic = it->second;
     QSignalBlocker blocker(this);
 
-    // Find the tree item for this logic
-    QTreeWidgetItem* parentItem = nullptr;
-    if (parentLogic)
+    // Find the tree item that represents this property object
+    QTreeWidgetItem* objItem = nullptr;
+    if (objLogic)
     {
         QTreeWidgetItemIterator iter(this);
         while (*iter)
         {
-            if (getLogic(*iter) == parentLogic)
+            if (getLogic(*iter) == objLogic)
             {
-                parentItem = *iter;
+                objItem = *iter;
                 break;
             }
             ++iter;
         }
     }
 
-    // Get the list of items to search
-    int childCount = parentItem ? parentItem->childCount() : topLevelItemCount();
+    // Property changes can affect visibility of other properties in the same object
+    // Rebuild all properties (children) of this object to reflect visibility changes
+    PropertySubtreeBuilder builder(*this);
 
-    // Find the property item
-    for (int i = 0; i < childCount; ++i)
+    if (objItem && objLogic)
     {
-        QTreeWidgetItem* child = parentItem ? parentItem->child(i) : topLevelItem(i);
-        auto* logic = getLogic(child);
-        if (logic && logic->getName() == propertyName)
-        {
-            // Update the value display
-            child->setText(1, logic->showValue());
-
-            // If it has a subtree and is expanded, reload it
-            if (logic->hasSubtree() && child->isExpanded())
-            {
-                PropertySubtreeBuilder builder(*this);
-                logic->build_subtree(builder, child);
-            }
-            break;
-        }
+        // Rebuild all properties from this property object
+        objLogic->build_subtree(builder, objItem, true);
+    }
+    else
+    {
+        // This is a top-level object (root), rebuild everything
+        clear();
+        items.clear();
+        propertyObjectToLogic.clear();
+        propertyObjectToLogic[root] = nullptr;
+        builder.buildFromPropertyObject(nullptr, root);
     }
 }
 
@@ -212,7 +222,6 @@ void PropertyObjectView::onItemChanged(QTreeWidgetItem* item, int column)
     try
     {
         logic->commitEdit(item, column);
-        Q_EMIT propertyChanged(QString::fromStdString(logic->getName()), logic->showValue());
     }
     catch (const std::exception& e)
     {
@@ -245,7 +254,7 @@ void PropertyObjectView::onItemDoubleClicked(QTreeWidgetItem* item, int /*column
             logic = getLogic(parent);
     }
 
-    if (logic)
+    if (logic && !logic->isReadOnly())
         logic->handle_double_click(this, item);
 }
 
@@ -282,18 +291,15 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
     it->setText(0, QString::fromStdString(logic->getName()));
     it->setText(1, logic->showValue());
 
-    // Editable only if allowed by logic AND not a container (containers edit their children, not the header)
-    // Column edit is controlled by PropertyObjectView::edit override.
-    if (!logic->hasSubtree() && (logic->isKeyEditable() || logic->isValueEditable()))
+    if (logic->isReadOnly())
     {
-        it->setFlags(it->flags() |= Qt::ItemIsEditable);
-    }
-    else if (!logic->isValueEditable())
-    {
-        // Set inactive color only for truly non-editable items (not containers)
         QPalette palette = view.palette();
         it->setForeground(0, palette.color(QPalette::Disabled, QPalette::Text));
         it->setForeground(1, palette.color(QPalette::Disabled, QPalette::Text));
+    }
+    else if (!logic->hasSubtree())
+    {
+        it->setFlags(it->flags() |= Qt::ItemIsEditable);
     }
 
     if (logic->hasSubtree())
@@ -319,6 +325,14 @@ void PropertySubtreeBuilder::buildFromPropertyObject(QTreeWidgetItem* parent, co
     if (!obj.assigned())
         return;
 
-    for (const auto& prop: obj.getAllProperties())
+    bool showInvisible = AppContext::instance()->showInvisibleComponents();
+    const auto props = showInvisible ? obj.getAllProperties() :  obj.getVisibleProperties();
+    for (const auto& prop: props)
+    {
+        // Skip invisible properties if showInvisible is false
+        if (!showInvisible && !prop.getVisible())
+            continue;
+
         addItem(parent, createPropertyItem(obj, prop));
+    }
 }

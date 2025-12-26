@@ -7,9 +7,9 @@
 // StructPropertyItem implementation
 // ============================================================================
 
-void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
+void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (loaded || !structObj.assigned())
+    if (!force && (loaded || !structObj.assigned()))
         return;
 
     loaded = true;
@@ -75,9 +75,6 @@ void StructPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidg
     auto it = itemToKeyMap.find(item);
     if (it == itemToKeyMap.end())
         return; // Not a struct field item
-
-    if (!isValueEditable())
-        return;
 
     const daq::StringPtr& fieldKey = it->second;
 

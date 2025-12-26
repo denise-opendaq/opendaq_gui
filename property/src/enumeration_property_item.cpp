@@ -38,9 +38,6 @@ void EnumerationPropertyItem::handle_double_click(PropertyObjectView* view, QTre
 {
     try
     {
-        if (!prop.getReadOnly())
-            return;
-
         const auto currentValue = owner.getPropertyValue(prop.getName());
         if (!currentValue.assigned())
             return;
@@ -49,9 +46,10 @@ void EnumerationPropertyItem::handle_double_click(PropertyObjectView* view, QTre
         auto handler = std::make_shared<EnumerationCoreTypeHandler>(enumType);
 
         // Use handler to show combobox and handle selection, capture handler to keep it alive
-        handler->handleDoubleClick(view, item, currentValue, [this, item, view, handler](const daq::BaseObjectPtr& newValue) {
+        handler->handleDoubleClick(view, item, currentValue, [this, view, handler](const daq::BaseObjectPtr& newValue) {
             owner.setPropertyValue(getName(), newValue);
-            Q_EMIT view->propertyChanged(QString::fromStdString(getName()), showValue());
+            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
+            view->onPropertyValueChanged(owner);
         });
     }
     catch (const std::exception& e)

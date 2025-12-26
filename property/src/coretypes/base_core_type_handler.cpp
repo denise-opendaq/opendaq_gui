@@ -33,13 +33,13 @@ bool BaseCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
     combo->setGeometry(valueColumnX, itemRect.y() + itemRect.height(), valueColumnWidth, itemRect.height());
 
     // Connect to handle selection
-    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, item, setValue](int index) {
+    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, setValue](int index) {
         try
         {
             QString selectedValue = combo->itemText(index);
             daq::BaseObjectPtr newValue = stringToValue(selectedValue);
             setValue(newValue);
-            item->setText(1, selectedValue);
+            // Note: Display will be updated automatically via componentCoreEventCallback
         }
         catch (const std::exception& e)
         {

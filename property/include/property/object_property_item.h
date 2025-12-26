@@ -17,7 +17,7 @@ public:
     QString showValue() const override;
     bool isValueEditable() const override;
     bool hasSubtree() const override;
-    void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self) override;
+    void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force = false) override;
     void commitEdit(QTreeWidgetItem*, int) override;
 
 private:

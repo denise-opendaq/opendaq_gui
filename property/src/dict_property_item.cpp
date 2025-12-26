@@ -10,9 +10,9 @@
 // DictPropertyItem implementation
 // ============================================================================
 
-void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self)
+void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (loaded || !dict.assigned())
+    if (!force && (loaded || !dict.assigned()))
         return;
 
     loaded = true;
@@ -22,7 +22,7 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         delete self->takeChild(0);
 
     itemToKeyMap.clear();
-    auto dictEditable = isValueEditable();
+    auto dictEditable = !isReadOnly();
 
     // Add each key-value pair as a child item
     QPalette palette = builder.view.palette();
@@ -107,7 +107,7 @@ void DictPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 
 void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos)
 {
-    if (!isValueEditable())
+    if (isReadOnly())
         return;
 
     QMenu menu(view);
@@ -179,9 +179,6 @@ void DictPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
     auto it = itemToKeyMap.find(item);
     if (it == itemToKeyMap.end())
         return; // Not a dict child item
-
-    if (!isValueEditable())
-        return;
 
     const daq::BaseObjectPtr& key = it->second;
 

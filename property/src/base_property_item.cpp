@@ -17,6 +17,17 @@ QString BasePropertyItem::showValue() const
     return QString::fromStdString(value);
 }
 
+bool BasePropertyItem::isReadOnly() const
+{
+    if (prop.getReadOnly())
+        return true;
+
+    if (auto freezable = prop.asPtrOrNull<daq::IFreezable>(true); freezable.assigned() && freezable.isFrozen())
+        return true;
+
+    return false;
+}
+
 bool BasePropertyItem::isKeyEditable() const
 {
     return false; // Keys are not editable by default
@@ -24,13 +35,7 @@ bool BasePropertyItem::isKeyEditable() const
 
 bool BasePropertyItem::isValueEditable() const
 {
-    if (prop.getReadOnly())
-        return false;
-
-    if (auto freezable = prop.asPtrOrNull<daq::IFreezable>(true); freezable.assigned() && freezable.isFrozen())
-        return false;
-
-    return true;
+    return !isReadOnly();
 }
 
 bool BasePropertyItem::hasSubtree() const
@@ -38,7 +43,7 @@ bool BasePropertyItem::hasSubtree() const
     return false;
 }
 
-void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*)
+void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool)
 {
 }
 

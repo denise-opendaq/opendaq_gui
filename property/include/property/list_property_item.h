@@ -29,7 +29,7 @@ public:
 
     bool hasSubtree() const override { return true; }
 
-    void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self) override;
+    void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force = false) override;
     void commitEdit(QTreeWidgetItem* item, int column) override;
     void handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos) override;
     void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;

@@ -47,6 +47,9 @@ Q_SIGNALS:
     // Emitted when openDAQ instance changes (pass as void* to avoid template in signal)
     void daqInstanceChanged();
 
+    // Emitted when showInvisible setting changes
+    void showInvisibleChanged(bool show);
+
 private:
     AppContext(QObject* parent = nullptr);
     ~AppContext() override;

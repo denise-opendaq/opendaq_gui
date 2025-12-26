@@ -91,7 +91,11 @@ bool AppContext::showInvisibleComponents() const
 
 void AppContext::setShowInvisibleComponents(bool show)
 {
-    d->showInvisible = show;
+    if (d->showInvisible != show)
+    {
+        d->showInvisible = show;
+        Q_EMIT showInvisibleChanged(show);
+    }
 }
 
 QSet<QString> AppContext::showComponentTypes() const

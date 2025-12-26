@@ -37,8 +37,6 @@ QString IntPropertyItem::showValue() const
 
 bool IntPropertyItem::isValueEditable() const
 {
-    if (!BasePropertyItem::isValueEditable())
-        return false;
     return !hasSelection();
 }
 
@@ -50,9 +48,6 @@ bool IntPropertyItem::hasSelection() const
 
 void IntPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item)
 {
-    if (!hasSelection())
-        return;
-
     QStringList selectionValues = getSelectionValues();
     if (selectionValues.isEmpty())
         return;
@@ -74,13 +69,13 @@ void IntPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetI
     combo->setGeometry(valueColumnX, itemRect.y(), valueColumnWidth, itemRect.height());
 
     // Connect to handle selection
-    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, item, view](int index) {
+    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, view](int index) {
         try
         {
             QString selectedValue = combo->itemText(index);
             setBySelectionValue(selectedValue);
-            item->setText(1, showValue());
-            Q_EMIT view->propertyChanged(QString::fromStdString(getName()), showValue());
+            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
+            view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
         {

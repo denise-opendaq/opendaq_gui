@@ -51,9 +51,6 @@ public:
 public Q_SLOTS:
     void refresh();
 
-Q_SIGNALS:
-    void propertyChanged(const QString& propertyName, const QString& newValue);
-
 protected:
     // Control editing based on column and item logic
     bool edit(const QModelIndex& index, EditTrigger trigger, QEvent* event) override;
@@ -63,6 +60,10 @@ protected:
 public:
     // Used by PropertySubtreeBuilder
     BasePropertyItem* store(std::unique_ptr<BasePropertyItem> item);
+
+    // Notify that a property value has changed - triggers UI update
+    // force=true will update even if owner is assigned (for manual calls from property items without owner)
+    void onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force = false);
 
     std::unordered_map<daq::PropertyObjectPtr, ObjectPropertyItem*, PropertyObjectPtrHash> propertyObjectToLogic;
 

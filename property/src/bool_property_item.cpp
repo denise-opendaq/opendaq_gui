@@ -25,16 +25,14 @@ void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
 {
     try
     {
-        if (!prop.getReadOnly())
-            return;
-
         BoolCoreTypeHandler handler;
         const auto currentValue = owner.getPropertyValue(prop.getName());
 
         // Use handler to toggle the value
-        handler.handleDoubleClick(view, item, currentValue, [this, item, view](const daq::BaseObjectPtr& newValue) {
+        handler.handleDoubleClick(view, item, currentValue, [this, view](const daq::BaseObjectPtr& newValue) {
             owner.setPropertyValue(getName(), newValue);
-            Q_EMIT view->propertyChanged(QString::fromStdString(getName()), showValue());
+            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
+            view->onPropertyValueChanged(owner);
         });
     }
     catch (const std::exception& e)

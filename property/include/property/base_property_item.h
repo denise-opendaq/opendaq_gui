@@ -47,10 +47,13 @@ public:
     // Can user edit value (column 1)?
     virtual bool isValueEditable() const;
 
+    // Is property truly read-only (cannot be edited at all, even via double-click)?
+    virtual bool isReadOnly() const;
+
     // Subtree for nested PropertyObject
     virtual bool hasSubtree() const;
 
-    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*);
+    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool force = false);
 
     // Events
     virtual void handle_double_click(PropertyObjectView*, QTreeWidgetItem*);

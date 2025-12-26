@@ -49,8 +49,6 @@ bool BoolCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
     daq::BaseObjectPtr newValue = daq::Boolean(newBool);
     setValue(newValue);
 
-    // Update display
-    item->setText(1, valueToString(newValue));
-
+    // Note: Display will be updated automatically via componentCoreEventCallback
     return true;  // Handled
 }
