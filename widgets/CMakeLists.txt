@@ -12,6 +12,7 @@ set(HEADERS
     include/widgets/input_port_widget.h
     include/widgets/input_port_signal_selector.h
     include/widgets/function_block_widget.h
+    include/widgets/component_widget.h
 )
 
 # Source files
@@ -21,6 +22,7 @@ set(SOURCES
     src/input_port_widget.cpp
     src/input_port_signal_selector.cpp
     src/function_block_widget.cpp
+    src/component_widget.cpp
 )
 
 # Create library

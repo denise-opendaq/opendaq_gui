@@ -17,6 +17,12 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     , owner(owner)
     , root(root)
 {
+    if (const auto internal = root.asPtr<daq::IPropertyObjectInternal>(true); internal.assigned())
+    {
+        if (const auto path = internal.getPath(); path.assigned())
+            rootPath = path.toStdString();
+    }
+
     setColumnCount(2);
     setHeaderLabels({ "Property name", "Value" });
     header()->setStretchLastSection(false);
@@ -101,14 +107,14 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
     {
         std::string path = eventArgs.getParameters()["Path"];
 
-        if (auto objPath = root.asPtr<daq::IPropertyObjectInternal>(true).getPath(); objPath.assigned() && objPath.getLength())
+        if (!rootPath.empty())
         {
-            if (path.find(objPath.toStdString()) != 0)
+            if (path.find(rootPath) != 0)
                 return;
-            if (path.length() == objPath.getLength())
+            if (path.length() == rootPath.length())
                 path = "";
             else
-                path = path.substr(objPath.getLength() + 1);
+                path = path.substr(rootPath.length() + 1);
         }
 
         daq::StringPtr propertyName = eventArgs.getParameters()["Name"];

@@ -85,5 +85,6 @@ private:
 private:
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
+    std::string rootPath;
     std::vector<std::unique_ptr<BasePropertyItem>> items;
 };

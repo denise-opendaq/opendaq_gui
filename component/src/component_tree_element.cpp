@@ -2,6 +2,7 @@
 #include "context/AppContext.h"
 #include "DetachableTabWidget.h"
 #include "widgets/property_object_view.h"
+#include "widgets/component_widget.h"
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
@@ -154,6 +155,7 @@ daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
 QStringList ComponentTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
+    tabs << (getName() + " Component");
     tabs << (getName() + " Properties");
     return tabs;
 }
@@ -164,8 +166,16 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     if (!tabWidget)
         return;
 
-    QString expectedName = getName() + " Properties";
-    if (tabName == expectedName) {
+    QString componentTabName = getName() + " Component";
+    QString propertiesTabName = getName() + " Properties";
+    
+    if (tabName == componentTabName)
+    {
+        auto componentWidget = new ComponentWidget(daqComponent);
+        addTab(tabWidget, componentWidget, tabName);
+    } 
+    else if (tabName == propertiesTabName) 
+    {
         auto propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
         addTab(tabWidget, propertyView, tabName);
     }
