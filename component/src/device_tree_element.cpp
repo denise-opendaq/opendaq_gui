@@ -1,13 +1,15 @@
 #include "component/device_tree_element.h"
-#include "DetachableTabWidget.h"
 #include "widgets/property_object_view.h"
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_function_block_dialog.h"
-#include "component/component_factory.h"
 #include <QMenu>
 #include <QAction>
 #include <QDebug>
 #include <QMessageBox>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
 
 DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QObject* parent)
     : Super(tree, daqDevice, parent)
@@ -30,27 +32,6 @@ void DeviceTreeElement::onSelected(QWidget* mainContent)
     }
 }
 
-QStringList DeviceTreeElement::getAvailableTabNames() const
-{
-    QStringList tabs = Super::getAvailableTabNames();
-    tabs << (getName() + " device info");
-    return tabs;
-}
-
-void DeviceTreeElement::openTab(const QString& tabName, QWidget* mainContent)
-{
-    QString deviceInfoTabName = getName() + " device info";
-    if (tabName == deviceInfoTabName) {
-        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) {
-            auto propertyView = new PropertyObjectView(daqComponent.asPtr<daq::IDevice>(true).getInfo(), nullptr, daqComponent);
-            addTab(tabWidget, propertyView, tabName);
-        }
-    } else {
-        Super::openTab(tabName, mainContent);
-    }
-}
-
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = new QMenu(parent);
@@ -67,6 +48,11 @@ QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 
     QAction* addFunctionBlockAction = menu->addAction("Add Function Block");
     connect(addFunctionBlockAction, &QAction::triggered, this, &DeviceTreeElement::onAddFunctionBlock);
+
+    menu->addSeparator();
+
+    QAction* showDeviceInfoAction = menu->addAction("Show Device Info");
+    connect(showDeviceInfoAction, &QAction::triggered, this, &DeviceTreeElement::onShowDeviceInfo);
 
     return menu;
 }
@@ -134,7 +120,7 @@ void DeviceTreeElement::onAddFunctionBlock()
         {
             // Get config if available (will be nullptr if not set)
             daq::PropertyObjectPtr config = dialog.getConfig();
-            
+
             // Add function block using IDevice interface
             daq::FunctionBlockPtr newFunctionBlock = device.addFunctionBlock(functionBlockType.toStdString(), config);
         }
@@ -144,5 +130,34 @@ void DeviceTreeElement::onAddFunctionBlock()
                 QString("Failed to add function block '%1': %2").arg(functionBlockType, e.what()));
         }
     }
+}
+
+void DeviceTreeElement::onShowDeviceInfo()
+{
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
+    auto info = device.getInfo();
+
+    // Create dialog
+    QDialog* infoDialog = new QDialog(nullptr);
+    infoDialog->setWindowTitle(QString("%1 - Device Info").arg(getName()));
+    infoDialog->resize(600, 400);
+
+    auto* layout = new QVBoxLayout(infoDialog);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    // Create PropertyObjectView with deviceInfo
+    auto* propertyView = new PropertyObjectView(info, infoDialog, daqComponent);
+    layout->addWidget(propertyView);
+
+    // Add close button
+    auto* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    QPushButton* closeButton = new QPushButton("Close", infoDialog);
+    connect(closeButton, &QPushButton::clicked, infoDialog, &QDialog::accept);
+    buttonLayout->addWidget(closeButton);
+    layout->addLayout(buttonLayout);
+
+    infoDialog->exec();
+    delete infoDialog;
 }
 
