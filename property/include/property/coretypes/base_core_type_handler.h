@@ -1,24 +1,8 @@
 #pragma once
 
-// Save Qt keywords and undefine them before including openDAQ
-#ifdef signals
-#pragma push_macro("signals")
-#pragma push_macro("slots")
-#pragma push_macro("emit")
-#undef signals
-#undef slots
-#undef emit
-#define QT_MACROS_PUSHED
-#endif
 
 #include <opendaq/opendaq.h>
 
-#ifdef QT_MACROS_PUSHED
-#pragma pop_macro("emit")
-#pragma pop_macro("slots")
-#pragma pop_macro("signals")
-#undef QT_MACROS_PUSHED
-#endif
 
 #include <QtWidgets>
 

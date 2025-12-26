@@ -318,13 +318,11 @@ void MainWindow::setupUI()
     dropOverlay->hide();
 
     // Log panel
-    auto logTextEdit = new QTextEdit();
-    logTextEdit->setReadOnly(true);
-    logTextEdit->setPlaceholderText("Logging");
-    verticalSplitter->addWidget(logTextEdit);
-    AppContext::instance()->setLogTextEdit(logTextEdit);
-    AppContext::instance()->addLogMessage("Application started...");
-    AppContext::instance()->addLogMessage("Tip: Drag tabs like in VSCode to move/split/detach.");
+    auto logTextEdit = AppContext::instance()->getLogTextEdit();
+    if(logTextEdit)
+        verticalSplitter->addWidget(logTextEdit);
+    qWarning() << "Application started...";
+    qWarning() << "Tip: Drag tabs like in VSCode to move/split/detach.";
 
 
     verticalSplitter->setSizes({600, 200});
@@ -533,7 +531,7 @@ void MainWindow::clearSplitterRecursively(QSplitter* splitter)
 
 void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoint& globalPos)
 {
-    AppContext::instance()->addLogMessage(QString("Tab '%1' detached to new window").arg(title));
+    qWarning() << QString("Tab '%1' detached to new window").arg(title);
 
     auto* sourceWidget = qobject_cast<DetachableTabWidget*>(sender());
 
@@ -579,7 +577,7 @@ void MainWindow::onTabMoveCompleted(DetachableTabWidget* sourceWidget)
 
 void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& title)
 {
-    AppContext::instance()->addLogMessage(QString("Detached window '%1' closed").arg(title));
+    qWarning() << QString("Detached window '%1' closed").arg(title);
 
     // Find and remove the window from our list
     for (int i = 0; i < detachedWindows.size(); ++i) {
@@ -599,7 +597,7 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
 void MainWindow::onViewSelectionChanged(int index)
 {
     const QString viewName = viewSelector->itemText(index);
-    AppContext::instance()->addLogMessage(QString("View changed to: %1").arg(viewName));
+    qWarning() << QString("View changed to: %1").arg(viewName);
 
     // Update component type filter based on selection
     QSet<QString> componentsToShow;
@@ -651,7 +649,7 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
 {
-    AppContext::instance()->addLogMessage(QString("Show hidden components: %1").arg(checked ? "ON" : "OFF"));
+    qWarning() << QString("Show hidden components: %1").arg(checked ? "ON" : "OFF");
 
     // Update the component tree to show/hide hidden components
     if (componentTreeWidget)
@@ -672,7 +670,7 @@ void MainWindow::onTabCloseRequested(int index)
     sourceWidget->removeTab(index);
     widget->deleteLater();
 
-    AppContext::instance()->addLogMessage(QString("Tab '%1' closed").arg(tabName));
+    qWarning() << QString("Tab '%1' closed").arg(tabName);
 
     cleanupIfEmpty(sourceWidget);
 
@@ -755,7 +753,7 @@ void MainWindow::onOpenTab(const QString& tabName)
     // Update the menu
     updateAvailableTabsMenu(currentSelectedElement);
 
-    AppContext::instance()->addLogMessage(QString("Tab '%1' opened").arg(tabName));
+    qWarning() << QString("Tab '%1' opened").arg(tabName);
 }
 
 void MainWindow::restoreDefaultLayout()
@@ -789,5 +787,5 @@ void MainWindow::restoreDefaultLayout()
 void MainWindow::onResetLayout()
 {
     restoreDefaultLayout();
-    AppContext::instance()->addLogMessage("Layout reset to default");
+    qWarning() << "Layout reset to default";
 }

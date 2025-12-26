@@ -5,20 +5,9 @@
 #include <QLabel>
 #include <QGroupBox>
 
-// Save Qt keywords and undefine them before including openDAQ
-#pragma push_macro("signals")
-#pragma push_macro("slots")
-#pragma push_macro("emit")
-#undef signals
-#undef slots
-#undef emit
 
 #include <opendaq/opendaq.h>
 
-// Restore Qt keywords
-#pragma pop_macro("emit")
-#pragma pop_macro("slots")
-#pragma pop_macro("signals")
 
 class ComponentTreeWidget;
 

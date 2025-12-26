@@ -239,8 +239,14 @@ void AddDeviceConfigDialog::updateConfigTabs()
 
     try
     {
-        auto generalTab = new PropertyObjectView(config.getPropertyValue("General"), this);
-        configTabs->addTab(generalTab, "General");
+        {
+            daq::PropertyObjectPtr generalProps = config.getPropertyValue("General");
+            if (generalProps.getAllProperties().getCount())
+            {
+                auto generalTab = new PropertyObjectView(generalProps, this);
+                configTabs->addTab(generalTab, "General");
+            }
+        }
 
         // Device tab (only if protocol selected)
         if (!selectedConfigurationProtocolId.isEmpty())
@@ -334,14 +340,17 @@ daq::StringPtr AddDeviceConfigDialog::getConnectionStringFromServerCapability(co
     
     try
     {
-        const auto caps = deviceInfo.getServerCapabilities();
-        if (caps.empty())
+        daq::ServerCapabilityPtr cap;
+        if (deviceInfo.hasServerCapability(protocolId.toStdString()))
+            cap = deviceInfo.getServerCapability(protocolId.toStdString());
+        else
             return deviceInfo.getConnectionString();
-
-        const auto cap = deviceInfo.getServerCapability(protocolId.toStdString());
         
         const daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-        const daq::StringPtr primaryAddressType = generalSection.getPropertyValue("PrimaryAddressType");
+        daq::StringPtr primaryAddressType = "";
+        if (generalSection.hasProperty("PrimaryAddressType"))
+            primaryAddressType = generalSection.getPropertyValue("PrimaryAddressType");
+
         for (const auto & addressInfo : cap.getAddressInfo())
         {
             if (!primaryAddressType.getLength() || addressInfo.getType() == primaryAddressType)

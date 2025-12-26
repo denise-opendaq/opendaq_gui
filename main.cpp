@@ -26,11 +26,12 @@ int main(int argc, char *argv[])
     // This is required because resources in static libraries are not automatically initialized
     qInitResources_icons();
 
-    // Create openDAQ instance
+    // Create openDAQ instance with our custom logger sink from AppContext
     auto instance = InstanceBuilder().setGlobalLogLevel(daq::LogLevel::Info)
-                                                       .addDiscoveryServer("mdns")
-                                                       .setUsingSchedulerMainLoop(true)
-                                                       .build();
+                                     .addLoggerSink(AppContext::instance()->getLoggerSink())
+                                     .addDiscoveryServer("mdns")
+                                     .setUsingSchedulerMainLoop(true)
+                                     .build();
 
     // Set it in global context so it's accessible from anywhere
     AppContext::instance()->setDaqInstance(instance);

@@ -9,6 +9,8 @@
 // This prevents conflicts between openDAQ's operator& and Qt's macros
 namespace daq {
     class InstancePtr;
+    class SinkPtr;
+    class LoggerSinkPtr;
 }
 
 class UpdateScheduler;
@@ -27,8 +29,9 @@ public:
     daq::InstancePtr daqInstance() const;
     void setDaqInstance(const daq::InstancePtr& instance);
 
-    void setLogTextEdit(QTextEdit* logTextEdit);
-    void addLogMessage(const QString &text);
+    // Logger sink access
+    daq::LoggerSinkPtr getLoggerSink() const;
+    QTextEdit* getLogTextEdit() const;
 
     // Convenience method to get instance from anywhere
     static daq::InstancePtr daq();

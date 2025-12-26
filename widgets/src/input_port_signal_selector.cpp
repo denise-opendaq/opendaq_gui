@@ -243,8 +243,6 @@ void InputPortSignalSelector::connectSignal(const daq::SignalPtr& signal)
 
         inputPort.connect(signal);
         populateSignals(); // Refresh to update selection
-        AppContext::instance()->addLogMessage(QString("Signal '%1' connected to input port '%2'")
-            .arg(getSignalPath(signal), QString::fromStdString(inputPort.getName().toStdString())));
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to connect signal: %1").arg(e.what()));
         // Refresh combo box to restore previous selection
@@ -261,8 +259,6 @@ void InputPortSignalSelector::disconnectSignal()
 
         inputPort.disconnect();
         populateSignals(); // Refresh to update selection
-        AppContext::instance()->addLogMessage(QString("Signal disconnected from input port '%1'")
-            .arg(QString::fromStdString(inputPort.getName().toStdString())));
     } catch (const std::exception& e) {
         QMessageBox::critical(this, "Error", QString("Failed to disconnect signal: %1").arg(e.what()));
         // Refresh combo box to restore previous selection

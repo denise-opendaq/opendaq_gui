@@ -1,26 +1,8 @@
 #include "context/AppContext.h"
 #include "context/UpdateScheduler.h"
-
-// Save Qt keywords and undefine them before including openDAQ
-#ifdef signals
-#pragma push_macro("signals")
-#pragma push_macro("slots")
-#pragma push_macro("emit")
-#undef signals
-#undef slots
-#undef emit
-#define QT_MACROS_PUSHED
-#endif
+#include "logger/qt_text_edit_sink.h"
 
 #include <opendaq/opendaq.h>
-
-#ifdef QT_MACROS_PUSHED
-#pragma pop_macro("emit")
-#pragma pop_macro("slots")
-#pragma pop_macro("signals")
-#undef QT_MACROS_PUSHED
-#endif
-
 #include <QSet>
 
 // PIMPL to hide openDAQ headers from Qt headers
@@ -30,7 +12,7 @@ public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
     QSet<QString> componentTypes; // empty means show all
-    QTextEdit* logTextEdit = nullptr;
+    daq::LoggerSinkPtr loggerSink;
     UpdateScheduler* scheduler = nullptr;
 };
 
@@ -39,6 +21,7 @@ AppContext::AppContext(QObject* parent)
     , d(new Private())
 {
     d->scheduler = new UpdateScheduler(this);
+    d->loggerSink = createQTextEditLoggerSink();
 }
 
 AppContext::~AppContext()
@@ -59,24 +42,27 @@ daq::InstancePtr AppContext::daqInstance() const
 
 void AppContext::setDaqInstance(const daq::InstancePtr& instance)
 {
-    if (!d->daqInstance.assigned()) 
+    if (!d->daqInstance.assigned())
     {
         d->daqInstance = instance;
         Q_EMIT daqInstanceChanged();
     }
 }
 
-void AppContext::setLogTextEdit(QTextEdit* logTextEdit)
+daq::LoggerSinkPtr AppContext::getLoggerSink() const
 {
-    if (!d->logTextEdit)
-    {
-        d->logTextEdit = logTextEdit;
-    }
+    return d->loggerSink;
 }
 
-void AppContext::addLogMessage(const QString &text)
+QTextEdit* AppContext::getLogTextEdit() const
 {
-    d->logTextEdit->append(text);
+    if (!d->loggerSink.assigned())
+        return nullptr;
+
+    auto qtSink = d->loggerSink.asPtr<IQTextEditLoggerSink>(true);
+    QTextEdit* textEdit = nullptr;
+    qtSink->getTextEdit(&textEdit);
+    return textEdit;
 }
 
 daq::InstancePtr AppContext::daq()

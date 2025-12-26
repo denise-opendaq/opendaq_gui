@@ -10,14 +10,6 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(external)
-add_subdirectory(context)
-add_subdirectory(property)
-add_subdirectory(widgets)
-add_subdirectory(dialogs)
-add_subdirectory(component)
-
-# Find Qt6 (fetched or system-installed in external/qt)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 # Qt6 setup - enable automatic MOC, UIC, RCC for this project
 set(CMAKE_AUTOMOC ON)
@@ -28,6 +20,16 @@ set(CMAKE_AUTOUIC ON)
 # openDAQ uses 'signals' as parameter/variable names
 # Use Q_SIGNALS, Q_SLOTS, Q_EMIT instead in Qt code
 add_compile_definitions(QT_NO_KEYWORDS)
+
+# Find Qt6 (fetched or system-installed in external/qt)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+
+add_subdirectory(context)
+add_subdirectory(logger)
+add_subdirectory(property)
+add_subdirectory(widgets)
+add_subdirectory(dialogs)
+add_subdirectory(component)
 
 # Source files
 set(SOURCES
@@ -57,6 +59,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Core
         Qt6::Widgets
         context
+        logger
         component
         dialogs
         property
