@@ -6,9 +6,30 @@
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
+// Initialize resources from component library
+// Resources in static libraries need explicit initialization in Qt6
+// The function is defined in component library's qrc_icons.cpp
+#ifdef QT_NAMESPACE
+namespace QT_NAMESPACE {
+#endif
+    extern int qInitResources_icons();
+#ifdef QT_NAMESPACE
+}
+using namespace QT_NAMESPACE;
+#endif
+
 IconProvider& IconProvider::instance()
 {
     static IconProvider s_instance;
+    static bool resourcesInitialized = false;
+    
+    // Initialize resources on first access
+    if (!resourcesInitialized)
+    {
+        qInitResources_icons();
+        resourcesInitialized = true;
+    }
+    
     return s_instance;
 }
 
