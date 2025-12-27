@@ -3,7 +3,6 @@
 #include "component/function_block_tree_element.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 
 FunctionBlocksFolderTreeElement::FunctionBlocksFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)

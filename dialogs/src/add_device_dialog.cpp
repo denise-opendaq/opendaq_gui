@@ -1,6 +1,7 @@
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_device_config_dialog.h"
 #include "widgets/property_object_view.h"
+#include "context/gui_constants.h"
 #include <QHeaderView>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -17,8 +18,8 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     , addWithConfigAction(nullptr)
 {
     setWindowTitle("Add Device");
-    resize(800, 500);
-    setMinimumSize(600, 400);
+    resize(GUIConstants::ADD_DEVICE_DIALOG_WIDTH, GUIConstants::ADD_DEVICE_DIALOG_HEIGHT);
+    setMinimumSize(GUIConstants::ADD_DEVICE_DIALOG_MIN_WIDTH, GUIConstants::ADD_DEVICE_DIALOG_MIN_HEIGHT);
 
     setupUI();
     updateAvailableDevices();
@@ -199,9 +200,8 @@ void AddDeviceDialog::onAddClicked()
         // Update connection string in case it was changed in config dialog
         QString finalConnectionString = configDialog.getConnectionString();
         if (!finalConnectionString.isEmpty())
-        {
             connectionStringEdit->setText(finalConnectionString);
-        }
+        
         accept();
     }
 }
@@ -239,9 +239,7 @@ void AddDeviceDialog::onAddFromContextMenu()
     }
     
     if (connectionString.isEmpty() || !connectionString.contains("://"))
-    {
         return;
-    }
     
     // Add without config (config remains nullptr)
     accept();
@@ -264,9 +262,7 @@ void AddDeviceDialog::onAddWithConfigFromContextMenu()
     }
     
     if (connectionString.isEmpty() || !connectionString.contains("://"))
-    {
         return;
-    }
     
     // Open config dialog
     AddDeviceConfigDialog configDialog(parentDevice, connectionString, this);
@@ -277,9 +273,8 @@ void AddDeviceDialog::onAddWithConfigFromContextMenu()
         // Update connection string in case it was changed in config dialog
         QString finalConnectionString = configDialog.getConnectionString();
         if (!finalConnectionString.isEmpty())
-        {
             connectionStringEdit->setText(finalConnectionString);
-        }
+
         accept();
     }
 }
@@ -326,25 +321,25 @@ void AddDeviceDialog::onShowDeviceInfo()
     }
 
     // Create dialog window to show device info
-    QDialog* infoDialog = new QDialog(this);
-    infoDialog->setWindowTitle("Device Info");
-    infoDialog->resize(800, 600);
-    infoDialog->setMinimumSize(600, 400);
+    // Use stack-based dialog with parent for automatic cleanup
+    QDialog infoDialog(this);
+    infoDialog.setWindowTitle("Device Info");
+    infoDialog.resize(GUIConstants::ADD_DEVICE_INFO_DIALOG_WIDTH, GUIConstants::ADD_DEVICE_INFO_DIALOG_HEIGHT);
+    infoDialog.setMinimumSize(GUIConstants::ADD_DEVICE_DIALOG_MIN_WIDTH, GUIConstants::ADD_DEVICE_DIALOG_MIN_HEIGHT);
 
-    auto* layout = new QVBoxLayout(infoDialog);
+    auto* layout = new QVBoxLayout(&infoDialog);
     layout->setContentsMargins(0, 0, 0, 0);
 
     // Create PropertyObjectView with deviceInfo
     // DeviceInfoPtr can be used directly as PropertyObjectPtr
-    auto* propertyView = new PropertyObjectView(info, infoDialog);
+    auto* propertyView = new PropertyObjectView(info, &infoDialog);
     layout->addWidget(propertyView);
 
     // Add close button
-    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, infoDialog);
-    connect(buttonBox, &QDialogButtonBox::rejected, infoDialog, &QDialog::reject);
+    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, &infoDialog);
+    connect(buttonBox, &QDialogButtonBox::rejected, &infoDialog, &QDialog::reject);
     layout->addWidget(buttonBox);
 
-    infoDialog->setLayout(layout);
-    infoDialog->exec();
+    infoDialog.exec();
 }
 

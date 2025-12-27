@@ -5,7 +5,6 @@
 #include "DetachableTabWidget.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 
 FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent)
@@ -85,15 +84,19 @@ QStringList FunctionBlockTreeElement::getAvailableTabNames() const
 
 void FunctionBlockTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
-    if (tabName == "Input Ports") {
+    if (tabName == "Input Ports") 
+    {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) {
+        if (tabWidget) 
+        {
             auto functionBlock = getFunctionBlock();
             auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
             auto functionBlockWidget = new FunctionBlockWidget(functionBlock, componentTree);
             addTab(tabWidget, functionBlockWidget, tabName);
         }
-    } else {
+    } 
+    else 
+    {
         Super::openTab(tabName, mainContent);
     }
 }

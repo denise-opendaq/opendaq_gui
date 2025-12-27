@@ -169,45 +169,43 @@ void ComponentWidget::setupPropertyHandlers()
 
     try
     {
-        // Name property write handler - sync changes back to component
-        componentPropertyObject.getOnPropertyValueWrite("Name") += [this](daq::PropertyObjectPtr& obj, daq::PropertyValueEventArgsPtr& args) 
+        // Helper lambda to setup property handler with guard
+        auto setupHandler = [this](const QString& propName, auto setter) 
         {
-            if (updatingFromComponent == 0)
-            {
-                UpdateGuard guard(updatingFromComponent);
-                component.setName(args.getValue().asPtr<daq::IString>());
-            }
+            componentPropertyObject.getOnPropertyValueWrite(propName.toStdString()) += 
+                [this, setter](daq::PropertyObjectPtr&, daq::PropertyValueEventArgsPtr& args)
+                {
+                    if (updatingFromComponent == 0)
+                    {
+                        UpdateGuard guard(updatingFromComponent);
+                        setter(args.getValue());
+                    }
+                };
         };
+
+        // Name property write handler - sync changes back to component
+        setupHandler("Name", [this](const daq::BaseObjectPtr& value) 
+        {
+            component.setName(value.asPtr<daq::IString>(true));
+        });
 
         // Description property write handler
-        componentPropertyObject.getOnPropertyValueWrite("Description") += [this](daq::PropertyObjectPtr& obj, daq::PropertyValueEventArgsPtr& args) 
+        setupHandler("Description", [this](const daq::BaseObjectPtr& value) 
         {
-            if (updatingFromComponent == 0)
-            {
-                UpdateGuard guard(updatingFromComponent);
-                component.setDescription(args.getValue().asPtr<daq::IString>());
-            }
-        };
+            component.setDescription(value.asPtr<daq::IString>());
+        });
 
         // Active property write handler
-        componentPropertyObject.getOnPropertyValueWrite("Active") += [this](daq::PropertyObjectPtr& obj, daq::PropertyValueEventArgsPtr& args) 
+        setupHandler("Active", [this](const daq::BaseObjectPtr& value)
         {
-            if (updatingFromComponent == 0)
-            {
-                UpdateGuard guard(updatingFromComponent);
-                component.setActive(static_cast<bool>(args.getValue()));
-            }
-        };
+            component.setActive(static_cast<bool>(value));
+        });
 
         // Visible property write handler
-        componentPropertyObject.getOnPropertyValueWrite("Visible") += [this](daq::PropertyObjectPtr& obj, daq::PropertyValueEventArgsPtr& args) 
+        setupHandler("Visible", [this](const daq::BaseObjectPtr& value)
         {
-            if (updatingFromComponent == 0)
-            {
-                UpdateGuard guard(updatingFromComponent);
-                component.setVisible(static_cast<bool>(args.getValue()));
-            }
-        };
+            component.setVisible(static_cast<bool>(value));
+        });
     }
     catch (const std::exception& e)
     {
@@ -241,15 +239,17 @@ void ComponentWidget::updateStatuses()
             try
             {
                 daq::StringPtr messagePtr = statusContainer.getStatusMessage(name);
-                if (messagePtr.assigned() && !messagePtr.toStdString().empty())
+                if (messagePtr.assigned() && messagePtr.getLength())
                 {
                     statusMessage = QString::fromStdString(messagePtr.toStdString());
                     statusValue += QString(" (%1)").arg(statusMessage);
                 }
             }
-            catch (...)
+            catch (const std::exception& e)
             {
                 // If message is not available, just use the value
+                const auto loggerComponent = AppContext::getLoggerComponent();
+                LOG_D("Could not get status message for '{}': {}", name.toStdString(), e.what());
             }
             statusDict.set(name, daq::String(statusValue.toStdString()));
         }

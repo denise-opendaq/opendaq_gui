@@ -2,9 +2,9 @@
 #include "widgets/property_object_view.h"
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_function_block_dialog.h"
+#include "context/gui_constants.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 #include <QDialog>
 #include <QVBoxLayout>
@@ -155,26 +155,25 @@ void DeviceTreeElement::onShowDeviceInfo()
     auto info = device.getInfo();
 
     // Create dialog
-    QDialog* infoDialog = new QDialog(nullptr);
-    infoDialog->setWindowTitle(QString("%1 - Device Info").arg(getName()));
-    infoDialog->resize(600, 400);
+    QDialog infoDialog(tree->parentWidget());
+    infoDialog.setWindowTitle(QString("%1 - Device Info").arg(getName()));
+    infoDialog.resize(GUIConstants::DEVICE_INFO_DIALOG_WIDTH, GUIConstants::DEVICE_INFO_DIALOG_HEIGHT);
 
-    auto* layout = new QVBoxLayout(infoDialog);
+    auto* layout = new QVBoxLayout(&infoDialog);
     layout->setContentsMargins(0, 0, 0, 0);
 
     // Create PropertyObjectView with deviceInfo
-    auto* propertyView = new PropertyObjectView(info, infoDialog, daqComponent);
+    auto* propertyView = new PropertyObjectView(info, &infoDialog, daqComponent);
     layout->addWidget(propertyView);
 
     // Add close button
     auto* buttonLayout = new QHBoxLayout();
     buttonLayout->addStretch();
-    QPushButton* closeButton = new QPushButton("Close", infoDialog);
-    connect(closeButton, &QPushButton::clicked, infoDialog, &QDialog::accept);
+    QPushButton* closeButton = new QPushButton("Close", &infoDialog);
+    connect(closeButton, &QPushButton::clicked, &infoDialog, &QDialog::accept);
     buttonLayout->addWidget(closeButton);
     layout->addLayout(buttonLayout);
 
-    infoDialog->exec();
-    delete infoDialog;
+    infoDialog.exec();
 }
 

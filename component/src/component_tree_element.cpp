@@ -177,7 +177,7 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     } 
     else if (tabName == propertiesTabName) 
     {
-        auto propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
+        auto propertyView = new PropertyObjectView(daqComponent, tabWidget, daqComponent);
         addTab(tabWidget, propertyView, tabName);
     }
 }

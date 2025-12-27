@@ -2,45 +2,35 @@
 #include "component/device_tree_element.h"
 #include "context/AppContext.h"
 #include <functional>
+#include <QMessageBox>
 #include <opendaq/custom_log.h>
 
 ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)
     : QTreeWidget(parent)
-    , rootElement(nullptr)
 {
     setupUI();
 }
 
-ComponentTreeWidget::~ComponentTreeWidget()
-{
-    if (rootElement)
-    {
-        delete rootElement;
-        rootElement = nullptr;
-    }
-}
+ComponentTreeWidget::~ComponentTreeWidget() = default;
 
 void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 {
     // Clear existing tree
     clear();
-    if (rootElement)
-    {
-        delete rootElement;
-        rootElement = nullptr;
-    }
+    rootElement.reset();
 
     if (!instance.assigned())
     {
         const auto loggerComponent = AppContext::getLoggerComponent();
         LOG_W("Cannot load null instance");
+        QMessageBox::critical(this, "Error", "Cannot load instance: instance is null.");
         return;
     }
 
     try
     {
         // Create root element
-        rootElement = new DeviceTreeElement(this, instance.getRootDevice());
+        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice());
         rootElement->init();
 
         // Expand the root
@@ -56,6 +46,8 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
     {
         const auto loggerComponent = AppContext::getLoggerComponent();
         LOG_W("Error loading instance: {}", e.what());
+        QMessageBox::critical(this, "Error", 
+            QString("Failed to load instance: %1").arg(e.what()));
     }
 }
 
@@ -92,7 +84,7 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
         return nullptr;
     };
 
-    return search(rootElement);
+    return search(rootElement.get());
 }
 
 void ComponentTreeWidget::setShowHidden(bool show)

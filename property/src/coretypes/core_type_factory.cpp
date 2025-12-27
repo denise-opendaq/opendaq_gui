@@ -2,6 +2,9 @@
 #include "property/coretypes/bool_core_type_handler.h"
 #include "property/coretypes/enumeration_core_type_handler.h"
 #include "property/coretypes/default_core_type_handler.h"
+#include "context/AppContext.h"
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::BaseObjectPtr& value, daq::CoreType coreType)
 {
@@ -22,13 +25,19 @@ std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::B
                     {
                         const auto enumType = enumValue.getEnumerationType();
                         if (enumType.assigned())
-                        {
                             return std::make_shared<EnumerationCoreTypeHandler>(enumType);
-                        }
                     }
+                }
+                catch (const std::exception& e)
+                {
+                    const auto loggerComponent = AppContext::getLoggerComponent();
+                    LOG_D("Error creating enumeration handler, falling back to default: {}", e.what());
+                    // Fall through to default handler
                 }
                 catch (...)
                 {
+                    const auto loggerComponent = AppContext::getLoggerComponent();
+                    LOG_D("Unknown error creating enumeration handler, falling back to default");
                     // Fall through to default handler
                 }
             }

@@ -4,6 +4,7 @@
 
 #include <opendaq/opendaq.h>
 #include <QSet>
+#include <memory>
 
 // PIMPL to hide openDAQ headers from Qt headers
 class AppContext::Private
@@ -18,16 +19,13 @@ public:
 
 AppContext::AppContext(QObject* parent)
     : QObject(parent)
-    , d(new Private())
+    , d(std::make_unique<Private>())
 {
     d->scheduler = new UpdateScheduler(this);
     d->loggerSink = createQTextEditLoggerSink();
 }
 
-AppContext::~AppContext()
-{
-    delete d;
-}
+AppContext::~AppContext() = default;
 
 AppContext* AppContext::instance()
 {

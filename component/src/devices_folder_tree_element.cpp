@@ -3,7 +3,6 @@
 #include "component/device_tree_element.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 
 DevicesFolderTreeElement::DevicesFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)

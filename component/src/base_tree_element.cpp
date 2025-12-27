@@ -28,7 +28,6 @@ BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QObject* parent)
 BaseTreeElement::~BaseTreeElement()
 {
     // Clean up children
-    qDeleteAll(children);
     children.clear();
 
     // Remove tree item
@@ -134,15 +133,16 @@ void BaseTreeElement::showFiltered(QTreeWidgetItem* parentTreeItem)
 
     // Recursively apply to children
     QTreeWidgetItem* childParent = isVisible ? treeItem : parentTreeItem;
-    for (auto* child : children.values())
+    for (const auto& [_, child] : children)
         child->showFiltered(childParent);
 }
 
-BaseTreeElement* BaseTreeElement::addChild(BaseTreeElement* child)
+BaseTreeElement* BaseTreeElement::addChild(std::unique_ptr<BaseTreeElement> child)
 {
-    children[child->localId] = child;
+    BaseTreeElement* rawPtr = child.get();
     child->init(this);
-    return child;
+    children[child->localId] = std::move(child);
+    return rawPtr;
 }
 
 void BaseTreeElement::closeTabs()
@@ -169,7 +169,7 @@ void BaseTreeElement::closeTabs()
                     QString tabTitle = tabWidget->tabText(i);
                     
                     // Replace tab content with "Component removed" message
-                    QWidget* removedWidget = new QWidget();
+                    QWidget* removedWidget = new QWidget(tabWidget);
                     QVBoxLayout* layout = new QVBoxLayout(removedWidget);
                     layout->setContentsMargins(20, 20, 20, 20);
                     
@@ -192,13 +192,11 @@ void BaseTreeElement::closeTabs()
 
 void BaseTreeElement::removeChild(BaseTreeElement* child)
 {
-    if (children.contains(child->localId))
+    if (child && children.find(child->localId) != children.end())
     {
         // Close all tabs associated with this component before deleting
         child->closeTabs();
-        
-        children.remove(child->localId);
-        delete child;
+        children.erase(child->localId);
     }
 }
 
@@ -236,7 +234,7 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
     }
 
     QString firstPart = parts[0];
-    if (!children.contains(firstPart))
+    if (children.find(firstPart) == children.end())
     {
         const auto loggerComponent = AppContext::getLoggerComponent();
         LOG_W("No child found with id: {}", firstPart.toStdString());
@@ -245,12 +243,14 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 
     if (parts.size() == 1)
     {
-        return children[firstPart];
+        auto it = children.find(firstPart);
+        return (it != children.end()) ? it->second.get() : nullptr;
     }
     else
     {
         QString remainingPath = parts.mid(1).join("/");
-        return children[firstPart]->getChild(remainingPath);
+        auto it = children.find(firstPart);
+        return (it != children.end()) ? it->second->getChild(remainingPath) : nullptr;
     }
 }
 
@@ -276,5 +276,16 @@ QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)
     QMenu* menu = new QMenu(parent);
     // Override in derived classes to add menu items
     return menu;
+}
+
+QMap<QString, BaseTreeElement*> BaseTreeElement::getChildren() const
+{
+    QMap<QString, BaseTreeElement*> result;
+    for (std::map<QString, std::unique_ptr<BaseTreeElement>>::const_iterator it = children.begin(); 
+         it != children.end(); ++it)
+    {
+        result[it->first] = it->second.get();
+    }
+    return result;
 }
 

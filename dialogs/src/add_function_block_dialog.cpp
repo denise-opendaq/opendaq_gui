@@ -1,10 +1,10 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "widgets/property_object_view.h"
+#include "context/gui_constants.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
 #include <QGroupBox>
-#include <QDebug>
 #include <opendaq/custom_log.h>
 #include "context/AppContext.h"
 #include <opendaq/logger_component_ptr.h>
@@ -19,8 +19,8 @@ AddFunctionBlockDialog::AddFunctionBlockDialog(const daq::ComponentPtr& parent, 
     , addButton(nullptr)
 {
     setWindowTitle("Add Function Block");
-    resize(1000, 600);
-    setMinimumSize(800, 500);
+    resize(GUIConstants::ADD_FUNCTION_BLOCK_DIALOG_WIDTH, GUIConstants::ADD_FUNCTION_BLOCK_DIALOG_HEIGHT);
+    setMinimumSize(GUIConstants::ADD_FUNCTION_BLOCK_DIALOG_MIN_WIDTH, GUIConstants::ADD_FUNCTION_BLOCK_DIALOG_MIN_HEIGHT);
 
     setupUI();
     initAvailableFunctionBlocks();
@@ -178,9 +178,7 @@ void AddFunctionBlockDialog::onFunctionBlockDoubleClicked(QTreeWidgetItem* item,
     
     // Accept the dialog if a function block type was selected
     if (!selectedFunctionBlockType.isEmpty())
-    {
         accept();
-    }
 }
 
 void AddFunctionBlockDialog::updateConfigView()

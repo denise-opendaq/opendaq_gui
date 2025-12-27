@@ -28,7 +28,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
             auto childElement = createTreeElement(tree, item, this);
             if (childElement)
             {
-                addChild(childElement);
+                addChild(std::unique_ptr<BaseTreeElement>(childElement));
             }
         }
     }
@@ -41,7 +41,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 
 bool FolderTreeElement::visible() const
 {
-    if (children.isEmpty())
+    if (children.empty())
     {
         return false;
     }
@@ -61,21 +61,22 @@ void FolderTreeElement::refresh()
             auto item = items[i];
             QString itemLocalId = QString::fromStdString(item.getLocalId());
             
-            if (!children.contains(itemLocalId))
+            if (children.find(itemLocalId) == children.end())
             {
                 // This is a new item, add it
                 auto childElement = createTreeElement(tree, item, this);
                 if (childElement)
                 {
-                    addChild(childElement);
+                    addChild(std::unique_ptr<BaseTreeElement>(childElement));
                 }
             }
         }
 
         // Remove items that no longer exist in openDAQ structure
         QList<BaseTreeElement*> toRemove;
-        for (auto* child : children.values())
+        for (auto it = children.begin(); it != children.end(); ++it)
         {
+            BaseTreeElement* child = it->second.get();
             QString childLocalId = child->getLocalId();
             bool found = false;
             

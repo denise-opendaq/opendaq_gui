@@ -1,11 +1,11 @@
 #include "dialogs/add_server_dialog.h"
 #include "widgets/property_object_view.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
 #include <QGroupBox>
-#include <QDebug>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
@@ -18,8 +18,8 @@ AddServerDialog::AddServerDialog(QWidget* parentWidget)
     , addButton(nullptr)
 {
     setWindowTitle("Add Server");
-    resize(1000, 600);
-    setMinimumSize(800, 500);
+    resize(GUIConstants::ADD_SERVER_DIALOG_WIDTH, GUIConstants::ADD_SERVER_DIALOG_HEIGHT);
+    setMinimumSize(GUIConstants::ADD_SERVER_DIALOG_MIN_WIDTH, GUIConstants::ADD_SERVER_DIALOG_MIN_HEIGHT);
 
     setupUI();
     initAvailableServers();
@@ -125,7 +125,7 @@ void AddServerDialog::initAvailableServers()
         if (!instance.assigned())
         {
             const auto loggerComponent = AppContext::getLoggerComponent();
-        LOG_W("No openDAQ instance available");
+            LOG_W("No openDAQ instance available");
             return;
         }
 
@@ -182,9 +182,7 @@ void AddServerDialog::onServerDoubleClicked(QTreeWidgetItem* item, int column)
     
     // Accept the dialog if a server type was selected
     if (!selectedServerType.isEmpty())
-    {
         accept();
-    }
 }
 
 void AddServerDialog::updateConfigView()

@@ -1,5 +1,7 @@
 #include "property/coretypes/enumeration_core_type_handler.h"
 #include "context/AppContext.h"
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 EnumerationCoreTypeHandler::EnumerationCoreTypeHandler(const daq::EnumerationTypePtr& enumType)
     : enumType(enumType)
@@ -18,8 +20,16 @@ QString EnumerationCoreTypeHandler::valueToString(const daq::BaseObjectPtr& valu
             return QString::fromStdString(valueName);
         }
     }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Error converting enumeration to string: {}", e.what());
+        return QString("Error");
+    }
     catch (...)
     {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Unknown error converting enumeration to string");
         return QString("Error");
     }
 
@@ -57,8 +67,16 @@ QStringList EnumerationCoreTypeHandler::getSelectionValues() const
                 result.append(QString::fromStdString(enumName));
         }
     }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Error getting enumeration selection values: {}", e.what());
+        // Return empty list on error
+    }
     catch (...)
     {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Unknown error getting enumeration selection values");
         // Return empty list on error
     }
 

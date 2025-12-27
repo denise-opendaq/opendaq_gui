@@ -2,6 +2,7 @@
 #include "coreobjects/property_factory.h"
 #include "opendaq/server_capability_ptr.h"
 #include "widgets/property_object_view.h"
+#include "context/gui_constants.h"
 #include <QSplitter>
 #include <QListWidgetItem>
 #include <QCheckBox>
@@ -23,8 +24,8 @@ AddDeviceConfigDialog::AddDeviceConfigDialog(const daq::DevicePtr& parentDevice,
     , addButton(nullptr)
 {
     setWindowTitle("Add with config");
-    resize(1200, 600);
-    setMinimumSize(1000, 500);
+    resize(GUIConstants::ADD_DEVICE_CONFIG_DIALOG_WIDTH, GUIConstants::ADD_DEVICE_CONFIG_DIALOG_HEIGHT);
+    setMinimumSize(GUIConstants::ADD_DEVICE_CONFIG_DIALOG_MIN_WIDTH, GUIConstants::ADD_DEVICE_CONFIG_DIALOG_MIN_HEIGHT);
 
     setupUI();
     initSelectionWidgets();
@@ -124,8 +125,15 @@ daq::StringPtr getPrefixFromConnectionString(const daq::StringPtr& connectionStr
         std::string str = connectionString;
         return str.substr(0, str.find("://"));
     }
-    catch(...)
+    catch (const std::exception& e)
     {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Error parsing connection string: {}", e.what());
+    }
+    catch (...)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_W("Unknown error parsing connection string");
     }
 
     return "";
@@ -160,9 +168,7 @@ void AddDeviceConfigDialog::initSelectionWidgets()
     }
 
     if (!config.hasProperty("General"))
-    {
         config.addProperty(daq::ObjectProperty("General", daq::PropertyObject()));
-    }
 
     try
     {
@@ -285,13 +291,9 @@ void AddDeviceConfigDialog::updateConfigTabs()
 void AddDeviceConfigDialog::updateConnectionString()
 {
     if (!selectedConfigurationProtocolId.isEmpty())
-    {
         defaultConnectionString = QString::fromStdString(getConnectionStringFromServerCapability(selectedConfigurationProtocolId));
-    }
     else if (!selectedStreamingProtocolId.isEmpty())
-    {
         defaultConnectionString = QString::fromStdString(getConnectionStringFromServerCapability(selectedStreamingProtocolId));
-    }
 }
 
 void AddDeviceConfigDialog::onProtocolSelected(int index)
@@ -327,7 +329,7 @@ void AddDeviceConfigDialog::onStreamingProtocolSelected(int index)
         catch (const std::exception& e)
         {
             const auto loggerComponent = AppContext::getLoggerComponent();
-        LOG_W("Error updating PrioritizedStreamingProtocols: {}", e.what());
+            LOG_W("Error updating PrioritizedStreamingProtocols: {}", e.what());
         }
     }
     

@@ -10,6 +10,7 @@ set(HEADERS
     include/context/AppContext.h
     include/context/UpdateScheduler.h
     include/context/icon_provider.h
+    include/context/gui_constants.h
 )
 
 # Source files

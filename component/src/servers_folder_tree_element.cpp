@@ -3,7 +3,6 @@
 #include "context/AppContext.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 
 ServersFolderTreeElement::ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
@@ -33,7 +32,7 @@ bool ServersFolderTreeElement::visible() const
     if (isLocalDeviceFolder())
         return true;
 
-    if (children.isEmpty())
+    if (children.empty())
         return false;
 
     return ComponentTreeElement::visible();
@@ -68,9 +67,7 @@ void ServersFolderTreeElement::onAddServer()
     {
         QString serverType = dialog.getServerType();
         if (serverType.isEmpty())
-        {
             return;
-        }
 
         try
         {

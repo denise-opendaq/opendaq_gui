@@ -1,5 +1,8 @@
 #include "property/coretypes/default_core_type_handler.h"
 #include "property/default_core_type.h"
+#include "context/AppContext.h"
+#include <opendaq/custom_log.h>
+#include <opendaq/logger_component_ptr.h>
 
 DefaultCoreTypeHandler::DefaultCoreTypeHandler(daq::CoreType coreType)
     : coreType(coreType)
@@ -15,8 +18,16 @@ QString DefaultCoreTypeHandler::valueToString(const daq::BaseObjectPtr& value) c
     {
         return QString::fromStdString(value.toString());
     }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Error converting value to string: {}", e.what());
+        return QString("Error");
+    }
     catch (...)
     {
+        const auto loggerComponent = AppContext::getLoggerComponent();
+        LOG_D("Unknown error converting value to string");
         return QString("Error");
     }
 }

@@ -1,6 +1,5 @@
 #include "context/icon_provider.h"
 #include "context/AppContext.h"
-#include <QDebug>
 #include <QApplication>
 #include <QPalette>
 #include <opendaq/custom_log.h>
@@ -10,7 +9,8 @@
 // Resources in static libraries need explicit initialization in Qt6
 // The function is defined in component library's qrc_icons.cpp
 #ifdef QT_NAMESPACE
-namespace QT_NAMESPACE {
+namespace QT_NAMESPACE 
+{
 #endif
     extern int qInitResources_icons();
 #ifdef QT_NAMESPACE

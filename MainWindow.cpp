@@ -18,12 +18,14 @@
 #include <QCursor>
 #include <opendaq/custom_log.h>
 
+#include "context/gui_constants.h"
+
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
     setWindowTitle("OpenDAQ GUI");
-    resize(1200, 800);
-    setMinimumSize(800, 600);
+    resize(GUIConstants::DEFAULT_WINDOW_WIDTH, GUIConstants::DEFAULT_WINDOW_HEIGHT);
+    setMinimumSize(GUIConstants::MIN_WINDOW_WIDTH, GUIConstants::MIN_WINDOW_HEIGHT);
 
     setupMenuBar();
     setupUI();
@@ -270,8 +272,11 @@ void MainWindow::setupUI()
     // === LEFT PANEL (Tree) ===
     QWidget* leftWidget = new QWidget();
     QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
-    leftLayout->setContentsMargins(8, 8, 8, 8);
-    leftLayout->setSpacing(8);
+    leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
     viewSelector = new QComboBox();
     viewSelector->addItems({"System Overview", "Signals", "Channels", "Function blocks", "Full Topology"});
@@ -298,7 +303,10 @@ void MainWindow::setupUI()
     // === RIGHT PANEL (Content + Log) ===
     QWidget* rightWidget = new QWidget();
     QVBoxLayout* rightLayout = new QVBoxLayout(rightWidget);
-    rightLayout->setContentsMargins(8, 8, 8, 8);
+    rightLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                      GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                      GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                      GUIConstants::DEFAULT_LAYOUT_MARGIN);
     rightLayout->setSpacing(0);
 
     verticalSplitter = new QSplitter(Qt::Vertical, rightWidget);
@@ -328,10 +336,12 @@ void MainWindow::setupUI()
     LOG_I("Tip: Drag tabs like in VSCode to move/split/detach.");
 
 
-    verticalSplitter->setSizes({600, 200});
+    verticalSplitter->setSizes({GUIConstants::DEFAULT_VERTICAL_SPLITTER_CONTENT, 
+                                 GUIConstants::DEFAULT_VERTICAL_SPLITTER_LOG});
 
     mainSplitter->addWidget(rightWidget);
-    mainSplitter->setSizes({300, 900});
+    mainSplitter->setSizes({GUIConstants::DEFAULT_HORIZONTAL_SPLITTER_LEFT, 
+                            GUIConstants::DEFAULT_HORIZONTAL_SPLITTER_RIGHT});
 }
 
 DetachableTabWidget* MainWindow::createTabGroup()

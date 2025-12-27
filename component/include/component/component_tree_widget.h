@@ -3,6 +3,7 @@
 #include "component_factory.h"
 #include "base_tree_element.h"
 #include "context/AppContext.h"
+#include <memory>
 #include <opendaq/opendaq.h>
 
 // Main widget that wraps QTreeWidget for openDAQ components
@@ -44,5 +45,5 @@ private Q_SLOTS:
     void onContextMenuRequested(const QPoint& pos);
 
 private:
-    BaseTreeElement* rootElement;
+    std::unique_ptr<BaseTreeElement> rootElement;
 };

@@ -5,6 +5,12 @@
 #include <QPointer>
 #include <QList>
 
+// Constants for timer intervals
+namespace UpdateSchedulerConstants {
+    constexpr int SCHEDULER_INTERVAL_MS = 10;      // OpenDAQ scheduler main loop interval
+    constexpr int DEFAULT_UPDATABLES_INTERVAL_MS = 1000;  // Default update interval for widgets
+}
+
 // Interface for objects that need periodic updates
 // Must inherit from QObject to work with QPointer
 class IUpdatable

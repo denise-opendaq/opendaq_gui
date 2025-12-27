@@ -4,6 +4,7 @@
 #include <QTextEdit>
 #include <QSet>
 #include <QString>
+#include <memory>
 
 // Forward declarations to avoid including openDAQ headers in Qt header files
 // This prevents conflicts between openDAQ's operator& and Qt's macros
@@ -68,6 +69,6 @@ private:
     AppContext& operator=(const AppContext&&) = delete;
 
     class Private;
-    Private* d;
+    std::unique_ptr<Private> d;
 };
 

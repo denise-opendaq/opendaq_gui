@@ -1,7 +1,6 @@
 #include "component/server_tree_element.h"
 #include <QMenu>
 #include <QAction>
-#include <QDebug>
 #include <QMessageBox>
 #include "component/servers_folder_tree_element.h"
 

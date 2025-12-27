@@ -8,6 +8,7 @@
 #include <QMap>
 #include <QIcon>
 #include <memory>
+#include <map>
 #include "context/icon_provider.h"
 #include "context/AppContext.h"
 
@@ -38,10 +39,10 @@ public:
     // Show/hide based on filter (placeholder for future filtering logic)
     virtual void showFiltered(QTreeWidgetItem* parentTreeItem = nullptr);
 
-    // Add child element
-    BaseTreeElement* addChild(BaseTreeElement* child);
+    // Add child element (takes ownership)
+    BaseTreeElement* addChild(std::unique_ptr<BaseTreeElement> child);
 
-    // Remove child element
+    // Remove child element (releases ownership)
     void removeChild(BaseTreeElement* child);
 
     // Close all tabs associated with this component
@@ -69,13 +70,13 @@ public:
     QString getType() const { return type; }
     QTreeWidgetItem* getTreeItem() const { return treeItem; }
     BaseTreeElement* getParent() const { return parentElement; }
-    QMap<QString, BaseTreeElement*> getChildren() const { return children; }
+    QMap<QString, BaseTreeElement*> getChildren() const;
 
 protected:
     QTreeWidget* tree;
     QTreeWidgetItem* treeItem;
     BaseTreeElement* parentElement;
-    QMap<QString, BaseTreeElement*> children;
+    std::map<QString, std::unique_ptr<BaseTreeElement>> children;
 
     QString localId;
     QString globalId;
