@@ -4,6 +4,7 @@ project(opendaq_qt_gui VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -30,6 +31,7 @@ add_subdirectory(property)
 add_subdirectory(widgets)
 add_subdirectory(dialogs)
 add_subdirectory(component)
+add_subdirectory(opendaq_qt_module)
 
 # Source files
 set(SOURCES
@@ -64,6 +66,7 @@ target_link_libraries(${PROJECT_NAME}
         dialogs
         property
         widgets
+        daq::qt_module
         daq::coreobjects
         daq::coretypes
         daq::opendaq

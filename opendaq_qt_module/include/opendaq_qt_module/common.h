@@ -1,0 +1,5 @@
+#pragma once
+#include <coretypes/common.h>
+
+#define BEGIN_NAMESPACE_OPENDAQ_QT_MODULE BEGIN_NAMESPACE_OPENDAQ_MODULE(opendaq_qt_module)
+#define END_NAMESPACE_OPENDAQ_QT_MODULE END_NAMESPACE_OPENDAQ_MODULE
