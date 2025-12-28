@@ -20,6 +20,8 @@ public:
     BasePropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop);
     virtual ~BasePropertyItem() = default;
 
+    daq::PropertyPtr getProperty() const;
+
     daq::StringPtr getName() const;
 
     // What to show in "Value" column
@@ -37,6 +39,15 @@ public:
     // Subtree for nested PropertyObject
     virtual bool hasSubtree() const;
 
+    virtual bool isExpanded() const;
+    virtual void setExpanded(bool expanded);
+
+    // Check if property is visible
+    virtual bool isVisible() const;
+
+    // Refresh property value (update internal state if needed)
+    virtual void refresh(PropertySubtreeBuilder&);
+
     virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool force = false);
 
     // Events
@@ -48,7 +59,13 @@ public:
     // By default, reads text from column 1 and sets property value
     virtual void commitEdit(QTreeWidgetItem* item, int column);
 
+    // Widget management
+    QTreeWidgetItem* getWidgetItem() const { return widgetItem.get(); }
+    void setWidgetItem(QTreeWidgetItem* item);
+
 protected:
     daq::PropertyObjectPtr owner;
     daq::PropertyPtr prop;
+    bool expanded = false;
+    std::unique_ptr<QTreeWidgetItem> widgetItem;
 };

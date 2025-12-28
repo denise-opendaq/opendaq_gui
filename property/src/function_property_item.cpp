@@ -46,13 +46,17 @@ QString FunctionPropertyItem::showValue() const
         if (callableInfo.assigned())
         {
             QStringList argStrings;
-            for (const auto& argInfo :  callableInfo.getArguments())
+            const auto argsInfo = callableInfo.getArguments();
+            if (argsInfo.assigned())
             {
-                auto argName = argInfo.getName();
-                daq::CoreType argType;
-                argInfo->getType(&argType);
-                QString argTypeStr = coreTypeToString(argType);
-                argStrings.append(QString("%1: %2").arg(QString::fromStdString(argName)).arg(argTypeStr));
+                for (const auto& argInfo : argsInfo)
+                {
+                    auto argName = argInfo.getName();
+                    daq::CoreType argType;
+                    argInfo->getType(&argType);
+                    QString argTypeStr = coreTypeToString(argType);
+                    argStrings.append(QString("%1: %2").arg(QString::fromStdString(argName)).arg(argTypeStr));
+                }
             }
             return QString("%1(%2)").arg(typeStr).arg(argStrings.join(", "));
         }
@@ -63,6 +67,11 @@ QString FunctionPropertyItem::showValue() const
     }
     
     return typeStr;
+}
+
+bool FunctionPropertyItem::isReadOnly() const
+{
+    return false;
 }
 
 bool FunctionPropertyItem::isValueEditable() const

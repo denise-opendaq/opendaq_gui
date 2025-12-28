@@ -86,11 +86,15 @@ void CallFunctionDialog::createArgumentsPropertyObject()
     if (!callableInfo.assigned())
         return;
 
+    const auto argsInfo = callableInfo.getArguments();
+    if (!argsInfo.assigned())
+        return;
+
     try
     {
         // Create PropertyObject for arguments
         argumentsPropertyObject = daq::PropertyObject();
-        for (const auto& argInfo : callableInfo.getArguments())
+        for (const auto& argInfo : argsInfo)
         {
             auto argName = argInfo.getName();
             daq::CoreType argType;
@@ -98,8 +102,8 @@ void CallFunctionDialog::createArgumentsPropertyObject()
 
             // Create property using PropertyBuilder with setValueType
             daq::PropertyPtr property = daq::PropertyBuilder(argName).setValueType(argType)
-                                                                           .setDefaultValue(createDefaultValue(argType))
-                                                                           .build();
+                                                                        .setDefaultValue(createDefaultValue(argType))
+                                                                        .build();
             
             argumentsPropertyObject.addProperty(property);
         }
@@ -121,12 +125,12 @@ daq::BaseObjectPtr CallFunctionDialog::collectArguments()
     if (!argumentsPropertyObject.assigned())
         return nullptr; // No arguments
 
+    auto args = callableInfo.getArguments();
+    if (!args.assigned() || args.getCount() == 0)
+        return nullptr;
+
     try
     {
-        auto args = callableInfo.getArguments();
-        if (!args.assigned() || args.getCount() == 0)
-            return nullptr;
-
         if (args.getCount() == 1)
         {
             // Single argument - return the value directly

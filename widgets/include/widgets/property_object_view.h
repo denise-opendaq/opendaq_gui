@@ -4,14 +4,21 @@
 #include "context/AppContext.h"
 
 #include <memory>
-#include <vector>
-#include <utility>
 #include <unordered_map>
 
 // Custom hash function for PropertyObjectPtr that uses the object's address
 struct PropertyObjectPtrHash
 {
     std::size_t operator()(const daq::PropertyObjectPtr& ptr) const noexcept
+    {
+        return std::hash<void*>{}(ptr.getObject());
+    }
+};
+
+// Custom hash function for PropertyPtr that uses the object's address
+struct PropertyPtrHash
+{
+    std::size_t operator()(const daq::PropertyPtr& ptr) const noexcept
     {
         return std::hash<void*>{}(ptr.getObject());
     }
@@ -75,16 +82,19 @@ private:
 
 private Q_SLOTS:
     void onItemExpanded(QTreeWidgetItem* item);
+    void onItemCollapsed(QTreeWidgetItem* item);
     void onItemChanged(QTreeWidgetItem* item, int column);
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
 
 private:
     void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
+    daq::PropertyObjectPtr getChildObject(std::string path);
+    void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
 
 private:
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::string rootPath;
-    std::vector<std::unique_ptr<BasePropertyItem>> items;
+    std::unordered_map<daq::PropertyPtr, std::unique_ptr<BasePropertyItem>, PropertyPtrHash> items;
 };

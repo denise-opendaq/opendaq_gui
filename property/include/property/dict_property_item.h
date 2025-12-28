@@ -37,6 +37,5 @@ public:
 
 private:
     daq::DictPtr<daq::IBaseObject, daq::IBaseObject> dict;
-    bool loaded = false;
     std::map<QTreeWidgetItem*, daq::BaseObjectPtr> itemToKeyMap;
 };

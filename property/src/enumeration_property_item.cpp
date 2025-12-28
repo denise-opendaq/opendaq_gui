@@ -60,8 +60,7 @@ void EnumerationPropertyItem::handle_double_click(PropertyObjectView* view, QTre
         handler->handleDoubleClick(view, item, currentValue, [this, view, handler](const daq::BaseObjectPtr& newValue) 
         {
             owner.setPropertyValue(getName(), newValue);
-            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
-            view->onPropertyValueChanged(owner);
+            view->onPropertyValueChanged(owner, true);
         });
     }
     catch (const std::exception& e)

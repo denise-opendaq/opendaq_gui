@@ -12,10 +12,10 @@
 
 void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (!force && (loaded || !list.assigned()))
+    if (!force && (expanded || !list.assigned()))
         return;
 
-    loaded = true;
+    expanded = true;
 
     // remove dummy children
     while (self->childCount() > 0)
@@ -177,7 +177,8 @@ void ListPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
 
         if (valueHandler->hasSelection())
         {
-            valueHandler->handleDoubleClick(view, item, currentValue, [this, index, valueHandler](const daq::BaseObjectPtr& newValue) {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, index, valueHandler](const daq::BaseObjectPtr& newValue) 
+            {
                 list.setItemAt(index, newValue);
                 owner.setPropertyValue(getName(), list);
             });

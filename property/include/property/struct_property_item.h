@@ -32,6 +32,5 @@ public:
 
 private:
     daq::StructPtr structObj;
-    bool loaded = false;
     std::map<QTreeWidgetItem*, daq::StringPtr> itemToKeyMap;
 };

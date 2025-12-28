@@ -9,10 +9,10 @@
 
 void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (!force && (loaded || !structObj.assigned()))
+    if (!force && (expanded || !structObj.assigned()))
         return;
 
-    loaded = true;
+    expanded = true;
 
     // remove dummy children
     while (self->childCount() > 0)
@@ -95,7 +95,8 @@ void StructPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidg
         if (valueHandler && valueHandler->hasSelection())
         {
             // Capture handler as shared_ptr to keep it alive during async callback
-            valueHandler->handleDoubleClick(view, item, currentValue, [this, fieldKey, valueHandler](const daq::BaseObjectPtr& newValue) {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, fieldKey, valueHandler](const daq::BaseObjectPtr& newValue) 
+            {
                 auto structBuilder = daq::StructBuilder(structObj);
                 structObj = structBuilder.set(fieldKey, newValue).build();
                 owner.setPropertyValue(getName(), structObj);

@@ -36,6 +36,5 @@ public:
 
 private:
     daq::ListPtr<daq::IBaseObject> list;
-    bool loaded = false;
     std::map<QTreeWidgetItem*, size_t> itemToKeyMap;
 };

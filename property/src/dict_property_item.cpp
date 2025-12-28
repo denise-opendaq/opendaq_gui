@@ -12,10 +12,10 @@
 
 void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (!force && (loaded || !dict.assigned()))
+    if (!force && (expanded || !dict.assigned()))
         return;
 
-    loaded = true;
+    expanded = true;
 
     // remove dummy children
     while (self->childCount() > 0)
@@ -194,11 +194,10 @@ void DictPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
             auto value = dict.get(key);
             dict.remove(key);
 
-            keyHandler->handleDoubleClick(view, item, key, [this, value, item, keyHandler](const daq::BaseObjectPtr& newKey) {
+            keyHandler->handleDoubleClick(view, item, key, [this, value, item, keyHandler](const daq::BaseObjectPtr& newKey) 
+            {
                 dict.set(newKey, value);
                 owner.setPropertyValue(getName(), dict);
-
-                // Update the map with new key
                 itemToKeyMap[item] = newKey;
             });
         }
@@ -211,7 +210,8 @@ void DictPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
 
         if (valueHandler && valueHandler->hasSelection())
         {
-            valueHandler->handleDoubleClick(view, item, currentValue, [this, key, valueHandler](const daq::BaseObjectPtr& newValue) {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, key, valueHandler](const daq::BaseObjectPtr& newValue) 
+            {
                 dict.set(key, newValue);
                 owner.setPropertyValue(getName(), dict);
             });
