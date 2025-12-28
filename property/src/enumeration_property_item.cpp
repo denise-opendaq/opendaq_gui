@@ -1,5 +1,5 @@
 #include "property/enumeration_property_item.h"
-#include "property/coretypes/enumeration_core_type_handler.h"
+#include "coretypes/enumeration_core_type_handler.h"
 #include "widgets/property_object_view.h"
 #include "context/AppContext.h"
 #include <QTreeWidget>

@@ -1,6 +1,6 @@
 #include "property/struct_property_item.h"
 #include "widgets/property_object_view.h"
-#include "property/coretypes/core_type_factory.h"
+#include "coretypes/core_type_factory.h"
 #include <QTreeWidgetItem>
 
 // ============================================================================

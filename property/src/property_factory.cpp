@@ -6,6 +6,7 @@
 #include "property/int_property_item.h"
 #include "property/bool_property_item.h"
 #include "property/enumeration_property_item.h"
+#include "property/function_property_item.h"
 
 std::unique_ptr<BasePropertyItem> createPropertyItem(const daq::PropertyObjectPtr& obj, const daq::PropertyPtr& prop)
 {
@@ -26,6 +27,9 @@ std::unique_ptr<BasePropertyItem> createPropertyItem(const daq::PropertyObjectPt
             return std::make_unique<BoolPropertyItem>(obj, prop);
         case daq::CoreType::ctEnumeration:
             return std::make_unique<EnumerationPropertyItem>(obj, prop);
+        case daq::CoreType::ctFunc:
+        case daq::CoreType::ctProc:
+            return std::make_unique<FunctionPropertyItem>(obj, prop);
         default:
             return std::make_unique<BasePropertyItem>(obj, prop);
     }

@@ -1,26 +1,29 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(dialogs VERSION 1.0 LANGUAGES CXX)
+project(coretypes VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Header files
 set(HEADERS
-    include/dialogs/add_device_dialog.h
-    include/dialogs/add_device_config_dialog.h
-    include/dialogs/add_function_block_dialog.h
-    include/dialogs/add_server_dialog.h
-    include/dialogs/call_function_dialog.h
+    include/coretypes/base_core_type_handler.h
+    include/coretypes/bool_core_type_handler.h
+    include/coretypes/default_core_type_handler.h
+    include/coretypes/enumeration_core_type_handler.h
+    include/coretypes/list_core_type_handler.h
+    include/coretypes/core_type_factory.h
+    include/coretypes/default_core_type.h
 )
 
 # Source files
 set(SOURCES
-    src/add_device_dialog.cpp
-    src/add_device_config_dialog.cpp
-    src/add_function_block_dialog.cpp
-    src/add_server_dialog.cpp
-    src/call_function_dialog.cpp
+    src/base_core_type_handler.cpp
+    src/bool_core_type_handler.cpp
+    src/default_core_type_handler.cpp
+    src/enumeration_core_type_handler.cpp
+    src/list_core_type_handler.cpp
+    src/core_type_factory.cpp
 )
 
 # Create library
@@ -42,10 +45,9 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
-        context
         widgets
+        context
         property
-        coretypes
         daq::coreobjects
         daq::coretypes
         daq::opendaq

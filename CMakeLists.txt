@@ -26,6 +26,7 @@ find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
 
 add_subdirectory(context)
 add_subdirectory(logger)
+add_subdirectory(coretypes)
 add_subdirectory(property)
 add_subdirectory(widgets)
 add_subdirectory(dialogs)

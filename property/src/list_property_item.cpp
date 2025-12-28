@@ -1,7 +1,7 @@
 #include "property/list_property_item.h"
 #include "widgets/property_object_view.h"
-#include "property/default_core_type.h"
-#include "property/coretypes/core_type_factory.h"
+#include "coretypes/default_core_type.h"
+#include "coretypes/core_type_factory.h"
 #include <QTreeWidgetItem>
 #include <QMenu>
 #include <QMessageBox>
@@ -121,9 +121,7 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
 
             // Reload only this subtree
             QTreeWidgetItem* parentItem = isChildItem ? item->parent() : item;
-            loaded = false;
-            PropertySubtreeBuilder builder(*view);
-            build_subtree(builder, parentItem);
+            view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
         {
@@ -144,9 +142,7 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), list);
 
             // Reload only this subtree
-            loaded = false;
-            PropertySubtreeBuilder builder(*view);
-            build_subtree(builder, item->parent());
+            view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
         {

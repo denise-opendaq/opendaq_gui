@@ -1,5 +1,5 @@
 #include "property/bool_property_item.h"
-#include "property/coretypes/bool_core_type_handler.h"
+#include "coretypes/bool_core_type_handler.h"
 #include "widgets/property_object_view.h"
 #include <QTreeWidget>
 #include <QMessageBox>
