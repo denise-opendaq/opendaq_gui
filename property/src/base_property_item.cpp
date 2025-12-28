@@ -11,6 +11,11 @@ daq::PropertyPtr BasePropertyItem::getProperty() const
     return prop;
 }
 
+daq::PropertyObjectPtr BasePropertyItem::getOwner() const
+{
+    return owner;
+}
+
 daq::StringPtr BasePropertyItem::getName() const
 {
     return prop.getName();

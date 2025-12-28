@@ -34,7 +34,7 @@ void ObjectPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWid
     expanded = true;
 
     // Register this nested PropertyObject with this ObjectPropertyItem
-    builder.view.propertyObjectToLogic[nested] = this;
+    builder.view.propertyObjectToLogic.insert_or_assign(nested,this);
     builder.buildFromPropertyObject(self, nested);
 }
 
@@ -46,7 +46,7 @@ void ObjectPropertyItem::commitEdit(QTreeWidgetItem*, int)
 void ObjectPropertyItem::refresh(PropertySubtreeBuilder& builder)
 {
     BasePropertyItem::refresh(builder);
-    if (expanded && widgetItem)
+    if (widgetItem)
         build_subtree(builder, widgetItem.get(), true);
 }
 

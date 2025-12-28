@@ -81,6 +81,39 @@ void CallFunctionDialog::setupUI()
     mainLayout->addWidget(buttonBox);
 }
 
+daq::IntfID getInterfaceIdFromCoreType(daq::CoreType type)
+{
+    switch (type)
+    {
+        case daq::CoreType::ctBool:
+            return daq::IBoolean::Id;
+        case daq::CoreType::ctInt:
+            return daq::IInteger::Id;
+        case daq::CoreType::ctFloat:
+            return daq::IFloat::Id;
+        case daq::CoreType::ctString:
+            return daq::IString::Id;
+        case daq::CoreType::ctList:
+            return daq::IList::Id;
+        case daq::CoreType::ctDict:
+            return daq::IDict::Id;
+        case daq::CoreType::ctRatio:
+            return daq::IRatio::Id;
+        case daq::CoreType::ctProc:
+            return daq::IProcedure::Id;
+        case daq::CoreType::ctFunc:
+            return daq::IFunction::Id;
+        case daq::CoreType::ctComplexNumber:
+            return daq::IComplexNumber::Id;
+        case daq::CoreType::ctStruct:
+            return daq::IStruct::Id;
+        case daq::CoreType::ctEnumeration:
+            return daq::IEnumeration::Id;
+        default:
+            return daq::IBaseObject::Id;
+    }
+}
+
 void CallFunctionDialog::createArgumentsPropertyObject()
 {
     if (!callableInfo.assigned())
@@ -97,12 +130,28 @@ void CallFunctionDialog::createArgumentsPropertyObject()
         for (const auto& argInfo : argsInfo)
         {
             auto argName = argInfo.getName();
-            daq::CoreType argType;
-            argInfo->getType(&argType);
+            daq::CoreType argType = argInfo.getType();
+
+            daq::BaseObjectPtr defaultValue;
+            if (argType == daq::CoreType::ctList)
+            {
+                const auto itemType = getInterfaceIdFromCoreType(argInfo.getItemType());
+                defaultValue = ListWithElementType_Create(itemType);
+            }
+            else if (argType == daq::CoreType::ctDict)
+            {
+                const auto keyType = getInterfaceIdFromCoreType(argInfo.getKeyType());
+                const auto itemType = getInterfaceIdFromCoreType(argInfo.getItemType());
+                defaultValue = DictWithExpectedTypes_Create(keyType, itemType);
+            }
+            else 
+            {
+                defaultValue = createDefaultValue(argType);
+            }
 
             // Create property using PropertyBuilder with setValueType
             daq::PropertyPtr property = daq::PropertyBuilder(argName).setValueType(argType)
-                                                                        .setDefaultValue(createDefaultValue(argType))
+                                                                        .setDefaultValue(defaultValue)
                                                                         .build();
             
             argumentsPropertyObject.addProperty(property);

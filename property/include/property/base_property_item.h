@@ -21,6 +21,7 @@ public:
     virtual ~BasePropertyItem() = default;
 
     daq::PropertyPtr getProperty() const;
+    daq::PropertyObjectPtr getOwner() const;
 
     daq::StringPtr getName() const;
 

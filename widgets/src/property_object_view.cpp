@@ -106,7 +106,7 @@ daq::PropertyObjectPtr PropertyObjectView::getChildObject(std::string path)
             path = path.substr(rootPath.length() + 1);
     }
 
-    if (!path.empty())
+    if (path.empty())
         return root;
 
     if (root.hasProperty(path))
@@ -173,7 +173,8 @@ void PropertyObjectView::onPropertyValueChanged(const daq::PropertyObjectPtr& ob
 BasePropertyItem* PropertyObjectView::store(std::unique_ptr<BasePropertyItem> item)
 {
     BasePropertyItem* itemPtr = item.get();
-    items.insert_or_assign(itemPtr->getProperty(), std::move(item));
+    PropertyKey key(itemPtr->getOwner(), itemPtr->getName());
+    items.insert_or_assign(key, std::move(item));
     return itemPtr;
 }
 
@@ -293,7 +294,8 @@ void PropertyObjectView::removeChildProperty(QTreeWidgetItem* parentWidget, cons
             childLogic->setWidgetItem(nullptr);
 
             // Remove from items map
-            items.erase(childLogic->getProperty());
+            PropertyKey key(childLogic->getOwner(), propName);
+            items.erase(key);
             break;
         }
     }
@@ -357,7 +359,11 @@ void PropertySubtreeBuilder::buildFromPropertyObject(QTreeWidgetItem* parent, co
 
     for (const auto& prop: obj.getAllProperties())
     {
-        if (auto it = view.items.find(prop); it != view.items.end())
+        // Try to find existing item by PropertyKey (owner + name)
+        PropertyKey key(obj, prop.getName());
+        auto it = view.items.find(key);
+
+        if (it != view.items.end())
             addItem(parent, std::move(it->second));
         else
             addItem(parent, createPropertyItem(obj, prop));

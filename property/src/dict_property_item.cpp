@@ -10,6 +10,19 @@
 // DictPropertyItem implementation
 // ============================================================================
 
+void DictPropertyItem::refresh(PropertySubtreeBuilder& builder)
+{
+    // Refresh dict reference
+    dict = owner.getPropertyValue(getName());
+
+    // Call base refresh to update name and value display
+    BasePropertyItem::refresh(builder);
+
+    // If expanded, rebuild the subtree
+    if (widgetItem)
+        build_subtree(builder, widgetItem.get(), true);
+}
+
 void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !dict.assigned()))

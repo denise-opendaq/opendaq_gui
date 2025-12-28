@@ -10,6 +10,20 @@
 // ListPropertyItem implementation
 // ============================================================================
 
+void ListPropertyItem::refresh(PropertySubtreeBuilder& builder)
+{
+    // Refresh list reference
+    list = owner.getPropertyValue(getName());
+
+    // Call base refresh to update name and value display
+    BasePropertyItem::refresh(builder);
+
+    // If expanded, rebuild the subtree
+    if (widgetItem)
+        build_subtree(builder, widgetItem.get(), true);
+}
+
+
 void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !list.assigned()))
@@ -36,7 +50,7 @@ void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         // Use handler to display value
         auto value = list[i];
         auto valueHandler = CoreTypeFactory::createHandler(value, prop.getItemType());
-        treeChild->setText(1, valueHandler->valueToString(list[i]));
+        treeChild->setText(1, valueHandler->valueToString(value));
 
         if (listEditable)
         {
@@ -103,9 +117,7 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
     QAction* removeAction = nullptr;
 
     if (isChildItem)
-    {
         removeAction = menu.addAction("Remove item");
-    }
 
     QAction* selectedAction = menu.exec(globalPos);
 

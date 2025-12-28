@@ -15,12 +15,30 @@ struct PropertyObjectPtrHash
     }
 };
 
-// Custom hash function for PropertyPtr that uses the object's address
-struct PropertyPtrHash
+// Key for items map: (PropertyObject owner, property name)
+struct PropertyKey
 {
-    std::size_t operator()(const daq::PropertyPtr& ptr) const noexcept
+    void* ownerPtr;  // Raw pointer for comparison
+    std::string name;
+
+    PropertyKey(const daq::PropertyObjectPtr& owner, const std::string& propName)
+        : ownerPtr(owner.getObject()), name(propName)
+    {}
+
+    bool operator==(const PropertyKey& other) const
     {
-        return std::hash<void*>{}(ptr.getObject());
+        return ownerPtr == other.ownerPtr && name == other.name;
+    }
+};
+
+// Hash function for PropertyKey
+struct PropertyKeyHash
+{
+    std::size_t operator()(const PropertyKey& key) const noexcept
+    {
+        std::size_t h1 = std::hash<void*>{}(key.ownerPtr);
+        std::size_t h2 = std::hash<std::string>{}(key.name);
+        return h1 ^ (h2 << 1);
     }
 };
 
@@ -96,5 +114,5 @@ private:
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::string rootPath;
-    std::unordered_map<daq::PropertyPtr, std::unique_ptr<BasePropertyItem>, PropertyPtrHash> items;
+    std::unordered_map<PropertyKey, std::unique_ptr<BasePropertyItem>, PropertyKeyHash> items;
 };
