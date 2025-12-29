@@ -16,6 +16,7 @@ namespace daq {
 }
 
 class UpdateScheduler;
+class EventQueue;
 
 // Global application context - singleton for accessing openDAQ instance
 // from anywhere in the application
@@ -25,7 +26,7 @@ class AppContext : public QObject
 
 public:
     // Get singleton instance
-    static AppContext* instance();
+    static AppContext* Instance();
 
     // OpenDAQ instance access
     daq::InstancePtr daqInstance() const;
@@ -36,10 +37,10 @@ public:
     QTextEdit* getLogTextEdit() const;
 
     // Convenience method to get instance from anywhere
-    static daq::InstancePtr daq();
+    static daq::InstancePtr Daq();
 
     // Logger component helper for easy logging
-    static daq::LoggerComponentPtr getLoggerComponent();
+    static daq::LoggerComponentPtr LoggerComponent();
 
     // Visibility settings
     bool showInvisibleComponents() const;
@@ -50,6 +51,9 @@ public:
 
     // Update scheduler for periodic widget updates
     UpdateScheduler* updateScheduler() const;
+
+    EventQueue* eventQueue() const;
+    static EventQueue* DaqEvent();
 
 Q_SIGNALS:
     // Emitted when openDAQ instance changes (pass as void* to avoid template in signal)
@@ -71,4 +75,3 @@ private:
     class Private;
     std::unique_ptr<Private> d;
 };
-

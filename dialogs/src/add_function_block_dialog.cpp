@@ -147,7 +147,7 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting available function blocks: {}", e.what());
     }
 }
@@ -211,7 +211,7 @@ void AddFunctionBlockDialog::updateConfigView()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error creating configuration: {}", e.what());
         addButton->setEnabled(false);
     }

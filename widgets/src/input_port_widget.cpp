@@ -1,6 +1,7 @@
 #include "widgets/input_port_widget.h"
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -58,18 +59,18 @@ InputPortWidget::InputPortWidget(const daq::InputPortPtr& inputPort, ComponentTr
 
     // SignalValueWidget constructor always registers us, but we may not have a signal
     // Unregister first, then we'll register in updateSignal if needed
-    AppContext::instance()->updateScheduler()->unregisterUpdatable(this);
+    AppContext::Instance()->updateScheduler()->unregisterUpdatable(this);
     
     // Subscribe to input port core events to detect signal changes
     if (inputPort.assigned()) 
     {
         try 
         {
-            inputPort.getOnComponentCoreEvent() += daq::event(this, &InputPortWidget::onCoreEvent);
+            *AppContext::DaqEvent() += daq::event(this, &InputPortWidget::onCoreEvent);
         } 
         catch (const std::exception& e)
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("Failed to subscribe to input port events: {}", e.what());
         }
     }
@@ -85,11 +86,11 @@ InputPortWidget::~InputPortWidget()
     {
         try 
         {
-            inputPort.getOnComponentCoreEvent() -= daq::event(this, &InputPortWidget::onCoreEvent);
+            *AppContext::DaqEvent() -= daq::event(this, &InputPortWidget::onCoreEvent);
         } 
         catch (const std::exception& e)
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("Failed to unsubscribe from input port events: {}", e.what());
         }
     }
@@ -124,7 +125,7 @@ void InputPortWidget::updateSignal()
         if (signalChanged) 
         {
             // Unregister old signal if it was assigned
-            AppContext::instance()->updateScheduler()->unregisterUpdatable(this);
+            AppContext::Instance()->updateScheduler()->unregisterUpdatable(this);
             
             // Update the signal
             signal = newSignal;
@@ -132,7 +133,7 @@ void InputPortWidget::updateSignal()
             // Register new signal if assigned
             if (signal.assigned()) 
             {
-                AppContext::instance()->updateScheduler()->registerUpdatable(this);
+                AppContext::Instance()->updateScheduler()->registerUpdatable(this);
                 onScheduledUpdate();
             } 
             else 
@@ -153,7 +154,7 @@ void InputPortWidget::updateSignal()
     } 
     catch (const std::exception& e) 
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error updating signal: {}", e.what());
     }
 }
@@ -175,7 +176,7 @@ void InputPortWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
     } 
     catch (const std::exception& e) 
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
 }

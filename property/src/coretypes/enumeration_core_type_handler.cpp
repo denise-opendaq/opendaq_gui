@@ -6,7 +6,7 @@
 EnumerationCoreTypeHandler::EnumerationCoreTypeHandler(const daq::EnumerationTypePtr& enumType)
     : enumType(enumType)
 {
-    typeManager = AppContext::instance()->daqInstance().getContext().getTypeManager();
+    typeManager = AppContext::Instance()->daqInstance().getContext().getTypeManager();
 }
 
 QString EnumerationCoreTypeHandler::valueToString(const daq::BaseObjectPtr& value) const
@@ -22,13 +22,13 @@ QString EnumerationCoreTypeHandler::valueToString(const daq::BaseObjectPtr& valu
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error converting enumeration to string: {}", e.what());
         return QString("Error");
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error converting enumeration to string");
         return QString("Error");
     }
@@ -69,13 +69,13 @@ QStringList EnumerationCoreTypeHandler::getSelectionValues() const
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error getting enumeration selection values: {}", e.what());
         // Return empty list on error
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error getting enumeration selection values");
         // Return empty list on error
     }

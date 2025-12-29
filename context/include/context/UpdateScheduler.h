@@ -9,6 +9,7 @@
 namespace UpdateSchedulerConstants {
     constexpr int SCHEDULER_INTERVAL_MS = 10;      // OpenDAQ scheduler main loop interval
     constexpr int DEFAULT_UPDATABLES_INTERVAL_MS = 1000;  // Default update interval for widgets
+    constexpr int EVENT_QUEUE_INTERVAL_MS = 10;    // Event queue processing interval
 }
 
 // Interface for objects that need periodic updates
@@ -50,10 +51,12 @@ public:
 private Q_SLOTS:
     void onSchedulerTimeout();
     void onUpdatablesTimeout();
+    void onEventQueueTimeout();
 
 private:
-    QTimer* schedulerTimer;  // Runs every 10ms for openDAQ scheduler
-    QTimer* timer;           // Runs every second for updatables
+    QTimer* schedulerTimer;   // Runs every 10ms for openDAQ scheduler
+    QTimer* timer;            // Runs every second for updatables
+    QTimer* eventQueueTimer;  // Runs every 10ms for event queue processing
     QList<QPointer<QObject>> updatables;
 };
 

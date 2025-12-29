@@ -286,7 +286,7 @@ void MainWindow::setupUI()
 
     // Create ComponentTreeWidget and load openDAQ instance
     componentTreeWidget = new ComponentTreeWidget();
-    auto instance = AppContext::instance()->daqInstance();
+    auto instance = AppContext::Instance()->daqInstance();
     if (instance.assigned())
     {
         componentTreeWidget->loadInstance(instance);
@@ -327,11 +327,11 @@ void MainWindow::setupUI()
     dropOverlay->hide();
 
     // Log panel
-    auto logTextEdit = AppContext::instance()->getLogTextEdit();
+    auto logTextEdit = AppContext::Instance()->getLogTextEdit();
     if(logTextEdit)
         verticalSplitter->addWidget(logTextEdit);
 
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Application started...");
     LOG_I("Tip: Drag tabs like in VSCode to move/split/detach.");
 
@@ -544,7 +544,7 @@ void MainWindow::clearSplitterRecursively(QSplitter* splitter)
 
 void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoint& globalPos)
 {
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Tab '{}' detached to new window", title.toStdString());
 
     auto* sourceWidget = qobject_cast<DetachableTabWidget*>(sender());
@@ -591,7 +591,7 @@ void MainWindow::onTabMoveCompleted(DetachableTabWidget* sourceWidget)
 
 void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& title)
 {
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Detached window '{}' closed", title.toStdString());
 
     // Find and remove the window from our list
@@ -612,7 +612,7 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
 void MainWindow::onViewSelectionChanged(int index)
 {
     const QString viewName = viewSelector->itemText(index);
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("View changed to: {}", viewName.toStdString());
 
     // Update component type filter based on selection
@@ -665,7 +665,7 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)
 {
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Show hidden components: {}", checked ? "ON" : "OFF");
 
     // Update the component tree to show/hide hidden components
@@ -687,7 +687,7 @@ void MainWindow::onTabCloseRequested(int index)
     sourceWidget->removeTab(index);
     widget->deleteLater();
 
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Tab '{}' closed", tabName.toStdString());
 
     cleanupIfEmpty(sourceWidget);
@@ -771,7 +771,7 @@ void MainWindow::onOpenTab(const QString& tabName)
     // Update the menu
     updateAvailableTabsMenu(currentSelectedElement);
 
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Tab '{}' opened", tabName.toStdString());
 }
 
@@ -806,6 +806,6 @@ void MainWindow::restoreDefaultLayout()
 void MainWindow::onResetLayout()
 {
     restoreDefaultLayout();
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Layout reset to default");
 }

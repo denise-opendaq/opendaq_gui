@@ -16,7 +16,7 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
 {
     if (!component.assigned())
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Cannot create tree element: component is null");
         return nullptr;
     }
@@ -75,7 +75,7 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error creating tree element: {}", e.what());
         return nullptr;
     }

@@ -121,10 +121,10 @@ void AddServerDialog::initAvailableServers()
     try
     {
         // Get instance from AppContext
-        auto instance = AppContext::instance()->daqInstance();
+        auto instance = AppContext::Instance()->daqInstance();
         if (!instance.assigned())
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("No openDAQ instance available");
             return;
         }
@@ -151,7 +151,7 @@ void AddServerDialog::initAvailableServers()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting available servers: {}", e.what());
     }
 }
@@ -215,7 +215,7 @@ void AddServerDialog::updateConfigView()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error creating configuration: {}", e.what());
         addButton->setEnabled(false);
     }

@@ -159,12 +159,12 @@ void CallFunctionDialog::createArgumentsPropertyObject()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error creating arguments property object: {}", e.what());
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Unknown error creating arguments property object");
     }
 }
@@ -201,12 +201,12 @@ daq::BaseObjectPtr CallFunctionDialog::collectArguments()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error collecting arguments: {}", e.what());
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Unknown error collecting arguments");
     }
     

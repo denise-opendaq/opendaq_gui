@@ -1,6 +1,7 @@
 #include "widgets/property_object_view.h"
 #include "property/property_factory.h"
 #include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include <QHeaderView>
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
@@ -43,16 +44,16 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
 
     refresh();
     if (owner.assigned())
-        owner.getOnComponentCoreEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+        *AppContext::DaqEvent() += daq::event(this, &PropertyObjectView::componentCoreEventCallback);
 
     // Connect to AppContext to refresh when showInvisible changes
-    connect(AppContext::instance(), &AppContext::showInvisibleChanged, this, &PropertyObjectView::refresh);
+    connect(AppContext::Instance(), &AppContext::showInvisibleChanged, this, &PropertyObjectView::refresh);
 }
 
 PropertyObjectView::~PropertyObjectView()
 {
     if (owner.assigned())
-        owner.getOnComponentCoreEvent() -= daq::event(this, &PropertyObjectView::componentCoreEventCallback);
+        *AppContext::DaqEvent() -= daq::event(this, &PropertyObjectView::componentCoreEventCallback);
 }
 
 void PropertyObjectView::refresh()
@@ -310,7 +311,7 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
 {
     auto* logic = view.store(std::move(item));
 
-    if (!logic->isVisible() && !AppContext::instance()->showInvisibleComponents())
+    if (!logic->isVisible() && !AppContext::Instance()->showInvisibleComponents())
     {
         logic->setWidgetItem(nullptr);
         return nullptr;

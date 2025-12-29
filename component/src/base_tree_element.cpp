@@ -89,7 +89,7 @@ void BaseTreeElement::updateIcon()
         }
         else
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("Failed to load icon: {} for element: {}", iconName.toStdString(), name.toStdString());
         }
     }
@@ -221,7 +221,7 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
         }
         else
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("No child found at path: {}", path.toStdString());
             return nullptr;
         }
@@ -236,7 +236,7 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
     QString firstPart = parts[0];
     if (children.find(firstPart) == children.end())
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("No child found with id: {}", firstPart.toStdString());
         return nullptr;
     }

@@ -1,5 +1,7 @@
 #include "widgets/function_block_widget.h"
 #include "widgets/input_port_signal_selector.h"
+#include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
@@ -7,7 +9,6 @@
 #include <QMap>
 #include <QSet>
 #include <opendaq/custom_log.h>
-#include "context/AppContext.h"
 #include <opendaq/logger_component_ptr.h>
 
 // FunctionBlockWidget implementation
@@ -23,13 +24,13 @@ FunctionBlockWidget::FunctionBlockWidget(const daq::FunctionBlockPtr& functionBl
     layout->setSpacing(10);
     mainLayout = layout;
 
-    inputPortsFolder.getOnComponentCoreEvent() += daq::event(this, &FunctionBlockWidget::onCoreEvent);
+    *AppContext::DaqEvent() += daq::event(this, &FunctionBlockWidget::onCoreEvent);
     setupInputPorts();
 }
 
 FunctionBlockWidget::~FunctionBlockWidget()
 {
-    inputPortsFolder.getOnComponentCoreEvent() -= daq::event(this, &FunctionBlockWidget::onCoreEvent);
+    *AppContext::DaqEvent() -= daq::event(this, &FunctionBlockWidget::onCoreEvent);
 }
 
 void FunctionBlockWidget::setupInputPorts()
@@ -190,7 +191,7 @@ void FunctionBlockWidget::updateInputPorts()
             }
             catch (const std::exception& e)
             {
-                const auto loggerComponent = AppContext::getLoggerComponent();
+                const auto loggerComponent = AppContext::LoggerComponent();
                 LOG_W("Failed to process input port {}: {}", i, e.what());
             }
         }
@@ -199,7 +200,7 @@ void FunctionBlockWidget::updateInputPorts()
     {
         auto label = new QLabel(QString("Error getting input ports: %1").arg(e.what()), this);
         mainLayout->addWidget(label);
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting input ports: {}", e.what());
     }
 }
@@ -219,7 +220,7 @@ void FunctionBlockWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventA
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling function block core event: {}", e.what());
     }
 }

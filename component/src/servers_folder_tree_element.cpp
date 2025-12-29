@@ -21,7 +21,7 @@ bool ServersFolderTreeElement::isLocalDeviceFolder() const
     if (!parentComponentElement)
         return false;
 
-    if (parentComponentElement->getDaqComponent() != AppContext::instance()->daqInstance().getRootDevice())
+    if (parentComponentElement->getDaqComponent() != AppContext::Instance()->daqInstance().getRootDevice())
         return false;
 
     return true;
@@ -55,7 +55,7 @@ QMenu* ServersFolderTreeElement::onCreateRightClickMenu(QWidget* parent)
 void ServersFolderTreeElement::onAddServer()
 {
     // Get the instance from AppContext
-    auto instance = AppContext::instance()->daqInstance();
+    auto instance = AppContext::Instance()->daqInstance();
     if (!instance.assigned())
     {
         QMessageBox::critical(nullptr, "Error", "No openDAQ instance available.");
@@ -75,7 +75,7 @@ void ServersFolderTreeElement::onAddServer()
             daq::PropertyObjectPtr config = dialog.getConfig();
             
             // Add server using instance interface
-            daq::ServerPtr newServer = instance.addServer(serverType.toStdString(), config);
+            instance.addServer(serverType.toStdString(), config).enableDiscovery();
         }
         catch (const std::exception& e)
         {

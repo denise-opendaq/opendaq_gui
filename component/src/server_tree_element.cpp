@@ -42,7 +42,7 @@ void ServerTreeElement::onRemove()
     // This is a placeholder - actual removal logic depends on openDAQ API
     try
     {
-        AppContext::instance()->daqInstance().removeServer(daqComponent);
+        AppContext::Instance()->daqInstance().removeServer(daqComponent);
     }
     catch (const std::exception& e)
     {

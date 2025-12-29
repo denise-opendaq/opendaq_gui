@@ -18,10 +18,10 @@ Singleton class providing global application state.
 **Usage**:
 ```cpp
 // two ways to get instance
-auto instance = AppContext::instance()->daqInstance(); 
-auto instance = AppContext::daq(); 
+auto instance = AppContext::Instance()->daqInstance(); 
+auto instance = AppContext::Daq(); 
 
-auto loggerComponent = AppContext::getLoggerComponent()
+auto loggerComponent = AppContext::LoggerComponent()
 LOG_W("Message"); // uses Logger Component
 ```
 
@@ -236,13 +236,13 @@ Located in `property/include/property/`
 
 ```cpp
 // Subscribe
-component.getOnComponentCoreEvent() += daq::event(this, &Widget::onCoreEvent);
+*AppContext::DaqEvent() += daq::event(this, &Widget::onCoreEvent);
 
 // Handler signature
 void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
 // Unsubscribe (in destructor)
-component.getOnComponentCoreEvent() -= daq::event(this, &Widget::onCoreEvent);
+*AppContext::DaqEvent() -= daq::event(this, &Widget::onCoreEvent);
 ```
 
 ### Property Change Handling
@@ -304,7 +304,7 @@ QTimer::singleShot(0, this, [weakThis]() {
 ```cpp
 ~Widget() {
     if (component.assigned()) {
-        component.getOnComponentCoreEvent() -= daq::event(this, &Widget::onCoreEvent);
+        *AppContext::DaqEvent() -= daq::event(this, &Widget::onCoreEvent);
     }
 }
 ```
@@ -322,7 +322,7 @@ UpdateGuard guard(updatingFromComponent);
 try {
     // OpenDAQ operation
 } catch (const std::exception& e) {
-    const auto logger = AppContext::getLoggerComponent();
+    const auto logger = AppContext::LoggerComponent();
     LOG_W("Error: {}", e.what());
 }
 ```

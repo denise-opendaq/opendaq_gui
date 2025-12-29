@@ -23,7 +23,7 @@ void ComponentTreeElement::init(BaseTreeElement* parent)
     // Subscribe to component core events
     try
     {
-        daqComponent.getOnComponentCoreEvent() += daq::event(this, &ComponentTreeElement::onCoreEvent);
+        *AppContext::DaqEvent() += daq::event(this, &ComponentTreeElement::onCoreEvent);
     }
     catch (const std::exception& e)
     {
@@ -40,7 +40,7 @@ ComponentTreeElement::~ComponentTreeElement()
     {
         if (daqComponent.assigned())
         {
-            daqComponent.getOnComponentCoreEvent() -= daq::event(this, &ComponentTreeElement::onCoreEvent);
+            *AppContext::DaqEvent() -= daq::event(this, &ComponentTreeElement::onCoreEvent);
         }
     }
     catch (const std::exception& e)
@@ -59,11 +59,11 @@ bool ComponentTreeElement::visible() const
         bool componentVisible = daqComponent.getVisible();
 
         // If component is not visible and we're not showing hidden, hide it
-        if (!componentVisible && !AppContext::instance()->showInvisibleComponents())
+        if (!componentVisible && !AppContext::Instance()->showInvisibleComponents())
             return false;
 
         // Check if we're filtering by component type
-        QSet<QString> allowedTypes = AppContext::instance()->showComponentTypes();
+        QSet<QString> allowedTypes = AppContext::Instance()->showComponentTypes();
         if (allowedTypes.isEmpty())
             return true;
 

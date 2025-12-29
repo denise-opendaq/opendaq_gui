@@ -39,13 +39,13 @@ QString ListCoreTypeHandler::valueToString(const daq::BaseObjectPtr& value) cons
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error converting list to string: {}", e.what());
         return QString("Error");
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error converting list to string");
         return QString("Error");
     }
@@ -83,13 +83,13 @@ daq::BaseObjectPtr ListCoreTypeHandler::stringToValue(const QString& str) const
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error parsing list from string: {}", e.what());
         return daq::List<daq::IBaseObject>().detach();
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error parsing list from string");
         return daq::List<daq::IBaseObject>().detach();
     }

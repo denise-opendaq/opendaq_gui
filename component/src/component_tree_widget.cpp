@@ -21,7 +21,7 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
     if (!instance.assigned())
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Cannot load null instance");
         QMessageBox::critical(this, "Error", "Cannot load instance: instance is null.");
         return;
@@ -44,7 +44,7 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error loading instance: {}", e.what());
         QMessageBox::critical(this, "Error", 
             QString("Failed to load instance: %1").arg(e.what()));
@@ -89,13 +89,13 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
 
 void ComponentTreeWidget::setShowHidden(bool show)
 {
-    AppContext::instance()->setShowInvisibleComponents(show);
+    AppContext::Instance()->setShowInvisibleComponents(show);
     refreshVisibility();
 }
 
 void ComponentTreeWidget::setComponentTypeFilter(const QSet<QString>& types)
 {
-    AppContext::instance()->setShowComponentTypes(types);
+    AppContext::Instance()->setShowComponentTypes(types);
     refreshVisibility();
 }
 

@@ -31,13 +31,13 @@ std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::B
                 }
                 catch (const std::exception& e)
                 {
-                    const auto loggerComponent = AppContext::getLoggerComponent();
+                    const auto loggerComponent = AppContext::LoggerComponent();
                     LOG_D("Error creating enumeration handler, falling back to default: {}", e.what());
                     // Fall through to default handler
                 }
                 catch (...)
                 {
-                    const auto loggerComponent = AppContext::getLoggerComponent();
+                    const auto loggerComponent = AppContext::LoggerComponent();
                     LOG_D("Unknown error creating enumeration handler, falling back to default");
                     // Fall through to default handler
                 }

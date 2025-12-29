@@ -1,5 +1,6 @@
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -22,9 +23,9 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
     // Subscribe to input port core events
     if (inputPort.assigned()) {
         try {
-            inputPort.getOnComponentCoreEvent() += daq::event(this, &InputPortSignalSelector::onCoreEvent);
+            *AppContext::DaqEvent() += daq::event(this, &InputPortSignalSelector::onCoreEvent);
         } catch (const std::exception& e) {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to subscribe to input port events: {}", e.what());
         }
     }
@@ -38,9 +39,9 @@ InputPortSignalSelector::~InputPortSignalSelector()
     // Unsubscribe from events
     if (inputPort.assigned()) {
         try {
-            inputPort.getOnComponentCoreEvent() -= daq::event(this, &InputPortSignalSelector::onCoreEvent);
+            *AppContext::DaqEvent() -= daq::event(this, &InputPortSignalSelector::onCoreEvent);
         } catch (const std::exception& e) {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to unsubscribe from input port events: {}", e.what());
         }
     }
@@ -115,7 +116,7 @@ void InputPortSignalSelector::populateSignals()
     signalComboBox->clear();
 
     try {
-        auto instance = AppContext::instance()->daqInstance();
+        auto instance = AppContext::Instance()->daqInstance();
         if (!instance.assigned()) {
             signalComboBox->addItem("No instance available");
             signalComboBox->blockSignals(false);
@@ -199,7 +200,7 @@ void InputPortSignalSelector::onSignalSelected(int index)
     QString path = signalComboBox->itemText(index);
     
     try {
-        auto instance = AppContext::instance()->daqInstance();
+        auto instance = AppContext::Instance()->daqInstance();
         if (!instance.assigned()) {
             return;
         }
@@ -232,7 +233,7 @@ void InputPortSignalSelector::onSignalSelected(int index)
 
         connectSignal(signal);
     } catch (const std::exception& e) {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to find signal by path: {} Error: {}", path.toStdString(), e.what());
         // Refresh combo box to restore previous selection
         populateSignals();
@@ -286,7 +287,7 @@ void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEv
             QMetaObject::invokeMethod(this, "populateSignals", Qt::QueuedConnection);
         }
     } catch (const std::exception& e) {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
 }
