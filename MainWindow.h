@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QTreeWidget>
 #include <QComboBox>
 #include <QTextEdit>
 #include <QSplitter>
@@ -12,10 +11,10 @@
 
 #include "DetachableTabWidget.h"
 #include "DropOverlay.h"
-#include "component/component_tree_widget.h"
 
 class DetachedWindow;
 class BaseTreeElement;
+class ComponentTreeWidget;
 
 class MainWindow : public QMainWindow
 {

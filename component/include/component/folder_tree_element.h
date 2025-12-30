@@ -1,6 +1,7 @@
 #pragma once
 #include "component_tree_element.h"
-#include <opendaq/opendaq.h>
+#include <opendaq/folder_ptr.h>
+#include <coreobjects/core_event_args_ptr.h>
 
 // Forward declaration for factory function
 BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QObject* parent);

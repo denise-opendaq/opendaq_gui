@@ -4,11 +4,9 @@
 #include <QLabel>
 #include <QString>
 
-
-#include <opendaq/opendaq.h>
-
-
 #include "context/UpdateScheduler.h"
+
+#include <opendaq/signal_ptr.h>
 
 class SignalValueWidget : public QWidget, public IUpdatable
 {

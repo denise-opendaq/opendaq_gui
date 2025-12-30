@@ -1,6 +1,6 @@
 #pragma once
 #include "component_tree_element.h"
-#include <opendaq/opendaq.h>
+#include <opendaq/input_port_ptr.h>
 
 class InputPortTreeElement : public ComponentTreeElement
 {

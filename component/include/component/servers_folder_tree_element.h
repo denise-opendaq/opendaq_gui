@@ -1,7 +1,7 @@
 #pragma once
 #include "folder_tree_element.h"
 #include <QSplitter>
-#include <opendaq/opendaq.h>
+#include <opendaq/folder_ptr.h>
 
 class ServersFolderTreeElement : public FolderTreeElement
 {

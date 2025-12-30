@@ -1,8 +1,10 @@
-#include "component/server_tree_element.h"
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
+#include "component/server_tree_element.h"
 #include "component/servers_folder_tree_element.h"
+
+#include <opendaq/instance_ptr.h>
 
 ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QObject* parent)
     : FolderTreeElement(tree, daqServer, parent)

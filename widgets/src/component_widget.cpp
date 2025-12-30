@@ -5,6 +5,7 @@
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
+#include <set>
 
 // RAII helper to manage updatingFromComponent counter
 struct UpdateGuard

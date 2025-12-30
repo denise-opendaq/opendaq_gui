@@ -1,10 +1,13 @@
 #pragma once
 
-#include "property/property_factory.h"
 #include "context/AppContext.h"
+
+#include "property/property_factory.h"
 
 #include <memory>
 #include <unordered_map>
+
+#include <opendaq/component_ptr.h>
 
 // Custom hash function for PropertyObjectPtr that uses the object's address
 struct PropertyObjectPtrHash

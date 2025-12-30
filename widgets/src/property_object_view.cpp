@@ -6,6 +6,7 @@
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 #include <QMessageBox>
+#include <coreobjects/property_object_internal_ptr.h>
 
 // ============================================================================
 // PropertyObjectView implementation

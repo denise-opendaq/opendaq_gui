@@ -16,9 +16,13 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QCursor>
-#include <opendaq/custom_log.h>
 
 #include "context/gui_constants.h"
+#include "component/base_tree_element.h"
+#include "component/component_tree_widget.h"
+
+#include <opendaq/opendaq.h>
+#include <opendaq/custom_log.h>
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)

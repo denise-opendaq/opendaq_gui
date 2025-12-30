@@ -1,6 +1,8 @@
 #pragma once
 
 #include "base_core_type_handler.h"
+#include <coretypes/enumeration_type_ptr.h>
+#include <coretypes/type_manager_ptr.h>
 
 class EnumerationCoreTypeHandler : public BaseCoreTypeHandler
 {

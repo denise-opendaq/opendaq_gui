@@ -1,0 +1,48 @@
+name: Windows Installer Build
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+jobs:
+  build-windows-installer:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        choco install cmake nsis -y
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: '6.8.0'
+        arch: 'win64_msvc2022_64'
+        cache: 'true'
+
+    - name: Build installer
+      run: |
+        $env:CMAKE_PREFIX_PATH = "$env:Qt6_DIR"
+        package\windows\build_installer.bat
+
+    - name: Upload installer artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenDAQ-Qt-GUI-Windows-Installer
+        path: build/package/OpenDAQ Qt GUI-*-Windows-*.exe
+        retention-days: 30
+
+    - name: Upload installer to release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/package/OpenDAQ Qt GUI-*-Windows-*.exe
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

@@ -1,5 +1,6 @@
 #pragma once
 #include "folder_tree_element.h"
+#include <opendaq/device_ptr.h>
 
 // Example derived class for Device elements
 class DeviceTreeElement : public FolderTreeElement

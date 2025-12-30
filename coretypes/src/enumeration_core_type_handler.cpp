@@ -2,6 +2,7 @@
 #include "context/AppContext.h"
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
+#include <opendaq/instance_ptr.h>
 
 EnumerationCoreTypeHandler::EnumerationCoreTypeHandler(const daq::EnumerationTypePtr& enumType)
     : enumType(enumType)

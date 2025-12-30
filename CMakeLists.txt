@@ -9,6 +9,16 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+# for openDAQ - suppress GCC 15 errors in openDAQ dependencies
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-Wno-error=deprecated-declarations -Wno-error=stringop-overflow -Wno-error=overloaded-virtual)
+elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    add_compile_options(-Wno-error=deprecated-declarations -Wno-error=overloaded-virtual)
+elseif(MSVC)
+    # MSVC equivalent flags (only for C/CXX, not MASM)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/wd4996>)  # disable deprecated declarations warning
+endif()
+
 add_subdirectory(external)
 
 # Qt6 setup - enable automatic MOC, UIC, RCC for this project
@@ -70,8 +80,40 @@ target_link_libraries(${PROJECT_NAME}
         daq::opendaq
 )
 
-# Disable macOS bundle to create a regular executable
-# This property is ignored on non-Apple platforms
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    MACOSX_BUNDLE FALSE
-)
+# Option to build as bundle (for packaging - macOS .app bundle or Linux with bundled Qt)
+option(BUILD_BUNDLE "Build as platform bundle (macOS .app or Linux with bundled Qt)" OFF)
+
+# Option for extra module path (for bundle packaging)
+set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)")
+
+# Pass extra module path to the application via compile definition
+if(EXTRA_MODULE_PATH)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE EXTRA_MODULE_PATH="${EXTRA_MODULE_PATH}")
+endif()
+
+# Platform-specific bundle configuration
+if(BUILD_BUNDLE)
+    if(APPLE)
+        # macOS bundle configuration
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE TRUE
+            MACOSX_BUNDLE_GUI_IDENTIFIER "com.opendaq.qt-gui"
+            MACOSX_BUNDLE_BUNDLE_NAME "OpenDAQ Qt GUI"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        )
+    elseif(UNIX)
+        # Linux bundle - set RPATH to find bundled libraries
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            BUILD_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
+            INSTALL_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
+        )
+    endif()
+else()
+    # Regular executable (default)
+    if(APPLE)
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            MACOSX_BUNDLE FALSE
+        )
+    endif()
+endif()

@@ -1,10 +1,17 @@
 #pragma once
 #include <QTreeWidget>
-#include "component_factory.h"
-#include "base_tree_element.h"
-#include "context/AppContext.h"
+#include <QSet>
+#include <QString>
 #include <memory>
-#include <opendaq/opendaq.h>
+
+class BaseTreeElement;
+class AppContext;
+
+// Forward declarations for openDAQ
+namespace daq 
+{
+    class InstancePtr;
+}
 
 // Main widget that wraps QTreeWidget for openDAQ components
 class ComponentTreeWidget : public QTreeWidget

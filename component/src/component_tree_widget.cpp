@@ -3,6 +3,7 @@
 #include "context/AppContext.h"
 #include <functional>
 #include <QMessageBox>
+#include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
 ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)

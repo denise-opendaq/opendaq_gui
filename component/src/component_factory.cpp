@@ -1,4 +1,6 @@
 #include "component/component_factory.h"
+#include "component/base_tree_element.h"
+#include <opendaq/opendaq.h>
 #include "component/device_tree_element.h"
 #include "component/function_block_tree_element.h"
 #include "component/server_tree_element.h"

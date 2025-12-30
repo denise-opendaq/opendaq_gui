@@ -1,10 +1,8 @@
 #pragma once
 
-
-#include <opendaq/opendaq.h>
-
-
 #include <QtWidgets>
+
+#include <coretypes/objectptr.h>
 
 // Forward declarations
 class PropertyObjectView;

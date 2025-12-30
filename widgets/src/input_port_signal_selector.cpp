@@ -7,6 +7,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QMetaObject>
+#include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 

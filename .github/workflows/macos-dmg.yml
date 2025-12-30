@@ -1,0 +1,38 @@
+name: macOS DMG Build
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+jobs:
+  build-macos-dmg:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        brew install cmake ninja qt@6 mono
+
+    - name: Build DMG package
+      run: ./package/mac/build_dmg.sh
+
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenDAQ-Qt-GUI-macOS-DMG
+        path: build/package/OpenDAQ Qt GUI-*.dmg
+        retention-days: 30
+
+    - name: Upload DMG to release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/package/OpenDAQ Qt GUI-*.dmg
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

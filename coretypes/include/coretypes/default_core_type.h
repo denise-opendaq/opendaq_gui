@@ -1,5 +1,5 @@
 #pragma once
-#include <opendaq/opendaq.h>
+#include <coretypes/coretypes.h>
 
 static daq::BaseObjectPtr createDefaultValue(daq::CoreType type)
 {
