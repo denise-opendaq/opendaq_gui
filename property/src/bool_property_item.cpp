@@ -1,5 +1,5 @@
 #include "property/bool_property_item.h"
-#include "property/coretypes/bool_core_type_handler.h"
+#include "coretypes/bool_core_type_handler.h"
 #include "widgets/property_object_view.h"
 #include <QTreeWidget>
 #include <QMessageBox>
@@ -29,10 +29,10 @@ void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
         const auto currentValue = owner.getPropertyValue(prop.getName());
 
         // Use handler to toggle the value
-        handler.handleDoubleClick(view, item, currentValue, [this, view](const daq::BaseObjectPtr& newValue) {
+        handler.handleDoubleClick(view, item, currentValue, [this, view](const daq::BaseObjectPtr& newValue) 
+        {
             owner.setPropertyValue(getName(), newValue);
-            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
-            view->onPropertyValueChanged(owner);
+            view->onPropertyValueChanged(owner, true);
         });
     }
     catch (const std::exception& e)

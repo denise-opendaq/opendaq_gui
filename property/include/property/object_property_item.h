@@ -20,7 +20,8 @@ public:
     void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force = false) override;
     void commitEdit(QTreeWidgetItem*, int) override;
 
+    void refresh(PropertySubtreeBuilder& builder) override;
+
 private:
     daq::PropertyObjectPtr nested;
-    bool loaded = false;
 };

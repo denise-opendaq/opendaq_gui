@@ -34,7 +34,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error initializing folder children: {}", e.what());
     }
 }
@@ -106,7 +106,7 @@ void FolderTreeElement::refresh()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error refreshing folder children: {}", e.what());
     }
 }
@@ -127,7 +127,7 @@ void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling folder core event: {}", e.what());
     }
 }

@@ -1,18 +1,31 @@
 #include "property/struct_property_item.h"
 #include "widgets/property_object_view.h"
-#include "property/coretypes/core_type_factory.h"
+#include "coretypes/core_type_factory.h"
 #include <QTreeWidgetItem>
 
 // ============================================================================
 // StructPropertyItem implementation
 // ============================================================================
 
+void StructPropertyItem::refresh(PropertySubtreeBuilder& builder)
+{
+    // Refresh struct reference
+    structObj = owner.getPropertyValue(getName());
+
+    // Call base refresh to update name and value display
+    BasePropertyItem::refresh(builder);
+
+    // If expanded, rebuild the subtree
+    if (widgetItem)
+        build_subtree(builder, widgetItem.get(), true);
+}
+
 void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (!force && (loaded || !structObj.assigned()))
+    if (!force && (expanded || !structObj.assigned()))
         return;
 
-    loaded = true;
+    expanded = true;
 
     // remove dummy children
     while (self->childCount() > 0)
@@ -95,10 +108,12 @@ void StructPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidg
         if (valueHandler && valueHandler->hasSelection())
         {
             // Capture handler as shared_ptr to keep it alive during async callback
-            valueHandler->handleDoubleClick(view, item, currentValue, [this, fieldKey, valueHandler](const daq::BaseObjectPtr& newValue) {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, view, fieldKey, valueHandler](const daq::BaseObjectPtr& newValue) 
+            {
                 auto structBuilder = daq::StructBuilder(structObj);
                 structObj = structBuilder.set(fieldKey, newValue).build();
                 owner.setPropertyValue(getName(), structObj);
+                view->onPropertyValueChanged(owner, true);
             });
         }
     }

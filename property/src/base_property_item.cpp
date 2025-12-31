@@ -6,6 +6,16 @@ BasePropertyItem::BasePropertyItem(const daq::PropertyObjectPtr& owner, const da
 {
 }
 
+daq::PropertyPtr BasePropertyItem::getProperty() const
+{
+    return prop;
+}
+
+daq::PropertyObjectPtr BasePropertyItem::getOwner() const
+{
+    return owner;
+}
+
 daq::StringPtr BasePropertyItem::getName() const
 {
     return prop.getName();
@@ -41,6 +51,41 @@ bool BasePropertyItem::isValueEditable() const
 bool BasePropertyItem::hasSubtree() const
 {
     return false;
+}
+
+bool BasePropertyItem::isExpanded() const
+{
+    return expanded;
+}
+
+void BasePropertyItem::setExpanded(bool expanded)
+{
+    this->expanded = expanded;
+}
+
+bool BasePropertyItem::isVisible() const
+{
+    return prop.getVisible();
+}
+
+void BasePropertyItem::setWidgetItem(QTreeWidgetItem* item)
+{
+    if (widgetItem)
+    {
+        // Remove from parent before deleting
+        if (auto* parent = widgetItem->parent())
+            parent->removeChild(widgetItem.get());
+    }
+    widgetItem.reset(item);
+}
+
+void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
+{
+    if (widgetItem)
+    {
+        widgetItem->setText(0, QString::fromStdString(getName()));
+        widgetItem->setText(1, showValue());
+    }
 }
 
 void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool)

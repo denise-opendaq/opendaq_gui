@@ -40,16 +40,10 @@ set(SOURCES
     src/component.cpp
 )
 
-# Resource files
-set(RESOURCES
-    ${CMAKE_SOURCE_DIR}/icons/icons.qrc
-)
-
 # Create library
 add_library(${PROJECT_NAME} STATIC
     ${HEADERS}
     ${SOURCES}
-    ${RESOURCES}
 )
 
 # Include directories

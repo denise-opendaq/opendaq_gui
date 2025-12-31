@@ -14,7 +14,7 @@ SignalValueWidget::SignalValueWidget(const daq::SignalPtr& sig, QWidget* parent)
     setupUI();
 
     // Register with global update scheduler
-    AppContext::instance()->updateScheduler()->registerUpdatable(this);
+    AppContext::Instance()->updateScheduler()->registerUpdatable(this);
 
     // Initial update
     onScheduledUpdate();
@@ -23,7 +23,7 @@ SignalValueWidget::SignalValueWidget(const daq::SignalPtr& sig, QWidget* parent)
 SignalValueWidget::~SignalValueWidget()
 {
     // Unregister from global update scheduler
-    AppContext::instance()->updateScheduler()->unregisterUpdatable(this);
+    AppContext::Instance()->updateScheduler()->unregisterUpdatable(this);
 }
 
 void SignalValueWidget::onScheduledUpdate()
@@ -155,7 +155,7 @@ void SignalValueWidget::updateSignalInfo()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error updating signal info: {}", e.what());
     }
 }

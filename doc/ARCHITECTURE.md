@@ -215,17 +215,17 @@ main.cpp
 ### Event Subscription Pattern
 ```cpp
 // Subscribe
-component.getOnComponentCoreEvent() += daq::event(this, &Widget::onCoreEvent);
+*AppContext::DaqEvent() += daq::event(this, &Widget::onCoreEvent);
 
 // Unsubscribe (in destructor)
-component.getOnComponentCoreEvent() -= daq::event(this, &Widget::onCoreEvent);
+*AppContext::DaqEvent() -= daq::event(this, &Widget::onCoreEvent);
 ```
 
 ## Error Handling
 
 ### Exception Handling
 - All OpenDAQ operations wrapped in try-catch
-- Errors logged via AppContext::getLoggerComponent()
+- Errors logged via AppContext::LoggerComponent()
 - UI remains responsive even on errors
 
 ### Async Error Handling

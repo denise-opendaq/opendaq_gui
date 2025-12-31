@@ -1,0 +1,65 @@
+name: Linux DEB Build
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+jobs:
+  build-linux-deb:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          ninja-build \
+          build-essential \
+          gcc-12 \
+          g++-12 \
+          qt6-base-dev \
+          qt6-base-dev-tools \
+          libqt6core6 \
+          libqt6gui6 \
+          libqt6widgets6 \
+          dpkg-dev \
+          fakeroot \
+          mono-complete \
+          libx11-dev \
+          libxrandr-dev \
+          libxcursor-dev \
+          libxi-dev \
+          libudev-dev \
+          libfreetype6-dev
+
+        # Set GCC 12 as default
+        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-12 100
+        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-12 100
+        sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-12 100
+        sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-12 100
+
+    - name: Build DEB package
+      run: ./package/linux/build_deb.sh
+
+    - name: Upload DEB artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: OpenDAQ-Qt-GUI-Linux-DEB
+        path: build/package/opendaq-qt-gui_*.deb
+        retention-days: 30
+
+    - name: Upload DEB to release
+      if: github.event_name == 'release'
+      uses: softprops/action-gh-release@v1
+      with:
+        files: build/package/opendaq-qt-gui_*.deb
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

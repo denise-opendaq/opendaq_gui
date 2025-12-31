@@ -5,9 +5,8 @@
 #include <QLabel>
 #include <QGroupBox>
 
-
-#include <opendaq/opendaq.h>
-
+#include <opendaq/input_port_ptr.h>
+#include <coreobjects/core_event_args_ptr.h>
 
 class ComponentTreeWidget;
 

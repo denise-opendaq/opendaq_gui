@@ -1,7 +1,7 @@
 #include "property/dict_property_item.h"
 #include "widgets/property_object_view.h"
-#include "property/default_core_type.h"
-#include "property/coretypes/core_type_factory.h"
+#include "coretypes/default_core_type.h"
+#include "coretypes/core_type_factory.h"
 #include <QTreeWidgetItem>
 #include <QMenu>
 #include <QMessageBox>
@@ -10,12 +10,25 @@
 // DictPropertyItem implementation
 // ============================================================================
 
+void DictPropertyItem::refresh(PropertySubtreeBuilder& builder)
+{
+    // Refresh dict reference
+    dict = owner.getPropertyValue(getName());
+
+    // Call base refresh to update name and value display
+    BasePropertyItem::refresh(builder);
+
+    // If expanded, rebuild the subtree
+    if (widgetItem)
+        build_subtree(builder, widgetItem.get(), true);
+}
+
 void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
 {
-    if (!force && (loaded || !dict.assigned()))
+    if (!force && (expanded || !dict.assigned()))
         return;
 
-    loaded = true;
+    expanded = true;
 
     // remove dummy children
     while (self->childCount() > 0)
@@ -137,10 +150,7 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), dict);
 
             // Reload only this subtree
-            QTreeWidgetItem* parentItem = isChildItem ? item->parent() : item;
-            loaded = false;
-            PropertySubtreeBuilder builder(*view);
-            build_subtree(builder, parentItem);
+            view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
         {
@@ -161,9 +171,7 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), dict);
 
             // Reload only this subtree
-            loaded = false;
-            PropertySubtreeBuilder builder(*view);
-            build_subtree(builder, item->parent());
+            view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
         {
@@ -199,11 +207,10 @@ void DictPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
             auto value = dict.get(key);
             dict.remove(key);
 
-            keyHandler->handleDoubleClick(view, item, key, [this, value, item, keyHandler](const daq::BaseObjectPtr& newKey) {
+            keyHandler->handleDoubleClick(view, item, key, [this, value, item, keyHandler](const daq::BaseObjectPtr& newKey) 
+            {
                 dict.set(newKey, value);
                 owner.setPropertyValue(getName(), dict);
-
-                // Update the map with new key
                 itemToKeyMap[item] = newKey;
             });
         }
@@ -216,7 +223,8 @@ void DictPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
 
         if (valueHandler && valueHandler->hasSelection())
         {
-            valueHandler->handleDoubleClick(view, item, currentValue, [this, key, valueHandler](const daq::BaseObjectPtr& newValue) {
+            valueHandler->handleDoubleClick(view, item, currentValue, [this, key, valueHandler](const daq::BaseObjectPtr& newValue) 
+            {
                 dict.set(key, newValue);
                 owner.setPropertyValue(getName(), dict);
             });

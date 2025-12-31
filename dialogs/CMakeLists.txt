@@ -11,6 +11,7 @@ set(HEADERS
     include/dialogs/add_device_config_dialog.h
     include/dialogs/add_function_block_dialog.h
     include/dialogs/add_server_dialog.h
+    include/dialogs/call_function_dialog.h
 )
 
 # Source files
@@ -19,6 +20,7 @@ set(SOURCES
     src/add_device_config_dialog.cpp
     src/add_function_block_dialog.cpp
     src/add_server_dialog.cpp
+    src/call_function_dialog.cpp
 )
 
 # Create library
@@ -43,6 +45,7 @@ target_link_libraries(${PROJECT_NAME}
         context
         widgets
         property
+        coretypes
         daq::coreobjects
         daq::coretypes
         daq::opendaq

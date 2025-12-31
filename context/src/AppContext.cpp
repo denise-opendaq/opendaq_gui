@@ -1,8 +1,10 @@
 #include "context/AppContext.h"
 #include "context/UpdateScheduler.h"
+#include "context/QueuedEventHandler.h"
 #include "logger/qt_text_edit_sink.h"
 
 #include <opendaq/opendaq.h>
+#include <opendaq/custom_log.h>
 #include <QSet>
 #include <memory>
 
@@ -15,6 +17,7 @@ public:
     QSet<QString> componentTypes; // empty means show all
     daq::LoggerSinkPtr loggerSink;
     UpdateScheduler* scheduler = nullptr;
+    EventQueue eventQueue;
 };
 
 AppContext::AppContext(QObject* parent)
@@ -27,7 +30,7 @@ AppContext::AppContext(QObject* parent)
 
 AppContext::~AppContext() = default;
 
-AppContext* AppContext::instance()
+AppContext* AppContext::Instance()
 {
     static AppContext* s_instance = new AppContext();
     return s_instance;
@@ -43,6 +46,19 @@ void AppContext::setDaqInstance(const daq::InstancePtr& instance)
     if (!d->daqInstance.assigned())
     {
         d->daqInstance = instance;
+
+        // Subscribe to context core events once
+        try
+        {
+            auto context = instance.getContext();
+            context.getOnCoreEvent() += std::bind(&EventQueue::enqueue, &d->eventQueue, std::placeholders::_1, std::placeholders::_2);
+        }
+        catch (const std::exception& e)
+        {
+            const auto loggerComponent = LoggerComponent();
+            LOG_W("Failed to subscribe to context core events: {}", e.what());
+        }
+
         Q_EMIT daqInstanceChanged();
     }
 }
@@ -63,14 +79,14 @@ QTextEdit* AppContext::getLogTextEdit() const
     return textEdit;
 }
 
-daq::InstancePtr AppContext::daq()
+daq::InstancePtr AppContext::Daq()
 {
-    return instance()->daqInstance();
+    return Instance()->daqInstance();
 }
 
-daq::LoggerComponentPtr AppContext::getLoggerComponent()
+daq::LoggerComponentPtr AppContext::LoggerComponent()
 {
-    return daq().getContext().getLogger().getOrAddComponent("openDAQ GUI");
+    return Daq().getContext().getLogger().getOrAddComponent("openDAQ GUI");
 }
 
 bool AppContext::showInvisibleComponents() const
@@ -102,3 +118,12 @@ UpdateScheduler* AppContext::updateScheduler() const
     return d->scheduler;
 }
 
+EventQueue* AppContext::eventQueue() const
+{
+    return &d->eventQueue;
+}
+
+EventQueue* AppContext::DaqEvent()
+{
+    return Instance()->eventQueue();
+}

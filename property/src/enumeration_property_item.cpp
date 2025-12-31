@@ -1,5 +1,5 @@
 #include "property/enumeration_property_item.h"
-#include "property/coretypes/enumeration_core_type_handler.h"
+#include "coretypes/enumeration_core_type_handler.h"
 #include "widgets/property_object_view.h"
 #include "context/AppContext.h"
 #include <QTreeWidget>
@@ -26,13 +26,13 @@ QString EnumerationPropertyItem::showValue() const
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error converting enumeration to string: {}", e.what());
         return QString("Error");
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error converting enumeration to string");
         return QString("Error");
     }
@@ -60,8 +60,7 @@ void EnumerationPropertyItem::handle_double_click(PropertyObjectView* view, QTre
         handler->handleDoubleClick(view, item, currentValue, [this, view, handler](const daq::BaseObjectPtr& newValue) 
         {
             owner.setPropertyValue(getName(), newValue);
-            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
-            view->onPropertyValueChanged(owner);
+            view->onPropertyValueChanged(owner, true);
         });
     }
     catch (const std::exception& e)
@@ -95,13 +94,13 @@ QStringList EnumerationPropertyItem::getEnumerationValues() const
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error getting enumeration values: {}", e.what());
         // Return empty list on error
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error getting enumeration values");
         // Return empty list on error
     }
@@ -125,14 +124,14 @@ void EnumerationPropertyItem::setByEnumerationValue(const QString& value)
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error setting enumeration value: {}", e.what());
         // Re-throw - error will be shown by the caller
         throw;
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error setting enumeration value");
         // Re-throw - error will be shown by the caller
         throw;

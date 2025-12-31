@@ -8,6 +8,7 @@
 #include "list_property_item.h"
 #include "struct_property_item.h"
 #include "enumeration_property_item.h"
+#include "function_property_item.h"
 
 #include <memory>
 

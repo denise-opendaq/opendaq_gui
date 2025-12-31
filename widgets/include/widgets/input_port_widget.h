@@ -2,9 +2,7 @@
 
 #include "widgets/signal_value_widget.h"
 
-
-#include <opendaq/opendaq.h>
-
+#include <opendaq/input_port_ptr.h>
 
 class ComponentTreeWidget;
 class InputPortSignalSelector;

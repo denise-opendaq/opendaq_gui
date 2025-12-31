@@ -127,12 +127,12 @@ daq::StringPtr getPrefixFromConnectionString(const daq::StringPtr& connectionStr
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error parsing connection string: {}", e.what());
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Unknown error parsing connection string");
     }
 
@@ -238,7 +238,7 @@ void AddDeviceConfigDialog::initSelectionWidgets()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error updating selection widgets: {}", e.what());
     }
 }
@@ -283,7 +283,7 @@ void AddDeviceConfigDialog::updateConfigTabs()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error updating config tabs: {}", e.what());
     }
 }
@@ -328,7 +328,7 @@ void AddDeviceConfigDialog::onStreamingProtocolSelected(int index)
         }
         catch (const std::exception& e)
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("Error updating PrioritizedStreamingProtocols: {}", e.what());
         }
     }
@@ -380,13 +380,13 @@ daq::StringPtr AddDeviceConfigDialog::getConnectionStringFromServerCapability(co
             
         if (!connectionString.assigned())
         {
-            const auto loggerComponent = AppContext::getLoggerComponent();
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("No connection string found for protocol: {}", protocolId.toStdString());
         }
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting address types from server capability: {}", e.what());
     }
 

@@ -1,10 +1,13 @@
 #pragma once
-#include "DetachableTabWidget.h"
-#include "base_tree_element.h"
-#include <opendaq/opendaq.h>
+
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QLabel>
+#include "DetachableTabWidget.h"
+#include "base_tree_element.h"
+
+#include <opendaq/component_ptr.h>
+#include <coreobjects/core_event_args_ptr.h>
 
 class ComponentTreeElement : public BaseTreeElement
 {

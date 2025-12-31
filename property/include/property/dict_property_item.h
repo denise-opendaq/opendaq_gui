@@ -30,6 +30,7 @@ public:
     bool isKeyEditable() const override { return !isReadOnly(); }
     bool hasSubtree() const override { return true; }
 
+    void refresh(PropertySubtreeBuilder& builder) override;
     void build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force = false) override;
     void commitEdit(QTreeWidgetItem* item, int column) override;
     void handle_right_click(PropertyObjectView* view, QTreeWidgetItem* item, const QPoint& globalPos) override;
@@ -37,6 +38,5 @@ public:
 
 private:
     daq::DictPtr<daq::IBaseObject, daq::IBaseObject> dict;
-    bool loaded = false;
     std::map<QTreeWidgetItem*, daq::BaseObjectPtr> itemToKeyMap;
 };

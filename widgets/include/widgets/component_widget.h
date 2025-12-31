@@ -3,7 +3,10 @@
 #include <QWidget>
 #include <QVBoxLayout>
 
-#include <opendaq/opendaq.h>
+#include <context/QueuedEventHandler.h>
+
+#include <opendaq/component_ptr.h>
+#include <coreobjects/core_event_args_ptr.h>
 
 class PropertyObjectView;
 
@@ -31,6 +34,5 @@ private:
     PropertyObjectView* propertyView;
     daq::PropertyObjectPtr componentPropertyObject;
     std::atomic<int> updatingFromComponent; // Counter to prevent recursive updates
-    daq::EventPtr<const daq::ComponentPtr, const daq::CoreEventArgsPtr> coreEvent;
 };
 

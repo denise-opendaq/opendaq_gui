@@ -15,13 +15,8 @@ set(HEADERS
     include/property/list_property_item.h
     include/property/struct_property_item.h
     include/property/enumeration_property_item.h
+    include/property/function_property_item.h
     include/property/property_factory.h
-    include/property/default_core_type.h
-    include/property/coretypes/base_core_type_handler.h
-    include/property/coretypes/bool_core_type_handler.h
-    include/property/coretypes/enumeration_core_type_handler.h
-    include/property/coretypes/default_core_type_handler.h
-    include/property/coretypes/core_type_factory.h
 )
 
 # Source files
@@ -34,12 +29,8 @@ set(SOURCES
     src/list_property_item.cpp
     src/struct_property_item.cpp
     src/enumeration_property_item.cpp
+    src/function_property_item.cpp
     src/property_factory.cpp
-    src/coretypes/base_core_type_handler.cpp
-    src/coretypes/bool_core_type_handler.cpp
-    src/coretypes/enumeration_core_type_handler.cpp
-    src/coretypes/default_core_type_handler.cpp
-    src/coretypes/core_type_factory.cpp
 )
 
 # Create library
@@ -62,6 +53,8 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Core
         Qt6::Widgets
         widgets
+        dialogs
+        coretypes
         daq::coreobjects
         daq::coretypes
         daq::opendaq

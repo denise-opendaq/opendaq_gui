@@ -20,13 +20,13 @@ QString DefaultCoreTypeHandler::valueToString(const daq::BaseObjectPtr& value) c
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Error converting value to string: {}", e.what());
         return QString("Error");
     }
     catch (...)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_D("Unknown error converting value to string");
         return QString("Error");
     }

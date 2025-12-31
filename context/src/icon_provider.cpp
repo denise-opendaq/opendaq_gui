@@ -92,7 +92,7 @@ QIcon IconProvider::icon(const QString& iconName) const
     }
 
     // Return empty icon if not found
-    const auto loggerComponent = AppContext::getLoggerComponent();
+    const auto loggerComponent = AppContext::LoggerComponent();
     LOG_W("IconProvider: Failed to load icon from path: {}", path.toStdString());
     return QIcon();
 }

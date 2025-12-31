@@ -1,11 +1,11 @@
 #include "widgets/component_widget.h"
 #include "widgets/property_object_view.h"
 #include "context/AppContext.h"
-#include <QMetaObject>
-#include <QTimer>
-#include <QPointer>
+#include "context/QueuedEventHandler.h"
+#include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
+#include <set>
 
 // RAII helper to manage updatingFromComponent counter
 struct UpdateGuard
@@ -33,38 +33,18 @@ ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent)
     , updatingFromComponent(0)
 {
     setupUI();
-    
-    // Subscribe to component core events
+
     if (component.assigned())
     {
-        try
-        {
-            AppContext::daq().getContext()->getOnCoreEvent(&coreEvent);
-            component.getOnComponentCoreEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
-        }
-        catch (const std::exception& e)
-        {
-            const auto loggerComponent = AppContext::getLoggerComponent();
-            LOG_W("Failed to subscribe to component events: {}", e.what());
-        }
+       *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
     }
+
 }
 
 ComponentWidget::~ComponentWidget()
 {
-    // Unsubscribe from events
-    if (component.assigned())
-    {
-        try
-        {
-            component.getOnComponentCoreEvent() -= daq::event(this, &ComponentWidget::onCoreEvent);
-        }
-        catch (const std::exception& e)
-        {
-            const auto loggerComponent = AppContext::getLoggerComponent();
-            LOG_W("Failed to unsubscribe from component events: {}", e.what());
-        }
-    }
+    // Unregister from core event listener
+    *AppContext::DaqEvent() -= daq::event(this, &ComponentWidget::onCoreEvent);
 }
 
 void ComponentWidget::setupUI()
@@ -151,13 +131,19 @@ void ComponentWidget::createComponentPropertyObject()
 
         auto internal = componentPropertyObject.asPtr<daq::IPropertyObjectInternal>(true);
         internal.setPath("daqComponentAttributes");
-        internal.setCoreEventTrigger([this](const daq::CoreEventArgsPtr& args) { coreEvent(component, args); });
+
+        internal.setCoreEventTrigger([this](const daq::CoreEventArgsPtr& args) 
+        { 
+            daq::EventPtr<const daq::ComponentPtr, const daq::CoreEventArgsPtr> coreEvent;
+            AppContext::Daq().getContext()->getOnCoreEvent(&coreEvent);
+            coreEvent(component, args); 
+        });
         internal.enableCoreEventTrigger();
 
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error creating component property object: {}", e.what());
     }
 }
@@ -209,7 +195,7 @@ void ComponentWidget::setupPropertyHandlers()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error setting up property handlers: {}", e.what());
     }
 }
@@ -248,7 +234,7 @@ void ComponentWidget::updateStatuses()
             catch (const std::exception& e)
             {
                 // If message is not available, just use the value
-                const auto loggerComponent = AppContext::getLoggerComponent();
+                const auto loggerComponent = AppContext::LoggerComponent();
                 LOG_D("Could not get status message for '{}': {}", name.toStdString(), e.what());
             }
             statusDict.set(name, daq::String(statusValue.toStdString()));
@@ -272,7 +258,7 @@ void ComponentWidget::updateStatuses()
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error updating statuses: {}", e.what());
     }
 }
@@ -289,52 +275,26 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
     try
     {
         const auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
-        
-        // Process events asynchronously to avoid deadlocks when working with remote components
-        // Use QTimer::singleShot to queue the update in the Qt event loop
-        // Use QPointer for weak reference to avoid issues if widget is destroyed
-        QPointer<ComponentWidget> weakThis(this);
-        
+
         if (eventId == daq::CoreEventId::AttributeChanged)
         {
             const daq::StringPtr attributeName = args.getParameters().get("AttributeName");
             const daq::BaseObjectPtr attributeValue = args.getParameters().get(attributeName);
-
-            // Schedule async update
-            QTimer::singleShot(0, this, [weakThis, attributeName, attributeValue]() 
-            {
-                if (!weakThis)
-                    return;
-                weakThis->handleAttributeChangedAsync(attributeName, attributeValue);
-            });
+            handleAttributeChangedAsync(attributeName, attributeValue);
         }
         else if (eventId == daq::CoreEventId::TagsChanged)
         {
-            // Update Tags from component as list
             daq::TagsPtr tags = args.getParameters()["Tags"];
-
-            // Schedule async update
-            QTimer::singleShot(0, this, [weakThis, tags]() 
-            {
-                if (!weakThis)
-                    return;
-                weakThis->handleTagsChangedAsync(tags);
-            });
+            handleTagsChangedAsync(tags);
         }
         else if (eventId == daq::CoreEventId::StatusChanged)
         {
-            // Schedule async update
-            QTimer::singleShot(0, this, [weakThis]() 
-            {
-                if (!weakThis)
-                    return;
-                weakThis->handleStatusChangedAsync();
-            });
+            handleStatusChangedAsync();
         }
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
 }
@@ -352,7 +312,7 @@ void ComponentWidget::handleAttributeChangedAsync(const daq::StringPtr& attribut
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling attribute changed async: {}", e.what());
     }
 }
@@ -370,7 +330,7 @@ void ComponentWidget::handleTagsChangedAsync(const daq::TagsPtr& tags)
     }
     catch (const std::exception& e)
     {
-        const auto loggerComponent = AppContext::getLoggerComponent();
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling tags changed async: {}", e.what());
     }
 }
