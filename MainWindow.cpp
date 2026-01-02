@@ -49,22 +49,27 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
     if (!event || !dropOverlay || !contentSplitter)
         return QMainWindow::eventFilter(obj, event);
 
-    const auto isTabMime = [](const QMimeData* mime) {
+    const auto isTabMime = [](const QMimeData* mime) 
+    {
         return mime && mime->hasFormat(DetachableTabWidget::TabMimeType);
     };
 
-    auto hideOverlay = [this]() {
+    auto hideOverlay = [this]() 
+    {
         if (dropOverlay->isVisible())
             dropOverlay->hide();
     };
 
-    switch (event->type()) {
-        case QEvent::DragLeave: {
+    switch (event->type())
+    {
+        case QEvent::DragLeave: 
+        {
             hideOverlay();
             return QMainWindow::eventFilter(obj, event);
         }
 
-        case QEvent::DragEnter: {
+        case QEvent::DragEnter: 
+        {
             auto* e = static_cast<QDragEnterEvent*>(event);
             if (!isTabMime(e->mimeData()))
                 return QMainWindow::eventFilter(obj, event);
@@ -73,12 +78,14 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             const QPoint globalPos = mapToGlobal(localPos);
 
             // Let tab bars handle "drop as tab" directly.
-            if (isOverAnyTabBar(globalPos)) {
+            if (isOverAnyTabBar(globalPos)) 
+            {
                 hideOverlay();
                 return QMainWindow::eventFilter(obj, event);
             }
 
-            if (!contentGlobalRect().contains(globalPos)) {
+            if (!contentGlobalRect().contains(globalPos)) 
+            {
                 hideOverlay();
                 return QMainWindow::eventFilter(obj, event);
             }
@@ -98,7 +105,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             return true;
         }
 
-        case QEvent::DragMove: {
+        case QEvent::DragMove: 
+        {
             auto* e = static_cast<QDragMoveEvent*>(event);
             if (!isTabMime(e->mimeData()))
                 return QMainWindow::eventFilter(obj, event);
@@ -106,12 +114,14 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             const QPoint localPos = e->position().toPoint();
             const QPoint globalPos = mapToGlobal(localPos);
 
-            if (isOverAnyTabBar(globalPos)) {
+            if (isOverAnyTabBar(globalPos)) 
+            {
                 hideOverlay();
                 return QMainWindow::eventFilter(obj, event);
             }
 
-            if (!contentGlobalRect().contains(globalPos)) {
+            if (!contentGlobalRect().contains(globalPos)) 
+            {
                 hideOverlay();
                 return QMainWindow::eventFilter(obj, event);
             }
@@ -131,7 +141,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             return true;
         }
 
-        case QEvent::Drop: {
+        case QEvent::Drop: 
+        {
             auto* e = static_cast<QDropEvent*>(event);
             if (!isTabMime(e->mimeData()))
                 return QMainWindow::eventFilter(obj, event);
@@ -140,13 +151,15 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             const QPoint globalPos = mapToGlobal(eventPos);
 
             // If user drops on a tab bar, let that widget handle it.
-            if (isOverAnyTabBar(globalPos)) {
+            if (isOverAnyTabBar(globalPos)) 
+            {
                 hideOverlay();
                 return QMainWindow::eventFilter(obj, event);
             }
 
             const QRect cg = contentGlobalRect();
-            if (!cg.contains(globalPos)) {
+            if (!cg.contains(globalPos)) 
+            {
                 hideOverlay();
                 e->ignore();
                 return true;
@@ -163,7 +176,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 
             DetachableTabWidget* source = nullptr;
             int sourceIndex = -1;
-            if (!DetachableTabWidget::decodeTabMime(e->mimeData(), source, sourceIndex) || !source) {
+            if (!DetachableTabWidget::decodeTabMime(e->mimeData(), source, sourceIndex) || !source) 
+            {
                 hideOverlay();
                 e->ignore();
                 return true;
@@ -171,7 +185,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 
             // Take the tab from source.
             DetachableTabWidget::TabInfo info = source->takeTabInfo(sourceIndex);
-            if (!info.page) {
+            if (!info.page) 
+            {
                 hideOverlay();
                 e->ignore();
                 return true;
@@ -181,7 +196,8 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
             if (!target && !tabWidgets.isEmpty())
                 target = tabWidgets.first();
 
-            if (!target) {
+            if (!target) 
+            {
                 // Shouldn't happen, but avoid losing the tab.
                 source->addTab(info.page, info.title);
                 hideOverlay();
@@ -189,9 +205,11 @@ bool MainWindow::eventFilter(QObject* obj, QEvent* event)
                 return true;
             }
 
-            switch (zone) {
+            switch (zone) 
+            {
                 case DropZone::Center:
-                case DropZone::Full: {
+                case DropZone::Full: 
+                {
                     target->addTab(info.page, info.title);
                     target->setCurrentIndex(target->count() - 1);
                     break;
@@ -236,9 +254,6 @@ void MainWindow::setupMenuBar()
 
     // File menu
     QMenu* fileMenu = menuBar->addMenu("File");
-    fileMenu->addAction("Load configuration");
-    fileMenu->addAction("Save configuration");
-    fileMenu->addSeparator();
     QAction* exitAction = fileMenu->addAction("Exit");
     connect(exitAction, &QAction::triggered, this, &QMainWindow::close);
 
@@ -394,7 +409,8 @@ bool MainWindow::isOverAnyTabBar(const QPoint& globalPos) const
 
 DetachableTabWidget* MainWindow::tabGroupAtGlobalPos(const QPoint& globalPos) const
 {
-    auto pick = [](const QPoint& pos) -> DetachableTabWidget* {
+    auto pick = [](const QPoint& pos) -> DetachableTabWidget* 
+    {
         QWidget* w = QApplication::widgetAt(pos);
         while (w) {
             if (auto* tw = qobject_cast<DetachableTabWidget*>(w))
@@ -411,12 +427,14 @@ DetachableTabWidget* MainWindow::tabGroupAtGlobalPos(const QPoint& globalPos) co
     // If we're over a splitter handle, Qt will often report QSplitterHandle.
     // Probe a few nearby points to select the adjacent tab group, which feels
     // much more "VSCode-like".
-    static const QPoint offsets[] = {
+    static const QPoint offsets[] = 
+    {
         {-10, 0}, {10, 0}, {0, -10}, {0, 10},
         {-25, 0}, {25, 0}, {0, -25}, {0, 25}
     };
 
-    for (const QPoint& off : offsets) {
+    for (const QPoint& off : offsets) 
+    {
         if (auto* tw = pick(globalPos + off))
             return tw;
     }
@@ -435,13 +453,15 @@ void MainWindow::splitAround(DetachableTabWidget* target, Qt::Orientation orient
     newGroup->setCurrentIndex(0);
 
     QSplitter* parent = qobject_cast<QSplitter*>(target->parentWidget());
-    if (!parent) {
+    if (!parent) 
+    {
         // Fallback: just append.
         contentSplitter->addWidget(newGroup);
         return;
     }
 
-    if (parent->orientation() == orientation) {
+    if (parent->orientation() == orientation) 
+    {
         int idx = parent->indexOf(target);
         if (!before)
             idx++;
@@ -459,10 +479,13 @@ void MainWindow::splitAround(DetachableTabWidget* target, Qt::Orientation orient
     QWidget* old = parent->replaceWidget(idx, nested);
 
     // old == target (should).
-    if (before) {
+    if (before) 
+    {
         nested->addWidget(newGroup);
         nested->addWidget(old);
-    } else {
+    } 
+    else 
+    {
         nested->addWidget(old);
         nested->addWidget(newGroup);
     }
@@ -492,9 +515,9 @@ void MainWindow::removeTabGroup(DetachableTabWidget* tw)
     tabWidgets.removeOne(tw);
 
     QSplitter* parent = qobject_cast<QSplitter*>(tw->parentWidget());
-    if (parent) {
+    if (parent)
         tw->setParent(nullptr);
-    }
+
     tw->deleteLater();
 
     if (parent)
@@ -530,13 +553,13 @@ void MainWindow::clearSplitterRecursively(QSplitter* splitter)
     if (!splitter)
         return;
 
-    while (splitter->count() > 0) {
+    while (splitter->count() > 0) 
+    {
         QWidget* w = splitter->widget(0);
         w->setParent(nullptr);
 
-        if (auto* child = qobject_cast<QSplitter*>(w)) {
+        if (auto* child = qobject_cast<QSplitter*>(w)) 
             clearSplitterRecursively(child);
-        }
 
         w->deleteLater();
     }
@@ -566,9 +589,8 @@ void MainWindow::onTabDetached(QWidget* widget, const QString& title, const QPoi
     cleanupIfEmpty(sourceWidget);
 
     // Update available tabs menu if we have a selected element
-    if (currentSelectedElement) {
+    if (currentSelectedElement)
         updateAvailableTabsMenu(currentSelectedElement);
-    }
 }
 
 void MainWindow::onTabSplitRequested(int index, Qt::Orientation orientation, DropZone zone)
@@ -599,8 +621,10 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
     LOG_I("Detached window '{}' closed", title.toStdString());
 
     // Find and remove the window from our list
-    for (int i = 0; i < detachedWindows.size(); ++i) {
-        if (detachedWindows[i]->contentWidget() == contentWidget) {
+    for (int i = 0; i < detachedWindows.size(); ++i) 
+    {
+        if (detachedWindows[i]->contentWidget() == contentWidget) 
+        {
             detachedWindows[i]->deleteLater();
             detachedWindows.removeAt(i);
             break;
@@ -608,9 +632,8 @@ void MainWindow::onDetachedWindowClosed(QWidget* contentWidget, const QString& t
     }
 
     // Update available tabs menu if we have a selected element
-    if (currentSelectedElement) {
+    if (currentSelectedElement)
         updateAvailableTabsMenu(currentSelectedElement);
-    }
 }
 
 void MainWindow::onViewSelectionChanged(int index)
@@ -697,26 +720,26 @@ void MainWindow::onTabCloseRequested(int index)
     cleanupIfEmpty(sourceWidget);
 
     // Update available tabs menu if we have a selected element
-    if (currentSelectedElement) {
+    if (currentSelectedElement)
         updateAvailableTabsMenu(currentSelectedElement);
-    }
 }
 
 bool MainWindow::isTabOpen(const QString& tabName) const
 {
     // Check all tab widgets and detached windows
-    for (auto* tabWidget : tabWidgets) {
-        for (int i = 0; i < tabWidget->count(); ++i) {
-            if (tabWidget->tabText(i) == tabName) {
+    for (auto* tabWidget : tabWidgets) 
+    {
+        for (int i = 0; i < tabWidget->count(); ++i) 
+        {
+            if (tabWidget->tabText(i) == tabName)
                 return true;
-            }
         }
     }
 
-    for (auto* window : detachedWindows) {
-        if (window->windowTitle() == tabName) {
+    for (auto* window : detachedWindows) 
+    {
+        if (window->windowTitle() == tabName)
             return true;
-        }
     }
 
     return false;
@@ -730,28 +753,32 @@ void MainWindow::updateAvailableTabsMenu(BaseTreeElement* element)
     availableTabsMenu->clear();
 
     QStringList availableTabs = element->getAvailableTabNames();
-    if (availableTabs.isEmpty()) {
+    if (availableTabs.isEmpty()) 
+    {
         availableTabsMenu->setEnabled(false);
         return;
     }
 
     // Filter out already open tabs
     QStringList unopenedTabs;
-    for (const QString& tabName : availableTabs) {
-        if (!isTabOpen(tabName)) {
+    for (const QString& tabName : availableTabs) 
+    {
+        if (!isTabOpen(tabName))
             unopenedTabs << tabName;
-        }
     }
 
-    if (unopenedTabs.isEmpty()) {
+    if (unopenedTabs.isEmpty()) 
+    {
         availableTabsMenu->setEnabled(false);
         return;
     }
 
     availableTabsMenu->setEnabled(true);
-    for (const QString& tabName : unopenedTabs) {
+    for (const QString& tabName : unopenedTabs) 
+    {
         QAction* action = availableTabsMenu->addAction(tabName);
-        connect(action, &QAction::triggered, this, [this, tabName]() {
+        connect(action, &QAction::triggered, this, [this, tabName]() 
+        {
             onOpenTab(tabName);
         });
     }
@@ -764,7 +791,8 @@ void MainWindow::onOpenTab(const QString& tabName)
 
     // Find or create a tab widget to add the tab to
     DetachableTabWidget* targetTabWidget = tabWidgets.first();
-    if (!targetTabWidget) {
+    if (!targetTabWidget) 
+    {
         targetTabWidget = createTabGroup();
         contentSplitter->addWidget(targetTabWidget);
     }
@@ -782,7 +810,8 @@ void MainWindow::onOpenTab(const QString& tabName)
 void MainWindow::restoreDefaultLayout()
 {
     // Close all detached windows (and delete their content)
-    for (auto* w : detachedWindows) {
+    for (auto* w : detachedWindows) 
+    {
         w->close();
         w->deleteLater();
     }
@@ -801,7 +830,8 @@ void MainWindow::restoreDefaultLayout()
     availableTabsMenu->clear();
     availableTabsMenu->setEnabled(false);
 
-    if (dropOverlay) {
+    if (dropOverlay) 
+    {
         dropOverlay->setTargetWidget(contentSplitter);
         dropOverlay->hide();
     }

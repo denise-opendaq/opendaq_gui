@@ -119,11 +119,20 @@ void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     try
     {
         auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
-        if (eventId == daq::CoreEventId::ComponentAdded || eventId == daq::CoreEventId::ComponentRemoved)
+        switch (eventId)
         {
-            // Refresh the folder to update the tree structure
-            QMetaObject::invokeMethod(this, "refresh", Qt::QueuedConnection);
-        }
+            case daq::CoreEventId::ComponentAdded:
+            case daq::CoreEventId::ComponentRemoved:
+            case daq::CoreEventId::ComponentUpdateEnd:
+            {
+                QMetaObject::invokeMethod(this, "refresh", Qt::QueuedConnection);
+                return;
+            }
+            defaut:
+            {
+                return;
+            }
+        };
     }
     catch (const std::exception& e)
     {

@@ -76,7 +76,8 @@ DropZone DropOverlay::getDropZone(const QPoint& pos) const
 void DropOverlay::updateHighlight(const QPoint& pos)
 {
     const DropZone newZone = getDropZone(pos);
-    if (newZone != currentZone) {
+    if (newZone != currentZone) 
+    {
         previousZone = currentZone;
         currentZone = newZone;
 
@@ -119,7 +120,8 @@ void DropOverlay::paintEvent(QPaintEvent* event)
     painter.setFont(font);
 
     QString text;
-    switch (currentZone) {
+    switch (currentZone) 
+    {
         case DropZone::Full:   text = "Drop Here"; break;
         case DropZone::Left:   text = "← Split Left"; break;
         case DropZone::Right:  text = "Split Right →"; break;
@@ -139,7 +141,8 @@ QRect DropOverlay::getZoneRect(DropZone zone) const
     const int minSide = qMin(w, h);
     const int center = qMin(centerThreshold, qMax(24, minSide / 3));
 
-    switch (zone) {
+    switch (zone) 
+    {
         case DropZone::Full:
             return rect();
         case DropZone::Left:

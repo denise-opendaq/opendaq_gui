@@ -11,7 +11,8 @@ DetachedWindow::DetachedWindow(QWidget *contentWidget, const QString &windowTitl
     resize(800, 600);
 
     // Ensure content widget is properly parented and visible
-    if (contentWidget) {
+    if (contentWidget) 
+    {
         contentWidget->setParent(this);
         setCentralWidget(contentWidget);
         contentWidget->show();

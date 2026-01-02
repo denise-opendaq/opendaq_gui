@@ -45,10 +45,14 @@ QMenu* ServersFolderTreeElement::onCreateRightClickMenu(QWidget* parent)
     if (!isLocalDeviceFolder())
         return menu;
 
-    menu->addSeparator();
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
 
-    QAction* addServerAction = menu->addAction("Add Server");
+    QAction* addServerAction = new QAction("Add Server", menu);
     connect(addServerAction, &QAction::triggered, this, &ServersFolderTreeElement::onAddServer);
+    menu->insertAction(firstAction, addServerAction);
+
+    menu->insertSeparator(firstAction);
+
     return menu;
 }
 
