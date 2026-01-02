@@ -99,16 +99,14 @@ QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 
 void DeviceTreeElement::onAddDevice()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     AddDeviceDialog dialog(device, nullptr);
     if (dialog.exec() == QDialog::Accepted)
     {
         QString connectionString = dialog.getConnectionString();
         if (connectionString.isEmpty())
-        {
             return;
-        }
 
         try
         {
@@ -136,7 +134,7 @@ void DeviceTreeElement::onRemoveDevice()
     if (!parentDeviceElement)
         return;
 
-    auto parentDevice = parentDeviceElement->getDaqComponent().asPtrOrNull<daq::IDevice>();
+    auto parentDevice = parentDeviceElement->getDaqComponent().asPtrOrNull<daq::IDevice>(true);
     if (!parentDevice.assigned())
         return;
 
@@ -145,7 +143,7 @@ void DeviceTreeElement::onRemoveDevice()
 
 void DeviceTreeElement::onAddFunctionBlock()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     AddFunctionBlockDialog dialog(device, nullptr);
     if (dialog.exec() == QDialog::Accepted)
@@ -202,7 +200,7 @@ void DeviceTreeElement::onShowDeviceInfo()
 
 void DeviceTreeElement::onSaveConfiguration()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     try
     {
@@ -218,9 +216,7 @@ void DeviceTreeElement::onSaveConfiguration()
         );
 
         if (fileName.isEmpty())
-        {
             return;
-        }
 
         // Write configuration to file
         QFile file(fileName);
@@ -247,20 +243,16 @@ void DeviceTreeElement::onSaveConfiguration()
 
 void DeviceTreeElement::onLoadConfiguration()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     // Open dialog to configure load parameters and select file
     LoadConfigurationDialog dialog(tree->parentWidget());
     if (dialog.exec() != QDialog::Accepted)
-    {
         return;
-    }
 
     QString configFilePath = dialog.getConfigurationFilePath();
     if (configFilePath.isEmpty())
-    {
         return;
-    }
 
     try
     {

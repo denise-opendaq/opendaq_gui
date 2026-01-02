@@ -39,9 +39,7 @@ ComponentTreeElement::~ComponentTreeElement()
     try
     {
         if (daqComponent.assigned())
-        {
             *AppContext::DaqEvent() -= daq::event(this, &ComponentTreeElement::onCoreEvent);
-        }
     }
     catch (const std::exception& e)
     {
@@ -126,9 +124,7 @@ void ComponentTreeElement::onSelected(QWidget* mainContent)
     // Open all available tabs by calling openTab for each
     QStringList availableTabs = getAvailableTabNames();
     for (const QString& tabName : availableTabs)
-    {
         openTab(tabName, mainContent);
-    }
 }
 
 void ComponentTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)

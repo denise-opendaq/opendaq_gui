@@ -19,17 +19,13 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     // Add all items from the folder as children
     try
     {
-        auto folder = daqComponent.asPtr<daq::IFolder>();
-        auto items = folder.getItems();
+        auto folder = daqComponent.asPtr<daq::IFolder>(true);
 
-        for (size_t i = 0; i < items.getCount(); ++i)
+        for (const auto & item : folder.getItems())
         {
-            auto item = items[i];
             auto childElement = createTreeElement(tree, item, this);
             if (childElement)
-            {
                 addChild(std::unique_ptr<BaseTreeElement>(childElement));
-            }
         }
     }
     catch (const std::exception& e)
@@ -52,13 +48,12 @@ void FolderTreeElement::refresh()
 {
     try
     {
-        auto folder = daqComponent.asPtr<daq::IFolder>();
+        auto folder = daqComponent.asPtr<daq::IFolder>(true);
         auto items = folder.getItems();
 
         // Add new items that don't exist yet
-        for (size_t i = 0; i < items.getCount(); ++i)
+        for (const auto & item : items)
         {
-            auto item = items[i];
             QString itemLocalId = QString::fromStdString(item.getLocalId());
             
             if (children.find(itemLocalId) == children.end())
@@ -66,9 +61,7 @@ void FolderTreeElement::refresh()
                 // This is a new item, add it
                 auto childElement = createTreeElement(tree, item, this);
                 if (childElement)
-                {
                     addChild(std::unique_ptr<BaseTreeElement>(childElement));
-                }
             }
         }
 
@@ -80,9 +73,8 @@ void FolderTreeElement::refresh()
             QString childLocalId = child->getLocalId();
             bool found = false;
             
-            for (size_t i = 0; i < items.getCount(); ++i)
+            for (const auto & item : items)
             {
-                auto item = items[i];
                 QString itemLocalId = QString::fromStdString(item.getLocalId());
                 if (itemLocalId == childLocalId)
                 {
@@ -92,15 +84,12 @@ void FolderTreeElement::refresh()
             }
             
             if (!found)
-            {
                 toRemove.append(child);
-            }
         }
         
         for (auto* child : toRemove)
-        {
             removeChild(child);
-        }
+
         // Update visibility after refresh
         showFiltered();
     }
@@ -128,10 +117,8 @@ void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
                 QMetaObject::invokeMethod(this, "refresh", Qt::QueuedConnection);
                 return;
             }
-            defaut:
-            {
+            default:
                 return;
-            }
         };
     }
     catch (const std::exception& e)

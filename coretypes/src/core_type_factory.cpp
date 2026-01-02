@@ -21,12 +21,11 @@ std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::B
             {
                 try
                 {
-                    const auto enumValue = value.asPtr<daq::IEnumeration>(true);
+                    const auto enumValue = value.asPtrOrNull<daq::IEnumeration>(true);
                     if (enumValue.assigned())
                     {
                         const auto enumType = enumValue.getEnumerationType();
-                        if (enumType.assigned())
-                            return std::make_shared<EnumerationCoreTypeHandler>(enumType);
+                        return std::make_shared<EnumerationCoreTypeHandler>(enumType);
                     }
                 }
                 catch (const std::exception& e)
@@ -52,7 +51,7 @@ std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::B
             {
                 try
                 {
-                    const auto list = value.asPtr<daq::IList>(true);
+                    const auto list = value.asPtrOrNull<daq::IList>(true);
                     if (list.assigned() && list.getCount() > 0)
                     {
                         // Get item type from first element

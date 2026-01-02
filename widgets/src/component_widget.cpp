@@ -207,11 +207,14 @@ void ComponentWidget::setupPropertyHandlers()
         });
 
         // Operation mode property write handler
-        setupHandler("Operation Mode", [this](const daq::BaseObjectPtr& value)
+        if (componentPropertyObject.hasProperty("Operation Mode"))
         {
-            if (const auto device = component.asPtrOrNull<daq::IDevice>(true); device.assigned())
-                device.setOperationMode(static_cast<daq::OperationModeType>(static_cast<int>(value)));
-        });
+            setupHandler("Operation Mode", [this](const daq::BaseObjectPtr& value)
+            {
+                if (const auto device = component.asPtrOrNull<daq::IDevice>(true); device.assigned())
+                    device.setOperationMode(static_cast<daq::OperationModeType>(static_cast<int>(value)));
+            });
+        }
     }
     catch (const std::exception& e)
     {
@@ -330,9 +333,12 @@ void ComponentWidget::handleAttributeChangedAsync(const daq::StringPtr& attribut
 
     try
     {
-        UpdateGuard guard(updatingFromComponent);
-        auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-        protectedObj.setProtectedPropertyValue(attributeName, value);
+        if (componentPropertyObject.hasProperty(attributeName))
+        {
+            UpdateGuard guard(updatingFromComponent);
+            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
+            protectedObj.setProtectedPropertyValue(attributeName, value);
+        }
     }
     catch (const std::exception& e)
     {

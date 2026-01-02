@@ -307,9 +307,7 @@ void MainWindow::setupUI()
     componentTreeWidget = new ComponentTreeWidget();
     auto instance = AppContext::Instance()->daqInstance();
     if (instance.assigned())
-    {
         componentTreeWidget->loadInstance(instance);
-    }
 
     // Connect component selection to show properties
     connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,

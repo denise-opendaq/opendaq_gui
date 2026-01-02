@@ -41,9 +41,9 @@ void FunctionBlockTreeElement::onRemove()
         return;
 
     auto parentComponent = parentDeviceElement->getDaqComponent();
-    if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(); parentFb.assigned())
+    if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(true); parentFb.assigned())
         parentFb.removeFunctionBlock(daqComponent);
-    else if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(); parentDevice.assigned())
+    else if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(true); parentDevice.assigned())
         parentDevice.removeFunctionBlock(daqComponent);
     else
         return;
@@ -51,16 +51,14 @@ void FunctionBlockTreeElement::onRemove()
 
 void FunctionBlockTreeElement::onAddFunctionBlock()
 {
-    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>();
+    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>(true);
 
     AddFunctionBlockDialog dialog(functionBlock, nullptr);
     if (dialog.exec() == QDialog::Accepted)
     {
         QString functionBlockType = dialog.getFunctionBlockType();
         if (functionBlockType.isEmpty())
-        {
             return;
-        }
 
         try
         {

@@ -20,7 +20,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     , owner(owner)
     , root(root)
 {
-    if (const auto internal = root.asPtr<daq::IPropertyObjectInternal>(true); internal.assigned())
+    if (const auto internal = root.asPtrOrNull<daq::IPropertyObjectInternal>(true); internal.assigned())
     {
         if (const auto path = internal.getPath(); path.assigned())
             rootPath = path.toStdString();
