@@ -158,6 +158,10 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         ObjectPropertyItem* objLogic = parentIt->second;
         removeChildProperty(objLogic ? objLogic->getWidgetItem() : nullptr, propName);
     }
+    else if (eventId == daq::CoreEventId::PropertyObjectUpdateEnd)
+    {
+        refresh();
+    }
 }
 
 void PropertyObjectView::onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force)

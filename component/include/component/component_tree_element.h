@@ -40,6 +40,13 @@ public:
     // Get the underlying openDAQ component
     daq::ComponentPtr getDaqComponent() const;
 
+    // Override to add context menu items
+    QMenu* onCreateRightClickMenu(QWidget* parent) override;
+
+protected Q_SLOTS:
+    void onBeginUpdate();
+    void onEndUpdate();
+
 protected:
     daq::ComponentPtr daqComponent;
 };

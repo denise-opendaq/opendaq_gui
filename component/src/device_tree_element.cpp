@@ -51,7 +51,7 @@ void DeviceTreeElement::onSelected(QWidget* mainContent)
 
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
-    QMenu* menu = new QMenu(parent);
+    QMenu* menu = Super::onCreateRightClickMenu(parent);
 
     QAction* addDeviceAction = menu->addAction("Add Device");
     connect(addDeviceAction, &QAction::triggered, this, &DeviceTreeElement::onAddDevice);
