@@ -18,15 +18,18 @@ QMenu* FunctionBlockTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = FolderTreeElement::onCreateRightClickMenu(parent);
 
-    menu->addSeparator();
+    // Get the first action to insert our items before parent items
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
 
-    // Add Remove action
-    QAction* removeAction = menu->addAction("Remove");
+    QAction* removeAction = new QAction("Remove", menu);
     connect(removeAction, &QAction::triggered, this, &FunctionBlockTreeElement::onRemove);
+    menu->insertAction(firstAction, removeAction);
 
-    // Add Function Block action
-    QAction* addFBAction = menu->addAction("Add Function Block");
+    QAction* addFBAction = new QAction("Add Function Block", menu);
     connect(addFBAction, &QAction::triggered, this, &FunctionBlockTreeElement::onAddFunctionBlock);
+    menu->insertAction(firstAction, addFBAction);
+
+    menu->insertSeparator(firstAction);
 
     return menu;
 }
@@ -38,9 +41,9 @@ void FunctionBlockTreeElement::onRemove()
         return;
 
     auto parentComponent = parentDeviceElement->getDaqComponent();
-    if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(); parentFb.assigned())
+    if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(true); parentFb.assigned())
         parentFb.removeFunctionBlock(daqComponent);
-    else if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(); parentDevice.assigned())
+    else if (const auto parentDevice = parentComponent.asPtrOrNull<daq::IDevice>(true); parentDevice.assigned())
         parentDevice.removeFunctionBlock(daqComponent);
     else
         return;
@@ -48,16 +51,14 @@ void FunctionBlockTreeElement::onRemove()
 
 void FunctionBlockTreeElement::onAddFunctionBlock()
 {
-    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>();
+    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>(true);
 
     AddFunctionBlockDialog dialog(functionBlock, nullptr);
     if (dialog.exec() == QDialog::Accepted)
     {
         QString functionBlockType = dialog.getFunctionBlockType();
         if (functionBlockType.isEmpty())
-        {
             return;
-        }
 
         try
         {

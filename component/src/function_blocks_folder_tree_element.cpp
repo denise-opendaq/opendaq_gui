@@ -16,14 +16,18 @@ QMenu* FunctionBlocksFolderTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = FolderTreeElement::onCreateRightClickMenu(parent);
 
-    menu->addSeparator();
-
     if (!dynamic_cast<DeviceTreeElement*>(parentElement) && !dynamic_cast<FunctionBlockTreeElement*>(parentElement))
         return menu;
 
+    // Get the first action to insert our items before parent items
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
+
     // Add Function Block action
-    QAction* addFBAction = menu->addAction("Add Function Block");
+    QAction* addFBAction = new QAction("Add Function Block", menu);
     connect(addFBAction, &QAction::triggered, this, &FunctionBlocksFolderTreeElement::onAddFunctionBlock);
+    menu->insertAction(firstAction, addFBAction);
+
+    menu->insertSeparator(firstAction);
 
     return menu;
 }

@@ -36,9 +36,7 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
         // Expand the root
         if (rootElement->getTreeItem())
-        {
             rootElement->getTreeItem()->setExpanded(true);
-        }
         
         // Apply visibility filters
         refreshVisibility();
@@ -69,7 +67,8 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
         return nullptr;
 
     // Helper lambda to recursively search
-    std::function<BaseTreeElement*(BaseTreeElement*)> search = [&](BaseTreeElement* element) -> BaseTreeElement* {
+    std::function<BaseTreeElement*(BaseTreeElement*)> search = [&](BaseTreeElement* element) -> BaseTreeElement* 
+    {
         if (!element)
             return nullptr;
 
@@ -77,7 +76,8 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
             return element;
 
         // Search in children
-        for (auto* child : element->getChildren().values()) {
+        for (auto* child : element->getChildren().values()) 
+        {
             if (auto* found = search(child))
                 return found;
         }
@@ -103,9 +103,7 @@ void ComponentTreeWidget::setComponentTypeFilter(const QSet<QString>& types)
 void ComponentTreeWidget::refreshVisibility()
 {
     if (rootElement)
-    {
         rootElement->showFiltered();
-    }
 }
 
 void ComponentTreeWidget::setupUI()
@@ -124,9 +122,7 @@ void ComponentTreeWidget::onSelectionChanged()
 {
     auto element = getSelectedElement();
     if (element)
-    {
         Q_EMIT componentSelected(element);
-    }
 }
 
 void ComponentTreeWidget::onContextMenuRequested(const QPoint& pos)
@@ -141,9 +137,7 @@ void ComponentTreeWidget::onContextMenuRequested(const QPoint& pos)
         auto element = static_cast<BaseTreeElement*>(elementPtr);
         auto menu = element->onCreateRightClickMenu(this);
         if (menu && menu->actions().count() > 0)
-        {
             menu->exec(mapToGlobal(pos));
-        }
         delete menu;
     }
 }

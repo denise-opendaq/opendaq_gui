@@ -15,12 +15,14 @@ DevicesFolderTreeElement::DevicesFolderTreeElement(QTreeWidget* tree, const daq:
 QMenu* DevicesFolderTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = FolderTreeElement::onCreateRightClickMenu(parent);
-
-    menu->addSeparator();
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
 
     // Add Device action
-    QAction* addDeviceAction = menu->addAction("Add Device");
+    QAction* addDeviceAction = new QAction("Add Device", menu);
     connect(addDeviceAction, &QAction::triggered, this, &DevicesFolderTreeElement::onAddDevice);
+    menu->insertAction(firstAction, addDeviceAction);
+
+    menu->insertSeparator(firstAction);
 
     return menu;
 }

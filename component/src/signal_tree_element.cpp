@@ -13,9 +13,8 @@ void SignalTreeElement::onSelected(QWidget* mainContent)
 {
     // Open all available tabs by calling openTab for each
     QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs) {
+    for (const QString& tabName : availableTabs)
         openTab(tabName, mainContent);
-    }
 }
 
 QStringList SignalTreeElement::getAvailableTabNames() const
@@ -28,14 +27,17 @@ QStringList SignalTreeElement::getAvailableTabNames() const
 void SignalTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
     QString valueTabName = getName() + " Value";
-    if (tabName == valueTabName) {
+    if (tabName == valueTabName) 
+    {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) {
-            auto daqSignal = daqComponent.asPtr<daq::ISignal>();
-            auto valueWidget = new SignalValueWidget(daqSignal);
+        if (tabWidget) 
+        {
+            auto valueWidget = new SignalValueWidget(daqComponent);
             addTab(tabWidget, valueWidget, tabName);
         }
-    } else {
+    } 
+    else 
+    {
         Super::openTab(tabName, mainContent);
     }
 }

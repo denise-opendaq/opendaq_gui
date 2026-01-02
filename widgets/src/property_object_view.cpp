@@ -6,6 +6,7 @@
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 #include <QMessageBox>
+#include <QKeyEvent>
 #include <coreobjects/property_object_internal_ptr.h>
 
 // ============================================================================
@@ -19,7 +20,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     , owner(owner)
     , root(root)
 {
-    if (const auto internal = root.asPtr<daq::IPropertyObjectInternal>(true); internal.assigned())
+    if (const auto internal = root.asPtrOrNull<daq::IPropertyObjectInternal>(true); internal.assigned())
     {
         if (const auto path = internal.getPath(); path.assigned())
             rootPath = path.toStdString();
@@ -96,6 +97,19 @@ bool PropertyObjectView::edit(const QModelIndex& index, EditTrigger trigger, QEv
     return false;
 }
 
+void PropertyObjectView::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key() == Qt::Key_F5)
+    {
+        refresh();
+        event->accept();
+    }
+    else
+    {
+        QTreeWidget::keyPressEvent(event);
+    }
+}
+
 daq::PropertyObjectPtr PropertyObjectView::getChildObject(std::string path)
 {
     if (!rootPath.empty())
@@ -143,6 +157,10 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         const daq::StringPtr propName = eventArgs.getParameters().get("Name");
         ObjectPropertyItem* objLogic = parentIt->second;
         removeChildProperty(objLogic ? objLogic->getWidgetItem() : nullptr, propName);
+    }
+    else if (eventId == daq::CoreEventId::PropertyObjectUpdateEnd)
+    {
+        refresh();
     }
 }
 

@@ -12,6 +12,7 @@ set(HEADERS
     include/dialogs/add_function_block_dialog.h
     include/dialogs/add_server_dialog.h
     include/dialogs/call_function_dialog.h
+    include/dialogs/load_configuration_dialog.h
 )
 
 # Source files
@@ -21,6 +22,7 @@ set(SOURCES
     src/add_function_block_dialog.cpp
     src/add_server_dialog.cpp
     src/call_function_dialog.cpp
+    src/load_configuration_dialog.cpp
 )
 
 # Create library

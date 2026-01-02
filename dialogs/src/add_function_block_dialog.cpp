@@ -128,7 +128,7 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
         else if (const auto parentFb = parentComponent.asPtrOrNull<daq::IFunctionBlock>(true); parentFb.assigned())
             availableTypes = parentFb.getAvailableFunctionBlockTypes();
 
-        if (!availableTypes.assigned() ||availableTypes.getCount() == 0)
+        if (!availableTypes.assigned() || availableTypes.getCount() == 0)
             return;
 
         // Populate list with available function block types

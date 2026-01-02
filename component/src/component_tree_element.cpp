@@ -39,9 +39,7 @@ ComponentTreeElement::~ComponentTreeElement()
     try
     {
         if (daqComponent.assigned())
-        {
             *AppContext::DaqEvent() -= daq::event(this, &ComponentTreeElement::onCoreEvent);
-        }
     }
     catch (const std::exception& e)
     {
@@ -126,9 +124,7 @@ void ComponentTreeElement::onSelected(QWidget* mainContent)
     // Open all available tabs by calling openTab for each
     QStringList availableTabs = getAvailableTabNames();
     for (const QString& tabName : availableTabs)
-    {
         openTab(tabName, mainContent);
-    }
 }
 
 void ComponentTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)
@@ -169,15 +165,58 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 
     QString componentTabName = getName() + " Component";
     QString propertiesTabName = getName() + " Properties";
-    
+
     if (tabName == componentTabName)
     {
         auto componentWidget = new ComponentWidget(daqComponent);
         addTab(tabWidget, componentWidget, tabName);
-    } 
-    else if (tabName == propertiesTabName) 
+    }
+    else if (tabName == propertiesTabName)
     {
         auto propertyView = new PropertyObjectView(daqComponent, tabWidget, daqComponent);
         addTab(tabWidget, propertyView, tabName);
+    }
+}
+
+QMenu* ComponentTreeElement::onCreateRightClickMenu(QWidget* parent)
+{
+    QMenu* menu = BaseTreeElement::onCreateRightClickMenu(parent);
+
+    QAction* beginUpdateAction = menu->addAction("Begin Update");
+    connect(beginUpdateAction, &QAction::triggered, this, &ComponentTreeElement::onBeginUpdate);
+
+    QAction* endUpdateAction = menu->addAction("End Update");
+    connect(endUpdateAction, &QAction::triggered, this, &ComponentTreeElement::onEndUpdate);
+    
+    menu->addSeparator();
+    
+    return menu;
+}
+
+void ComponentTreeElement::onBeginUpdate()
+{
+    try
+    {
+        daqComponent.beginUpdate();
+    }
+    catch (const std::exception& e)
+    {
+        const auto context = daqComponent.getContext();
+        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        LOG_E("Failed to begin update: {}", e.what());
+    }
+}
+
+void ComponentTreeElement::onEndUpdate()
+{
+    try
+    {
+        daqComponent.endUpdate();
+    }
+    catch (const std::exception& e)
+    {
+        const auto context = daqComponent.getContext();
+        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        LOG_E("Failed to end update: {}", e.what());
     }
 }

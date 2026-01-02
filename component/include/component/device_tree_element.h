@@ -26,6 +26,8 @@ public Q_SLOTS:
     void onAddDevice();
     void onAddFunctionBlock();
     void onShowDeviceInfo();
+    void onSaveConfiguration();
+    void onLoadConfiguration();
 
 private Q_SLOTS:
     void onRemoveDevice();

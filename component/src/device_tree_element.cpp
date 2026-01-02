@@ -2,6 +2,7 @@
 #include "widgets/property_object_view.h"
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_function_block_dialog.h"
+#include "dialogs/load_configuration_dialog.h"
 #include "context/gui_constants.h"
 #include <QMenu>
 #include <QAction>
@@ -10,6 +11,9 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QFileDialog>
+#include <QFile>
+#include <QTextStream>
 
 DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QObject* parent)
     : Super(tree, daqDevice, parent)
@@ -51,41 +55,58 @@ void DeviceTreeElement::onSelected(QWidget* mainContent)
 
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
-    QMenu* menu = new QMenu(parent);
+    QMenu* menu = Super::onCreateRightClickMenu(parent);
 
-    QAction* addDeviceAction = menu->addAction("Add Device");
+    // Get the first action to insert our items before parent items
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
+
+    QAction* addDeviceAction = new QAction("Add Device", menu);
     connect(addDeviceAction, &QAction::triggered, this, &DeviceTreeElement::onAddDevice);
+    menu->insertAction(firstAction, addDeviceAction);
 
     if (parentElement)
     {
-        QAction* removeDeviceAction = menu->addAction("Remove Device");
+        QAction* removeDeviceAction = new QAction("Remove Device", menu);
         connect(removeDeviceAction, &QAction::triggered, this, &DeviceTreeElement::onRemoveDevice);
+        menu->insertAction(firstAction, removeDeviceAction);
     }
-    menu->addSeparator();
 
-    QAction* addFunctionBlockAction = menu->addAction("Add Function Block");
+    QAction* addFunctionBlockAction = new QAction("Add Function Block", menu);
     connect(addFunctionBlockAction, &QAction::triggered, this, &DeviceTreeElement::onAddFunctionBlock);
+    menu->insertAction(firstAction, addFunctionBlockAction);
 
-    menu->addSeparator();
+    menu->insertSeparator(firstAction);
 
-    QAction* showDeviceInfoAction = menu->addAction("Show Device Info");
+    QAction* showDeviceInfoAction = new QAction("Show Device Info", menu);
     connect(showDeviceInfoAction, &QAction::triggered, this, &DeviceTreeElement::onShowDeviceInfo);
+    menu->insertAction(firstAction, showDeviceInfoAction);
+
+    menu->insertSeparator(firstAction);
+
+    QAction* saveConfigAction = new QAction("Save Configuration", menu);
+    connect(saveConfigAction, &QAction::triggered, this, &DeviceTreeElement::onSaveConfiguration);
+    menu->insertAction(firstAction, saveConfigAction);
+
+    // Insert in reverse order: last item in code = first in menu
+    QAction* loadConfigAction = new QAction("Load Configuration", menu);
+    connect(loadConfigAction, &QAction::triggered, this, &DeviceTreeElement::onLoadConfiguration);
+    menu->insertAction(firstAction, loadConfigAction);
+
+    menu->insertSeparator(firstAction);
 
     return menu;
 }
 
 void DeviceTreeElement::onAddDevice()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     AddDeviceDialog dialog(device, nullptr);
     if (dialog.exec() == QDialog::Accepted)
     {
         QString connectionString = dialog.getConnectionString();
         if (connectionString.isEmpty())
-        {
             return;
-        }
 
         try
         {
@@ -113,7 +134,7 @@ void DeviceTreeElement::onRemoveDevice()
     if (!parentDeviceElement)
         return;
 
-    auto parentDevice = parentDeviceElement->getDaqComponent().asPtrOrNull<daq::IDevice>();
+    auto parentDevice = parentDeviceElement->getDaqComponent().asPtrOrNull<daq::IDevice>(true);
     if (!parentDevice.assigned())
         return;
 
@@ -122,7 +143,7 @@ void DeviceTreeElement::onRemoveDevice()
 
 void DeviceTreeElement::onAddFunctionBlock()
 {
-    auto device = daqComponent.asPtr<daq::IDevice>();
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
 
     AddFunctionBlockDialog dialog(device, nullptr);
     if (dialog.exec() == QDialog::Accepted)
@@ -175,5 +196,90 @@ void DeviceTreeElement::onShowDeviceInfo()
     layout->addLayout(buttonLayout);
 
     infoDialog.exec();
+}
+
+void DeviceTreeElement::onSaveConfiguration()
+{
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
+
+    try
+    {
+        // Get configuration string from device
+        std::string configStr = device.saveConfiguration();
+
+        // Open file dialog to choose save location
+        QString fileName = QFileDialog::getSaveFileName(
+            tree->parentWidget(),
+            "Save Configuration",
+            name + "_config.json",
+            "JSON Files (*.json);;All Files (*)"
+        );
+
+        if (fileName.isEmpty())
+            return;
+
+        // Write configuration to file
+        QFile file(fileName);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        {
+            QMessageBox::critical(nullptr, "Error",
+                QString("Failed to open file for writing: %1").arg(fileName));
+            return;
+        }
+
+        QTextStream out(&file);
+        out << QString::fromStdString(configStr);
+        file.close();
+
+        QMessageBox::information(nullptr, "Success",
+            QString("Configuration saved to: %1").arg(fileName));
+    }
+    catch (const std::exception& e)
+    {
+        QMessageBox::critical(nullptr, "Error",
+            QString("Failed to save configuration: %1").arg(e.what()));
+    }
+}
+
+void DeviceTreeElement::onLoadConfiguration()
+{
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
+
+    // Open dialog to configure load parameters and select file
+    LoadConfigurationDialog dialog(tree->parentWidget());
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    QString configFilePath = dialog.getConfigurationFilePath();
+    if (configFilePath.isEmpty())
+        return;
+
+    try
+    {
+        // Read configuration from file
+        QFile file(configFilePath);
+        if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+        {
+            QMessageBox::critical(nullptr, "Error",
+                QString("Failed to open file for reading: %1").arg(configFilePath));
+            return;
+        }
+
+        QTextStream in(&file);
+        QString configContent = in.readAll();
+        file.close();
+
+        // Load configuration to device
+        daq::UpdateParametersPtr updateParams = dialog.getUpdateParameters();
+        device.loadConfiguration(configContent.toStdString(), updateParams);
+
+        QMessageBox::information(nullptr, "Success",
+            QString("Configuration loaded from: %1").arg(configFilePath));
+    }
+    catch (const std::exception& e)
+    {
+        QMessageBox::critical(nullptr, "Error",
+            QString("Failed to load configuration: %1").arg(e.what()));
+    }
 }
 

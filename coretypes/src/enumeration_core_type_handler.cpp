@@ -14,7 +14,7 @@ QString EnumerationCoreTypeHandler::valueToString(const daq::BaseObjectPtr& valu
 {
     try
     {
-        const auto enumValue = value.asPtr<daq::IEnumeration>();
+        const auto enumValue = value.asPtrOrNull<daq::IEnumeration>(true);
         if (enumValue.assigned())
         {
             const auto valueName = enumValue.getValue();

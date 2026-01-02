@@ -92,9 +92,7 @@ void UpdateScheduler::onSchedulerTimeout()
     {
         auto instance = AppContext::Instance()->daqInstance();
         if (instance.assigned())
-        {
             instance.getContext().getScheduler().runMainLoopIteration();
-        }
     } 
     catch (const std::exception& e) 
     {

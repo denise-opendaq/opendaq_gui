@@ -22,12 +22,16 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
     setupSignalSelection();
 
     // Subscribe to input port core events
-    if (inputPort.assigned()) {
-        try {
+    if (inputPort.assigned()) 
+    {
+        try 
+        {
             *AppContext::DaqEvent() += daq::event(this, &InputPortSignalSelector::onCoreEvent);
-        } catch (const std::exception& e) {
+        } 
+        catch (const std::exception& e) 
+        {
             const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Failed to subscribe to input port events: {}", e.what());
+            LOG_W("Failed to subscribe to input port events: {}", e.what());
         }
     }
 
@@ -38,46 +42,48 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
 InputPortSignalSelector::~InputPortSignalSelector()
 {
     // Unsubscribe from events
-    if (inputPort.assigned()) {
-        try {
+    if (inputPort.assigned()) 
+    {
+        try 
+        {
             *AppContext::DaqEvent() -= daq::event(this, &InputPortSignalSelector::onCoreEvent);
-        } catch (const std::exception& e) {
+        } 
+        catch (const std::exception& e) 
+        {
             const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Failed to unsubscribe from input port events: {}", e.what());
+            LOG_W("Failed to unsubscribe from input port events: {}", e.what());
         }
     }
 }
 
 void InputPortSignalSelector::setShowGroupBox(bool show)
 {
-    if (showGroupBox == show) {
+    if (showGroupBox == show)
         return;
-    }
     
     showGroupBox = show;
     
-    if (groupBox) {
+    if (groupBox)
         groupBox->setVisible(show);
-    }
 }
 
 void InputPortSignalSelector::setGroupBoxTitle(const QString& title)
 {
-    if (groupBox) {
+    if (groupBox)
         groupBox->setTitle(title);
-    }
 }
 
 void InputPortSignalSelector::setupSignalSelection()
 {
     auto mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(10, 10, 10, 10);
-    mainLayout->setSpacing(10);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
 
     QWidget* containerWidget = this;
     
     // Create group box if needed
-    if (showGroupBox) {
+    if (showGroupBox) 
+    {
         QString portName = inputPort.assigned() ? QString::fromStdString(inputPort.getName().toStdString()) : "Input Port";
         groupBox = new QGroupBox(portName, this);
         containerWidget = groupBox;
@@ -86,9 +92,14 @@ void InputPortSignalSelector::setupSignalSelection()
 
     // Create layout for combo box
     QVBoxLayout* containerLayout;
-    if (showGroupBox) {
+    if (showGroupBox) 
+    {
         containerLayout = new QVBoxLayout(containerWidget);
-    } else {
+        containerLayout->setSpacing(10);
+        containerLayout->setContentsMargins(10, 10, 10, 10);
+    }
+    else
+    {
         containerLayout = mainLayout;
     }
 
@@ -100,25 +111,25 @@ void InputPortSignalSelector::setupSignalSelection()
 
     containerLayout->addWidget(signalComboBox);
     
-    if (!showGroupBox) {
+    if (!showGroupBox)
         mainLayout->addStretch();
-    }
 }
 
 void InputPortSignalSelector::populateSignals()
 {
-    if (!signalComboBox) {
+    if (!signalComboBox)
         return;
-    }
 
     // Block signals to prevent onSignalSelected from being called during programmatic updates
     signalComboBox->blockSignals(true);
     
     signalComboBox->clear();
 
-    try {
+    try 
+    {
         auto instance = AppContext::Instance()->daqInstance();
-        if (!instance.assigned()) {
+        if (!instance.assigned()) 
+        {
             signalComboBox->addItem("No instance available");
             signalComboBox->blockSignals(false);
             return;
@@ -129,7 +140,8 @@ void InputPortSignalSelector::populateSignals()
 
         // Get all signals recursively
         auto allSignals = instance.getSignalsRecursive();
-        if (!allSignals.assigned()) {
+        if (!allSignals.assigned()) 
+        {
             signalComboBox->addItem("No signals available");
             signalComboBox->blockSignals(false);
             return;
@@ -137,28 +149,24 @@ void InputPortSignalSelector::populateSignals()
 
         // Get current signal path for selection
         QString currentSignalPath;
-        if (inputPort.assigned()) {
+        if (inputPort.assigned()) 
+        {
             auto currentSignal = inputPort.getSignal();
-            if (currentSignal.assigned()) {
+            if (currentSignal.assigned())
                 currentSignalPath = getSignalPath(currentSignal);
-            }
         }
 
         // Add signals to combo box
-        for (size_t i = 0; i < allSignals.getCount(); ++i) {
+        for (const auto & signal : allSignals) 
+        {
             try 
             {
-                auto signal = allSignals[i];
-                if (!signal.assigned()) 
-                    continue;
-
                 QString path = getSignalPath(signal);
                 signalComboBox->addItem(path);
                 
                 // Select current signal if it matches
-                if (!currentSignalPath.isEmpty() && path == currentSignalPath) {
+                if (!currentSignalPath.isEmpty() && path == currentSignalPath)
                     signalComboBox->setCurrentIndex(signalComboBox->count() - 1);
-                }
             }
             catch (const std::exception&) 
             {
@@ -167,10 +175,11 @@ void InputPortSignalSelector::populateSignals()
         }
         
         // If no signal is selected and no current signal, select "(Disconnect)"
-        if (signalComboBox->currentIndex() < 0 && currentSignalPath.isEmpty()) {
+        if (signalComboBox->currentIndex() < 0 && currentSignalPath.isEmpty())
             signalComboBox->setCurrentIndex(0);
-        }
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         signalComboBox->addItem(QString("Error: %1").arg(e.what()));
     }
     
@@ -180,18 +189,18 @@ void InputPortSignalSelector::populateSignals()
 
 void InputPortSignalSelector::onSignalSelected(int index)
 {
-    if (index < 0 || index >= signalComboBox->count()) {
+    if (index < 0 || index >= signalComboBox->count())
         return;
-    }
 
     // Index 0 is "(Disconnect)"
-    if (index == 0) {
+    if (index == 0) 
+    {
         // Check if already disconnected
-        if (inputPort.assigned()) {
+        if (inputPort.assigned()) 
+        {
             auto currentSignal = inputPort.getSignal();
-            if (!currentSignal.assigned()) {
+            if (!currentSignal.assigned())
                 return; // Already disconnected
-            }
         }
         disconnectSignal();
         return;
@@ -200,40 +209,44 @@ void InputPortSignalSelector::onSignalSelected(int index)
     // Get the path from combo box and find the signal using instance.findComponent
     QString path = signalComboBox->itemText(index);
     
-    try {
+    try 
+    {
         auto instance = AppContext::Instance()->daqInstance();
-        if (!instance.assigned()) {
+        if (!instance.assigned())
             return;
-        }
 
         // Find component by path
         auto component = instance.findComponent(path.toStdString());
-        if (!component.assigned()) {
+        if (!component.assigned())
             return;
-        }
 
         // Try to cast to Signal
-        auto signal = component.asPtrOrNull<daq::ISignal>();
-        if (!signal.assigned()) {
+        auto signal = component.asPtrOrNull<daq::ISignal>(true);
+        if (!signal.assigned())
             return;
-        }
 
         // Check if this signal is already connected
-        if (inputPort.assigned()) {
+        if (inputPort.assigned()) 
+        {
             auto currentSignal = inputPort.getSignal();
-            if (currentSignal.assigned()) {
-                try {
-                    if (currentSignal == signal) {
+            if (currentSignal.assigned()) 
+            {
+                try 
+                {
+                    if (currentSignal == signal)
                         return; // Already connected to this signal
-                    }
-                } catch (const std::exception&) {
+                } 
+                catch (const std::exception&) 
+                {
                     // If we can't compare, proceed with connection
                 }
             }
         }
 
         connectSignal(signal);
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to find signal by path: {} Error: {}", path.toStdString(), e.what());
         // Refresh combo box to restore previous selection
@@ -243,14 +256,16 @@ void InputPortSignalSelector::onSignalSelected(int index)
 
 void InputPortSignalSelector::connectSignal(const daq::SignalPtr& signal)
 {
-    try {
-        if (!inputPort.assigned()) {
+    try 
+    {
+        if (!inputPort.assigned())
             return;
-        }
 
         inputPort.connect(signal);
         populateSignals(); // Refresh to update selection
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         QMessageBox::critical(this, "Error", QString("Failed to connect signal: %1").arg(e.what()));
         // Refresh combo box to restore previous selection
         populateSignals();
@@ -259,14 +274,16 @@ void InputPortSignalSelector::connectSignal(const daq::SignalPtr& signal)
 
 void InputPortSignalSelector::disconnectSignal()
 {
-    try {
-        if (!inputPort.assigned()) {
+    try 
+    {
+        if (!inputPort.assigned())
             return;
-        }
 
         inputPort.disconnect();
         populateSignals(); // Refresh to update selection
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e)
+    {
         QMessageBox::critical(this, "Error", QString("Failed to disconnect signal: %1").arg(e.what()));
         // Refresh combo box to restore previous selection
         populateSignals();
@@ -275,11 +292,11 @@ void InputPortSignalSelector::disconnectSignal()
 
 void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
-    if (sender != inputPort) {
+    if (sender != inputPort)
         return;
-    }
 
-    try {
+    try 
+    {
         auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
         // Check for SignalConnected or SignalDisconnected events
         if (eventId == daq::CoreEventId::SignalConnected || eventId == daq::CoreEventId::SignalDisconnected)
@@ -287,7 +304,9 @@ void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEv
             // Core events come from openDAQ thread, need to invoke populateSignals in main Qt thread
             QMetaObject::invokeMethod(this, "populateSignals", Qt::QueuedConnection);
         }
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
@@ -295,15 +314,17 @@ void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEv
 
 QString InputPortSignalSelector::getSignalPath(const daq::SignalPtr& signal) const
 {
-    if (!signal.assigned()) {
+    if (!signal.assigned())
         return "N/A";
-    }
 
-    try {
+    try 
+    {
         // Use getGlobalId() to get the full path
         auto globalId = signal.getGlobalId();
         return QString::fromStdString(globalId.toStdString());
-    } catch (const std::exception& e) {
+    } 
+    catch (const std::exception& e) 
+    {
         return QString("Error: %1").arg(e.what());
     }
 }

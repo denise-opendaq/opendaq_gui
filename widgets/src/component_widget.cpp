@@ -123,6 +123,19 @@ void ComponentWidget::createComponentPropertyObject()
             .build();
         componentPropertyObject.addProperty(localIdProp);
 
+        if (component.supportsInterface<daq::IDevice>())
+        {
+            auto selection = daq::Dict<daq::IInteger, daq::IString>(
+            {
+                {static_cast<int>(daq::OperationModeType::Unknown), "Unknown"},
+                {static_cast<int>(daq::OperationModeType::Idle), "Idle"},
+                {static_cast<int>(daq::OperationModeType::Operation), "Operation"},
+                {static_cast<int>(daq::OperationModeType::SafeOperation), "SafeOperation"}, 
+            });
+            auto opModeProp = daq::SparseSelectionProperty("Operation Mode", selection, static_cast<int>(component.getOperationMode()));
+            componentPropertyObject.addProperty(opModeProp);
+        }
+
         // Add Statuses property (read-only, as dict)
         updateStatuses();
 
@@ -192,6 +205,16 @@ void ComponentWidget::setupPropertyHandlers()
         {
             component.setVisible(static_cast<bool>(value));
         });
+
+        // Operation mode property write handler
+        if (componentPropertyObject.hasProperty("Operation Mode"))
+        {
+            setupHandler("Operation Mode", [this](const daq::BaseObjectPtr& value)
+            {
+                if (const auto device = component.asPtrOrNull<daq::IDevice>(true); device.assigned())
+                    device.setOperationMode(static_cast<daq::OperationModeType>(static_cast<int>(value)));
+            });
+        }
     }
     catch (const std::exception& e)
     {
@@ -291,6 +314,10 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
         {
             handleStatusChangedAsync();
         }
+        else if (eventId == daq::CoreEventId::DeviceOperationModeChanged)
+        {
+            handleAttributeChangedAsync("Operation Mode", args.getParameters().get("OperationMode"));
+        }
     }
     catch (const std::exception& e)
     {
@@ -306,9 +333,12 @@ void ComponentWidget::handleAttributeChangedAsync(const daq::StringPtr& attribut
 
     try
     {
-        UpdateGuard guard(updatingFromComponent);
-        auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-        protectedObj.setProtectedPropertyValue(attributeName, value);
+        if (componentPropertyObject.hasProperty(attributeName))
+        {
+            UpdateGuard guard(updatingFromComponent);
+            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
+            protectedObj.setProtectedPropertyValue(attributeName, value);
+        }
     }
     catch (const std::exception& e)
     {

@@ -27,9 +27,13 @@ QMenu* ServerTreeElement::onCreateRightClickMenu(QWidget* parent)
     if (!parentComponentElement->isLocalDeviceFolder())
         return menu;
 
-    menu->addSeparator();
-    QAction* removeAction = menu->addAction("Remove");
+    QAction* firstAction = menu->actions().isEmpty() ? nullptr : menu->actions().first();
+
+    QAction* removeAction = new QAction("Remove", menu);
     connect(removeAction, &QAction::triggered, this, &ServerTreeElement::onRemove);
+    menu->insertAction(firstAction, removeAction);
+
+    menu->insertSeparator(firstAction);
 
     return menu;
 }

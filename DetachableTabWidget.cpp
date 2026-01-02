@@ -56,7 +56,8 @@ DetachableTabBar::DetachableTabBar(QWidget* parent)
 
 void DetachableTabBar::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton) {
+    if (event->button() == Qt::LeftButton) 
+    {
         dragStartPos = event->pos();
         dragIndex = tabAt(event->pos());
         dragArmed = (dragIndex >= 0);
@@ -67,12 +68,14 @@ void DetachableTabBar::mousePressEvent(QMouseEvent* event)
 
 void DetachableTabBar::mouseMoveEvent(QMouseEvent* event)
 {
-    if (!(event->buttons() & Qt::LeftButton) || !dragArmed || dragIndex < 0) {
+    if (!(event->buttons() & Qt::LeftButton) || !dragArmed || dragIndex < 0) 
+    {
         QTabBar::mouseMoveEvent(event);
         return;
     }
 
-    if ((event->pos() - dragStartPos).manhattanLength() < QApplication::startDragDistance()) {
+    if ((event->pos() - dragStartPos).manhattanLength() < QApplication::startDragDistance()) 
+    {
         QTabBar::mouseMoveEvent(event);
         return;
     }
@@ -112,14 +115,13 @@ void DetachableTabBar::mouseMoveEvent(QMouseEvent* event)
         return;
 
     // If nothing accepted the drop and we released outside the top-level window -> detach.
-    if (result == Qt::IgnoreAction) {
+    if (result == Qt::IgnoreAction) 
+    {
         const QPoint globalPos = QCursor::pos();
         QWidget* top = topWin.data();
-        if (top && !top->frameGeometry().contains(globalPos)) {
+        if (top && !top->frameGeometry().contains(globalPos))
             Q_EMIT detachRequested(idx, globalPos);
-        }
     }
-
 }
 
 void DetachableTabBar::mouseReleaseEvent(QMouseEvent* event)
@@ -133,9 +135,9 @@ void DetachableTabBar::mouseDoubleClickEvent(QMouseEvent* event)
 {
     // Optional convenience: double-click detaches the tab (similar to many IDEs)
     const int idx = tabAt(event->pos());
-    if (idx >= 0) {
+    if (idx >= 0)
         Q_EMIT detachRequested(idx, QCursor::pos());
-    }
+
     QTabBar::mouseDoubleClickEvent(event);
 }
 
@@ -180,9 +182,8 @@ DetachableTabWidget::TabInfo DetachableTabWidget::takeTabInfo(int index)
     info.data = tabBar()->tabData(index);
 
     removeTab(index);
-    if (info.page) {
+    if (info.page)
         info.page->setParent(nullptr);
-    }
 
     return info;
 }
@@ -242,7 +243,8 @@ int DetachableTabWidget::dropInsertIndexFromPos(const QPoint& widgetPos) const
 
 void DetachableTabWidget::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (!event || !event->mimeData()) {
+    if (!event || !event->mimeData()) 
+    {
         QTabWidget::dragEnterEvent(event);
         return;
     }
@@ -261,7 +263,8 @@ void DetachableTabWidget::dragEnterEvent(QDragEnterEvent* event)
 
 void DetachableTabWidget::dragMoveEvent(QDragMoveEvent* event)
 {
-    if (!event || !event->mimeData()) {
+    if (!event || !event->mimeData()) 
+    {
         QTabWidget::dragMoveEvent(event);
         return;
     }
@@ -279,7 +282,8 @@ void DetachableTabWidget::dragMoveEvent(QDragMoveEvent* event)
 
 void DetachableTabWidget::dropEvent(QDropEvent* event)
 {
-    if (!event || !event->mimeData()) {
+    if (!event || !event->mimeData()) 
+    {
         QTabWidget::dropEvent(event);
         return;
     }
@@ -293,7 +297,8 @@ void DetachableTabWidget::dropEvent(QDropEvent* event)
 
     DetachableTabWidget* source = nullptr;
     int sourceIndex = -1;
-    if (!decodeTabMime(event->mimeData(), source, sourceIndex) || !source) {
+    if (!decodeTabMime(event->mimeData(), source, sourceIndex) || !source) 
+    {
         event->ignore();
         return;
     }
@@ -306,15 +311,15 @@ void DetachableTabWidget::dropEvent(QDropEvent* event)
         insertAt--;
 
     TabInfo info = source->takeTabInfo(sourceIndex);
-    if (!info.page) {
+    if (!info.page) 
+    {
         event->ignore();
         return;
     }
 
     const int newIndex = insertTabInfo(insertAt, std::move(info));
-    if (newIndex >= 0) {
+    if (newIndex >= 0)
         setCurrentIndex(newIndex);
-    }
 
     event->setDropAction(Qt::MoveAction);
     event->accept();

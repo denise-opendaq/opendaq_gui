@@ -15,13 +15,12 @@ QString ListCoreTypeHandler::valueToString(const daq::BaseObjectPtr& value) cons
 
     try
     {
-        const auto list = value.asPtr<daq::IList>(true);
+        const auto list = value.asPtrOrNull<daq::IList>(true);
         if (list.assigned())
         {
             QStringList items;
-            for (size_t i = 0; i < list.getCount(); ++i)
+            for (const auto & item : list)
             {
-                auto item = list.getItemAt(i);
                 if (item.assigned())
                 {
                     try
@@ -62,9 +61,7 @@ daq::BaseObjectPtr ListCoreTypeHandler::stringToValue(const QString& str) const
         
         // Remove brackets if present
         if (trimmed.startsWith('[') && trimmed.endsWith(']'))
-        {
             trimmed = trimmed.mid(1, trimmed.length() - 2).trimmed();
-        }
         
         QStringList values = trimmed.split(',', Qt::SkipEmptyParts);
         auto list = daq::List<daq::IBaseObject>();
@@ -74,9 +71,7 @@ daq::BaseObjectPtr ListCoreTypeHandler::stringToValue(const QString& str) const
             QString itemStr = val.trimmed();
             daq::BaseObjectPtr item = parseItem(itemStr);
             if (item.assigned())
-            {
                 list.pushBack(item);
-            }
         }
         
         return list.detach();
