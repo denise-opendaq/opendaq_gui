@@ -1,15 +1,6 @@
 #pragma once
 
 #include "base_property_item.h"
-#include "object_property_item.h"
-#include "int_property_item.h"
-#include "bool_property_item.h"
-#include "dict_property_item.h"
-#include "list_property_item.h"
-#include "struct_property_item.h"
-#include "enumeration_property_item.h"
-#include "function_property_item.h"
-
 #include <memory>
 
 // ============================================================================

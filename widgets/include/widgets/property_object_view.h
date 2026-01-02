@@ -1,13 +1,11 @@
 #pragma once
 
-#include "context/AppContext.h"
-
-#include "property/property_factory.h"
-
 #include <memory>
 #include <unordered_map>
 
 #include <opendaq/component_ptr.h>
+
+#include "property/object_property_item.h"
 
 // Custom hash function for PropertyObjectPtr that uses the object's address
 struct PropertyObjectPtrHash
@@ -82,6 +80,9 @@ public Q_SLOTS:
 protected:
     // Control editing based on column and item logic
     bool edit(const QModelIndex& index, EditTrigger trigger, QEvent* event) override;
+
+    // Handle key press events (F5 for refresh)
+    void keyPressEvent(QKeyEvent* event) override;
 
     void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
 

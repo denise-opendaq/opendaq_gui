@@ -47,6 +47,6 @@ void ObjectPropertyItem::refresh(PropertySubtreeBuilder& builder)
 {
     BasePropertyItem::refresh(builder);
     if (widgetItem)
-        build_subtree(builder, widgetItem.get(), true);
+        build_subtree(builder, widgetItem, true);
 }
 

@@ -20,7 +20,7 @@ void ListPropertyItem::refresh(PropertySubtreeBuilder& builder)
 
     // If expanded, rebuild the subtree
     if (widgetItem)
-        build_subtree(builder, widgetItem.get(), true);
+        build_subtree(builder, widgetItem, true);
 }
 
 

@@ -70,13 +70,19 @@ bool BasePropertyItem::isVisible() const
 
 void BasePropertyItem::setWidgetItem(QTreeWidgetItem* item)
 {
-    if (widgetItem)
+    if (widgetItem && widgetItem != item)
     {
-        // Remove from parent before deleting
+        // Remove from parent and delete old widget
         if (auto* parent = widgetItem->parent())
-            parent->removeChild(widgetItem.get());
+            parent->removeChild(widgetItem);
+        else
+        {
+            // If it's a top-level item, we need to find the tree and remove it
+            // But we don't have access to the tree here, so just delete it
+            delete widgetItem;
+        }
     }
-    widgetItem.reset(item);
+    widgetItem = item;
 }
 
 void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)

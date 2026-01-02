@@ -59,12 +59,12 @@ public:
     virtual void commitEdit(QTreeWidgetItem* item, int column);
 
     // Widget management
-    QTreeWidgetItem* getWidgetItem() const { return widgetItem.get(); }
+    QTreeWidgetItem* getWidgetItem() const { return widgetItem; }
     void setWidgetItem(QTreeWidgetItem* item);
 
 protected:
     daq::PropertyObjectPtr owner;
     daq::PropertyPtr prop;
     bool expanded = false;
-    std::unique_ptr<QTreeWidgetItem> widgetItem;
+    QTreeWidgetItem* widgetItem = nullptr;
 };

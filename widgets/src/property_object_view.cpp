@@ -6,6 +6,7 @@
 #include <QSignalBlocker>
 #include <QTreeWidgetItemIterator>
 #include <QMessageBox>
+#include <QKeyEvent>
 #include <coreobjects/property_object_internal_ptr.h>
 
 // ============================================================================
@@ -94,6 +95,19 @@ bool PropertyObjectView::edit(const QModelIndex& index, EditTrigger trigger, QEv
         return logic->isValueEditable() && QTreeWidget::edit(index, trigger, event);
 
     return false;
+}
+
+void PropertyObjectView::keyPressEvent(QKeyEvent* event)
+{
+    if (event->key() == Qt::Key_F5)
+    {
+        refresh();
+        event->accept();
+    }
+    else
+    {
+        QTreeWidget::keyPressEvent(event);
+    }
 }
 
 daq::PropertyObjectPtr PropertyObjectView::getChildObject(std::string path)
