@@ -18,12 +18,83 @@
 #include <QPushButton>
 #include <QMainWindow>
 #include <QTimer>
-#include <opendaq_qt_module/qcustomplot_wrapper.h>
+#include <QtCharts/QChart>
+#include <QtCharts/QChartView>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QValueAxis>
+#include <QtCharts/QDateTimeAxis>
+#include <QDateTime>
+#include <QMouseEvent>
+#include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
 
 namespace QtPlotter
 {
+
+// ChartEventFilter implementation
+ChartEventFilter::ChartEventFilter(QChartView* chartView, QtPlotterFbImpl* plotter)
+    : QObject(chartView)
+    , m_chartView(chartView)
+    , m_plotter(plotter)
+    , m_isPanning(false)
+{}
+
+bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
+{
+    if (event->type() == QEvent::MouseButtonDblClick)
+    {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        m_plotter->userInteracting = true;
+
+        if (mouseEvent->button() == Qt::LeftButton)
+        {
+            // Zoom in at mouse position
+            m_chartView->chart()->zoomIn();
+            return true;
+        }
+        else if (mouseEvent->button() == Qt::RightButton)
+        {
+            // Zoom out at mouse position
+            m_chartView->chart()->zoomOut();
+            return true;
+        }
+    }
+    else if (event->type() == QEvent::MouseButtonPress)
+    {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton)
+        {
+            m_isPanning = true;
+            m_lastMousePos = mouseEvent->pos();
+            m_plotter->userInteracting = true;
+            m_chartView->setCursor(Qt::ClosedHandCursor);
+            return true;
+        }
+    }
+    else if (event->type() == QEvent::MouseMove && m_isPanning)
+    {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        QPoint delta = mouseEvent->pos() - m_lastMousePos;
+        m_lastMousePos = mouseEvent->pos();
+
+        // Scroll the chart
+        m_chartView->chart()->scroll(-delta.x(), delta.y());
+        return true;
+    }
+    else if (event->type() == QEvent::MouseButtonRelease)
+    {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton && m_isPanning)
+        {
+            m_isPanning = false;
+            m_chartView->setCursor(Qt::ArrowCursor);
+            return true;
+        }
+    }
+
+    return QObject::eventFilter(obj, event);
+}
 
 QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
                                  const daq::ComponentPtr& parent,
@@ -32,12 +103,20 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     : FunctionBlock(CreateType(), ctx, parent, localId)
     , inputPortCount(0)
     , duration(1.0)
-    , freeze(false)
     , showLegend(true)
     , autoScale(true)
     , plotWindow(nullptr)
-    , customPlot(nullptr)
+    , chartView(nullptr)
+    , chart(nullptr)
+    , axisX(nullptr)
+    , axisY(nullptr)
+    , userInteracting(false)
 {
+    // Pre-allocate buffers with reasonable initial size
+    samples.resize(200);
+    timeStamps.resize(200);
+    pointsBuffer.reserve(200);
+    
     initProperties();
     updateInputPorts();
     openPlotWindow();
@@ -78,9 +157,6 @@ void QtPlotterFbImpl::initProperties()
     objPtr.addProperty(durationProp);
     objPtr.getOnPropertyValueWrite("Duration") += onPropertyValueWrite;
 
-    const auto freezeProp = daq::BoolProperty("Freeze", false);
-    objPtr.addProperty(freezeProp);
-    objPtr.getOnPropertyValueWrite("Freeze") += onPropertyValueWrite;
 
     const auto showLegendProp = daq::BoolProperty("ShowLegend", true);
     objPtr.addProperty(showLegendProp);
@@ -101,35 +177,20 @@ void QtPlotterFbImpl::propertyChanged()
 void QtPlotterFbImpl::readProperties()
 {
     duration = objPtr.getPropertyValue("Duration");
-    freeze = objPtr.getPropertyValue("Freeze");
     showLegend = objPtr.getPropertyValue("ShowLegend");
     autoScale = objPtr.getPropertyValue("AutoScale");
 
-    LOG_T("Properties: Duration={}, Freeze={}, ShowLegend={}, AutoScale={}",
-          duration, freeze, showLegend, autoScale)
+    LOG_T("Properties: Duration={}, ShowLegend={}, AutoScale={}",
+          duration, showLegend, autoScale)
 }
 
 void QtPlotterFbImpl::updateInputPorts()
-{
-    // Remove input ports that are no longer connected
-    for (auto it = signalContexts.begin(); it != signalContexts.end();)
-    {
-        const auto& port = it->first;
-        if (!port.getSignal().assigned())
-        {
-            removeInputPort(port);
-            it = signalContexts.erase(it);
-        }
-        else
-            ++it;
-    }
-
-    // Add a new input port for future connections
+{   
     const auto inputPort = createAndAddInputPort(
         fmt::format("Input{}", inputPortCount++),
         daq::PacketReadyNotification::SameThread);
-
-    signalContexts.emplace(inputPort, inputPort);
+    auto [it, success] = signalContexts.emplace(inputPort, inputPort);
+    it->second.streamReader.setExternalListener(this->template borrowPtr<InputPortNotificationsPtr>());
 }
 
 void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
@@ -145,7 +206,8 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
 {
     auto lock = this->getRecursiveConfigLock();
 
-    updateInputPorts();
+    signalContexts.erase(inputPort);
+    removeInputPort(inputPort);
     LOG_T("Disconnected from port {}", inputPort.getLocalId());
 }
 
@@ -163,72 +225,55 @@ void QtPlotterFbImpl::openPlotWindow()
     auto* centralWidget = new QWidget(window);
     auto* layout = new QVBoxLayout(centralWidget);
 
-    // Create QCustomPlot
-    customPlot = new QCustomPlot(centralWidget);
-    customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
-
-    // Setup axes
-    customPlot->xAxis->setLabel("Time (s)");
-    customPlot->yAxis->setLabel("Value");
-    customPlot->xAxis->grid()->setVisible(true);
-    customPlot->yAxis->grid()->setVisible(true);
+    // Create chart
+    chart = new QChart();
+    chart->setTitle("Signal Plotter");
+    chart->setAnimationOptions(QChart::NoAnimation);
 
     // Setup dark theme
-    customPlot->setBackground(QColor(43, 43, 43));
-    customPlot->xAxis->setBasePen(QPen(QColor(150, 150, 150)));
-    customPlot->yAxis->setBasePen(QPen(QColor(150, 150, 150)));
-    customPlot->xAxis->setTickPen(QPen(QColor(150, 150, 150)));
-    customPlot->yAxis->setTickPen(QPen(QColor(150, 150, 150)));
-    customPlot->xAxis->setSubTickPen(QPen(QColor(150, 150, 150)));
-    customPlot->yAxis->setSubTickPen(QPen(QColor(150, 150, 150)));
-    customPlot->xAxis->setTickLabelColor(QColor(150, 150, 150));
-    customPlot->yAxis->setTickLabelColor(QColor(150, 150, 150));
-    customPlot->xAxis->setLabelColor(QColor(150, 150, 150));
-    customPlot->yAxis->setLabelColor(QColor(150, 150, 150));
-    customPlot->xAxis->grid()->setPen(QPen(QColor(100, 100, 100), 1, Qt::DotLine));
-    customPlot->yAxis->grid()->setPen(QPen(QColor(100, 100, 100), 1, Qt::DotLine));
+    chart->setBackgroundBrush(QBrush(QColor(43, 43, 43)));
+    chart->setTitleBrush(QBrush(QColor(200, 200, 200)));
+    chart->legend()->setLabelColor(QColor(200, 200, 200));
+    chart->legend()->setVisible(showLegend);
 
-    // Setup legend if enabled
-    if (showLegend)
-    {
-        customPlot->legend->setVisible(true);
-        customPlot->legend->setBrush(QColor(60, 60, 60, 200));
-        customPlot->legend->setTextColor(QColor(200, 200, 200));
-        customPlot->legend->setBorderPen(QPen(QColor(150, 150, 150)));
-        customPlot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignTop|Qt::AlignRight);
-    }
+    // Create axes
+    axisX = new QDateTimeAxis();
+    axisX->setTitleText("Time");
+    axisX->setTickCount(3);
+    axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+    axisX->setLabelsVisible(true);
+    axisX->setLabelsColor(QColor(150, 150, 150));
+    axisX->setGridLineColor(QColor(100, 100, 100));
+    axisX->setTitleBrush(QBrush(QColor(150, 150, 150)));
+    // Initialize with a default range to ensure labels are visible
+    QDateTime now = QDateTime::currentDateTime();
+    axisX->setRange(now.addSecs(-1), now);
+    chart->addAxis(axisX, Qt::AlignBottom);
 
-    layout->addWidget(customPlot);
+    axisY = new QValueAxis();
+    axisY->setTitleText("Value");
+    axisY->setTickCount(3);
+    axisY->setLabelsColor(QColor(150, 150, 150));
+    axisY->setGridLineColor(QColor(100, 100, 100));
+    axisY->setTitleBrush(QBrush(QColor(150, 150, 150)));
+    chart->addAxis(axisY, Qt::AlignLeft);
 
-    // Add control buttons
-    auto* controlLayout = new QHBoxLayout();
+    // Create chart view
+    chartView = new QChartView(chart, centralWidget);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setRubberBand(QChartView::NoRubberBand);  // Disable default rubber band
+    chartView->setDragMode(QGraphicsView::NoDrag);  // We'll handle dragging manually
 
-    auto* closeBtn = new QPushButton("Close", centralWidget);
-    QObject::connect(closeBtn, &QPushButton::clicked, [this]()
-    {
-        closePlotWindow();
-    });
-    controlLayout->addWidget(closeBtn);
+    // Install event filter for custom interactions
+    chartView->viewport()->installEventFilter(new ChartEventFilter(chartView, this));
 
-    auto* resetZoomBtn = new QPushButton("Reset Zoom", centralWidget);
-    QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
-    {
-        if (customPlot && autoScale)
-        {
-            customPlot->rescaleAxes();
-            customPlot->replot();
-        }
-    });
-    controlLayout->addWidget(resetZoomBtn);
-
-    controlLayout->addStretch();
-    layout->addLayout(controlLayout);
+    layout->addWidget(chartView);
 
     window->setCentralWidget(centralWidget);
     plotWindow = window;
     window->show();
 
-    // Setup periodic redraw timer (packets are processed in onPacketReceived)
+    // Setup periodic redraw timer
     auto* updateTimer = new QTimer(window);
     QObject::connect(updateTimer, &QTimer::timeout, [this]()
     {
@@ -237,7 +282,7 @@ void QtPlotterFbImpl::openPlotWindow()
             updatePlot();
         }
     });
-    updateTimer->start(50);  // Redraw at ~20 FPS
+    updateTimer->start(40);  // Redraw at ~20 FPS
 
     LOG_I("Plot window opened");
 }
@@ -248,31 +293,41 @@ void QtPlotterFbImpl::closePlotWindow()
     {
         plotWindow->deleteLater();
         plotWindow = nullptr;
-        customPlot = nullptr;
+        chartView = nullptr;
+        chart = nullptr;
+        axisX = nullptr;
+        axisY = nullptr;
         LOG_I("Plot window closed");
     }
 }
 
 void QtPlotterFbImpl::updatePlot()
 {
-    if (!customPlot || !plotWindow)
+    if (!chart || !plotWindow)
         return;
 
-    // For each valid signal, create or update graph
-    size_t graphIndex = 0;
+    qint64 globalLatestTime = 0;
+    bool hasData = false;
+
+    // For each valid signal, create or update series
+    size_t seriesIndex = 0;
+    auto seriesList = chart->series();
+
     for (auto& [port, sigCtx] : signalContexts)
     {
         if (!port.getSignal().assigned())
             continue;
 
-        // Get or create graph for this signal
-        QCPGraph* graph = nullptr;
-        if (graphIndex < static_cast<size_t>(customPlot->graphCount()))
-            graph = customPlot->graph(static_cast<int>(graphIndex));
+        // Get or create series for this signal
+        QLineSeries* series = nullptr;
+        if (seriesIndex < static_cast<size_t>(seriesList.size()))
+        {
+            series = qobject_cast<QLineSeries*>(seriesList[seriesIndex]);
+        }
         else
         {
-            graph = customPlot->addGraph();
-            graph->setName(QString::fromStdString(sigCtx.caption));
+            series = new QLineSeries();
+            series->setName(QString::fromStdString(sigCtx.caption));
 
             // Colors for different signals
             QColor colors[] = {
@@ -283,35 +338,87 @@ void QtPlotterFbImpl::updatePlot()
                 QColor(0, 255, 255),    // Cyan
                 QColor(0, 0, 255)       // Blue
             };
-            graph->setPen(QPen(colors[graphIndex % 6], 2));
-        }
+            QPen pen(colors[seriesIndex % 6], 2);
+            series->setPen(pen);
 
-        // Clear old data for simplicity (можно оптимизировать позже)
-        // graph->data()->clear();
+            chart->addSeries(series);
+            series->attachAxis(axisX);
+            series->attachAxis(axisY);
+        }
 
         // Extract and plot data using TimeReader
         if (sigCtx.timeReader.assigned())
         {
             try
             {
-                // sigCtx.timeReader.getAxx
-                const size_t maxSamples = 1000;
-                double samples[maxSamples];
-                std::chrono::system_clock::time_point timeStamps[maxSamples];
+                size_t count = sigCtx.timeReader.getAvailableCount();
 
-                daq::SizeT count = maxSamples;
-                sigCtx.timeReader.readWithDomain(samples, timeStamps, &count);
-
+                count = std::min(count, samples.size());
+                sigCtx.timeReader.readWithDomain(samples.data(), timeStamps.data(), &count);
+                
                 if (count > 0)
                 {
-                    // Convert timestamps to relative seconds
-                    if (sigCtx.firstSample.time_since_epoch().count() == 0)
-                        sigCtx.firstSample = timeStamps[0];
-                    for (daq::SizeT i = 0; i < count; ++i)
+                    qint64 latestTime = 0;
+                    
+                    // Use count() instead of points().size() to avoid expensive copy
+                    int currentPointCount = series->count();
+                    
+                    // Proactively remove points if we're near the limit (before adding new ones)
+                    if (currentPointCount >= static_cast<int>(MAX_POINTS_PER_SERIES * 0.8))
                     {
-                        auto timeSeconds = std::chrono::duration_cast<std::chrono::microseconds>(timeStamps[i] - sigCtx.firstSample).count();
-                        graph->addData(timeSeconds, samples[i]);
+                        // Remove enough points to make room for new data
+                        int targetCount = static_cast<int>(MAX_POINTS_PER_SERIES * 0.6);
+                        int removeCount = currentPointCount - targetCount;
+                        if (removeCount > 0)
+                            series->removePoints(0, removeCount);
+                        currentPointCount = targetCount;
                     }
+                    
+                    // Downsample if adding would exceed threshold
+                    size_t pointsToAdd = count;
+                    if (currentPointCount + static_cast<int>(count) > static_cast<int>(DOWNSAMPLE_THRESHOLD))
+                    {
+                        // Calculate downsampling step
+                        size_t totalAfterAdd = currentPointCount + count;
+                        size_t step = (totalAfterAdd / DOWNSAMPLE_THRESHOLD) + 1;
+                        pointsToAdd = (count + step - 1) / step;  // Ceiling division
+                    }
+                    
+                    // Reuse buffer, resize if needed
+                    pointsBuffer.resize(pointsToAdd);
+
+                    size_t bufferIndex = 0;
+                    size_t step = (pointsToAdd < count) ? (count / pointsToAdd) : 1;
+                    
+                    for (daq::SizeT i = 0; i < count && bufferIndex < pointsToAdd; i += step)
+                    {
+                        auto timeMsec = std::chrono::duration_cast<std::chrono::milliseconds>(timeStamps[i].time_since_epoch()).count();
+                        pointsBuffer[bufferIndex++] = QPointF(timeMsec, samples[i]);
+                        if (timeMsec > latestTime)
+                            latestTime = timeMsec;
+                    }
+                    
+                    // Adjust size if we got fewer points
+                    if (bufferIndex < pointsToAdd)
+                        pointsBuffer.resize(bufferIndex);
+
+                    if (bufferIndex > 0)
+                    {
+                        series->append(pointsBuffer);
+
+                        // Final check using count() instead of points().size()
+                        currentPointCount = series->count();
+                        if (currentPointCount > static_cast<int>(MAX_POINTS_PER_SERIES))
+                        {
+                            int removeCount = currentPointCount - static_cast<int>(MAX_POINTS_PER_SERIES);
+                            series->removePoints(0, removeCount);
+                        }
+                    }
+
+                    if (latestTime > globalLatestTime)
+                        globalLatestTime = latestTime;
+
+                    hasData = true;
                 }
             }
             catch (const std::exception& e)
@@ -320,16 +427,99 @@ void QtPlotterFbImpl::updatePlot()
             }
         }
 
-        graphIndex++;
+        seriesIndex++;
     }
 
-    // Auto-scale if enabled
-    if (autoScale)
+    // Update axis labels and range
+    if (hasData && axisX)
     {
-        customPlot->rescaleAxes();
+        // Get current visible range (either from user interaction or auto-follow)
+        QDateTime minTime, maxTime;
+
+        if (!userInteracting)
+        {
+            // Auto-follow mode: show last 'duration' seconds
+            qint64 durationMsec = static_cast<qint64>(duration * 1000);
+            minTime = QDateTime::fromMSecsSinceEpoch(globalLatestTime - durationMsec);
+            maxTime = QDateTime::fromMSecsSinceEpoch(globalLatestTime);
+        }
+        else
+        {
+            // Use current axis range
+            minTime = axisX->min();
+            maxTime = axisX->max();
+            
+            qint64 visibleMin = minTime.toMSecsSinceEpoch();
+            qint64 visibleMax = maxTime.toMSecsSinceEpoch();
+            
+            // Check if any series has data in the visible range
+            bool hasDataInRange = false;
+            for (auto* series : chart->series())
+            {
+                auto* lineSeries = qobject_cast<QLineSeries*>(series);
+                if (lineSeries)
+                {
+                    for (const auto& point : lineSeries->points())
+                    {
+                        qint64 pointTime = static_cast<qint64>(point.x());
+                        if (pointTime >= visibleMin && pointTime <= visibleMax)
+                        {
+                            hasDataInRange = true;
+                            break;
+                        }
+                    }
+                    if (hasDataInRange)
+                        break;
+                }
+            }
+            
+            // If no data in visible range, reset zoom (like resetZoomBtn)
+            if (!hasDataInRange)
+            {
+                userInteracting = false;
+                qint64 durationMsec = static_cast<qint64>(duration * 1000);
+                minTime = QDateTime::fromMSecsSinceEpoch(globalLatestTime - durationMsec);
+                maxTime = QDateTime::fromMSecsSinceEpoch(globalLatestTime);
+                chart->zoomReset();
+            }
+        }
+
+        // Update range - QDateTimeAxis handles labels automatically
+        if (minTime.isValid() && maxTime.isValid() && minTime < maxTime)
+        {
+            axisX->setRange(minTime, maxTime);
+            axisX->setTickCount(3);
+            axisX->setLabelsVisible(true);
+            axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+        }
     }
 
-    customPlot->replot();
+    // Auto-scale Y-axis if enabled
+    if (autoScale && axisY && hasData)
+    {
+        qreal minY = std::numeric_limits<qreal>::max();
+        qreal maxY = std::numeric_limits<qreal>::lowest();
+
+        for (auto* series : chart->series())
+        {
+            auto* lineSeries = qobject_cast<QLineSeries*>(series);
+            if (lineSeries)
+            {
+                for (const auto& point : lineSeries->points())
+                {
+                    if (point.y() < minY) minY = point.y();
+                    if (point.y() > maxY) maxY = point.y();
+                }
+            }
+        }
+
+        if (minY < maxY)
+        {
+            qreal margin = (maxY - minY) * 0.1;
+            axisY->setRange(minY - margin, maxY + margin);
+            axisY->setTickCount(3);
+        }
+    }
 }
 
 void QtPlotterFbImpl::subscribeToSignalCoreEvent(const daq::SignalPtr& signal)

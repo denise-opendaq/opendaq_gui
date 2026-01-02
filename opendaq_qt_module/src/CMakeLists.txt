@@ -6,11 +6,11 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Note: We don't disable Qt keywords here because QCustomPlot needs them
+# Note: We don't disable Qt keywords here for Qt compatibility
 # add_compile_definitions(QT_NO_KEYWORDS)
 
 # Find Qt6
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts)
 
 # Source files
 set(SRC_Include
@@ -53,7 +53,7 @@ target_link_libraries(${LIB_NAME}
     PRIVATE
         Qt6::Core
         Qt6::Widgets
-        QCustomPlot::QCustomPlot
+        Qt6::Charts
 )
 
 target_include_directories(${LIB_NAME}
@@ -63,7 +63,7 @@ target_include_directories(${LIB_NAME}
         $<INSTALL_INTERFACE:include>
 )
 
-# Undefine QT_NO_KEYWORDS for this module because QCustomPlot needs Qt keywords
+# Undefine QT_NO_KEYWORDS for this module for Qt compatibility
 target_compile_options(${LIB_NAME} PRIVATE -UQT_NO_KEYWORDS)
 
 opendaq_set_module_properties(${LIB_NAME} ${PROJECT_VERSION_MAJOR})
