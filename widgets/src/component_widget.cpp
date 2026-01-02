@@ -123,6 +123,19 @@ void ComponentWidget::createComponentPropertyObject()
             .build();
         componentPropertyObject.addProperty(localIdProp);
 
+        if (component.supportsInterface<daq::IDevice>())
+        {
+            auto selection = daq::Dict<daq::IInteger, daq::IString>(
+            {
+                {static_cast<int>(daq::OperationModeType::Unknown), "Unknown"},
+                {static_cast<int>(daq::OperationModeType::Idle), "Idle"},
+                {static_cast<int>(daq::OperationModeType::Operation), "Operation"},
+                {static_cast<int>(daq::OperationModeType::SafeOperation), "SafeOperation"}, 
+            });
+            auto opModeProp = daq::SparseSelectionProperty("Operation Mode", selection, static_cast<int>(component.getOperationMode()));
+            componentPropertyObject.addProperty(opModeProp);
+        }
+
         // Add Statuses property (read-only, as dict)
         updateStatuses();
 
@@ -191,6 +204,13 @@ void ComponentWidget::setupPropertyHandlers()
         setupHandler("Visible", [this](const daq::BaseObjectPtr& value)
         {
             component.setVisible(static_cast<bool>(value));
+        });
+
+        // Operation mode property write handler
+        setupHandler("Operation Mode", [this](const daq::BaseObjectPtr& value)
+        {
+            if (const auto device = component.asPtrOrNull<daq::IDevice>(true); device.assigned())
+                device.setOperationMode(static_cast<daq::OperationModeType>(static_cast<int>(value)));
         });
     }
     catch (const std::exception& e)
@@ -290,6 +310,10 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
         else if (eventId == daq::CoreEventId::StatusChanged)
         {
             handleStatusChangedAsync();
+        }
+        else if (eventId == daq::CoreEventId::DeviceOperationModeChanged)
+        {
+            handleAttributeChangedAsync("Operation Mode", args.getParameters().get("OperationMode"));
         }
     }
     catch (const std::exception& e)
