@@ -42,6 +42,13 @@ MainWindow::MainWindow(QWidget* parent)
     setAcceptDrops(true);
 }
 
+MainWindow::~MainWindow()
+{
+    if (componentTreeWidget)
+        disconnect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
+                   this, &MainWindow::onComponentSelected);
+}
+
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
     Q_UNUSED(obj);

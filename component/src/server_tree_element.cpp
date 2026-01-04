@@ -3,7 +3,7 @@
 #include <QMessageBox>
 #include "component/server_tree_element.h"
 #include "component/servers_folder_tree_element.h"
-
+#include "context/AppContext.h"
 #include <opendaq/instance_ptr.h>
 
 ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QObject* parent)

@@ -3,6 +3,7 @@
 #include <opendaq/custom_log.h>
 #include <QSet>
 #include <QMetaObject>
+#include "context/AppContext.h"
 
 FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
     : ComponentTreeElement(tree, daqFolder, parent)
