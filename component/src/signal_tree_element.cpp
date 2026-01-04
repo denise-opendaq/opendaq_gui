@@ -9,14 +9,6 @@ SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& da
     this->iconName = "signal";
 }
 
-void SignalTreeElement::onSelected(QWidget* mainContent)
-{
-    // Open all available tabs by calling openTab for each
-    QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs)
-        openTab(tabName, mainContent);
-}
-
 QStringList SignalTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();

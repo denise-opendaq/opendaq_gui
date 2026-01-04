@@ -10,15 +10,6 @@ InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPo
     this->iconName = "input_port";
 }
 
-void InputPortTreeElement::onSelected(QWidget* mainContent)
-{
-    // Open all available tabs by calling openTab for each
-    QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs) {
-        openTab(tabName, mainContent);
-    }
-}
-
 QStringList InputPortTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
@@ -30,15 +21,19 @@ void InputPortTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
     QString inputPortTabName = getName();
     
-    if (tabName == inputPortTabName) {
+    if (tabName == inputPortTabName) 
+    {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) {
+        if (tabWidget) 
+        {
             auto inputPort = getInputPort();
             auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
             auto inputPortWidget = new InputPortWidget(inputPort, componentTree);
             addTab(tabWidget, inputPortWidget, tabName);
         }
-    } else {
+    } 
+    else 
+    {
         Super::openTab(tabName, mainContent);
     }
 }

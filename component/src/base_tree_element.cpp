@@ -2,6 +2,7 @@
 #include "context/icon_provider.h"
 #include "context/AppContext.h"
 #include "DetachableTabWidget.h"
+#include "DetachedWindow.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>
@@ -55,9 +56,7 @@ void BaseTreeElement::init(BaseTreeElement* parent)
 
     // Add to tree if no parent
     if (!parentTreeItem && tree)
-    {
         tree->addTopLevelItem(treeItem);
-    }
 
     // Set icon after item is added to tree (ensures iconName is set by derived class constructor)
     updateIcon();
@@ -72,9 +71,7 @@ void BaseTreeElement::setName(const QString& newName)
 {
     name = newName;
     if (treeItem)
-    {
         treeItem->setText(0, name);
-    }
 }
 
 void BaseTreeElement::updateIcon()
@@ -151,39 +148,42 @@ void BaseTreeElement::closeTabs()
     QWidgetList widgets = QApplication::allWidgets();
     for (QWidget* widget : widgets)
     {
-        DetachableTabWidget* tabWidget = qobject_cast<DetachableTabWidget*>(widget);
-        if (!tabWidget)
-            continue;
-
-        // Check all tabs and replace content for those that belong to this component
-        // Iterate backwards to avoid index issues when removing tabs
-        for (int i = tabWidget->count() - 1; i >= 0; --i)
+        if (auto tabWidget = qobject_cast<DetachableTabWidget*>(widget); tabWidget)
         {
-            QWidget* tabPage = tabWidget->widget(i);
-            if (tabPage)
+            for (int i = tabWidget->count() - 1; i >= 0; --i)
             {
-                QVariant tabGlobalId = tabPage->property("componentGlobalId");
-                if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
+                QWidget* tabPage = tabWidget->widget(i);
+                if (tabPage)
                 {
-                    // Save tab title before removing
-                    QString tabTitle = tabWidget->tabText(i);
-                    
-                    // Replace tab content with "Component removed" message
-                    QWidget* removedWidget = new QWidget(tabWidget);
+                    QVariant tabGlobalId = tabPage->property("componentGlobalId");
+                    if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
+                        tabWidget->removeTab(i);
+                }
+            }
+        }
+        else if (auto detachedWindow = qobject_cast<DetachedWindow*>(widget); detachedWindow)
+        {
+            QWidget* contentWidget = detachedWindow->contentWidget();
+            if (contentWidget)
+            {
+                QVariant contentGlobalId = contentWidget->property("componentGlobalId");
+                if (contentGlobalId.isValid() && contentGlobalId.toString() == globalId)
+                {
+                    // Replace content with "Component removed" message
+                    QWidget* removedWidget = new QWidget(detachedWindow);
                     QVBoxLayout* layout = new QVBoxLayout(removedWidget);
                     layout->setContentsMargins(20, 20, 20, 20);
-                    
+
                     QLabel* label = new QLabel(QString("Component '%1' has been removed").arg(name), removedWidget);
                     label->setAlignment(Qt::AlignCenter);
                     label->setStyleSheet("QLabel { font-size: 14pt; color: #666; }");
-                    
+
                     layout->addWidget(label);
                     layout->addStretch();
-                    
-                    // Remove old widget and insert new one at the same index
-                    tabWidget->removeTab(i);
-                    tabWidget->insertTab(i, removedWidget, tabTitle);
-                    tabWidget->setCurrentIndex(i);
+
+                    // Replace central widget
+                    detachedWindow->setCentralWidget(removedWidget);
+                    contentWidget->deleteLater();
                 }
             }
         }
@@ -203,9 +203,7 @@ void BaseTreeElement::removeChild(BaseTreeElement* child)
 BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 {
     if (path.isEmpty())
-    {
         return this;
-    }
 
     QString localPath = path;
 
@@ -214,9 +212,7 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
         if (localPath.startsWith("/" + localId))
         {
             if (localPath.length() == localId.length() + 1)
-            {
                 return this;
-            }
             localPath = localPath.mid(localId.length() + 2);
         }
         else
@@ -229,9 +225,7 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 
     QStringList parts = localPath.split("/", Qt::SkipEmptyParts);
     if (parts.isEmpty())
-    {
         return this;
-    }
 
     QString firstPart = parts[0];
     if (children.find(firstPart) == children.end())
@@ -256,7 +250,9 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 
 void BaseTreeElement::onSelected(QWidget* mainContent)
 {
-    Q_UNUSED(mainContent);
+    QStringList availableTabs = getAvailableTabNames();
+    for (const QString& tabName : availableTabs)
+        openTab(tabName, mainContent);
 }
 
 QStringList BaseTreeElement::getAvailableTabNames() const
@@ -271,6 +267,13 @@ void BaseTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     // Base class does nothing
 }
 
+void BaseTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)
+{
+    int index = tabWidget->addTab(tab, tabName);
+    tabWidget->setCurrentIndex(index);
+    tab->setProperty("componentGlobalId", globalId);
+}
+
 QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = new QMenu(parent);
@@ -281,11 +284,9 @@ QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)
 QMap<QString, BaseTreeElement*> BaseTreeElement::getChildren() const
 {
     QMap<QString, BaseTreeElement*> result;
-    for (std::map<QString, std::unique_ptr<BaseTreeElement>>::const_iterator it = children.begin(); 
-         it != children.end(); ++it)
-    {
-        result[it->first] = it->second.get();
-    }
+    for (const auto& [k, v]: children)
+        result[k] = v.get();
+
     return result;
 }
 

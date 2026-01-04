@@ -10,7 +10,6 @@ class InputPortTreeElement : public ComponentTreeElement
 public:
     InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, QObject* parent = nullptr);
 
-    void onSelected(QWidget* mainContent) override;
     QStringList getAvailableTabNames() const override;
     void openTab(const QString& tabName, QWidget* mainContent) override;
 

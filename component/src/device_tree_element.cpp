@@ -44,15 +44,6 @@ void DeviceTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     }
 }
 
-void DeviceTreeElement::onSelected(QWidget* mainContent)
-{
-    // Open all available tabs by calling openTab for each
-    QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs) {
-        openTab(tabName, mainContent);
-    }
-}
-
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = Super::onCreateRightClickMenu(parent);

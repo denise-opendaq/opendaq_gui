@@ -119,31 +119,6 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
     }
 }
 
-void ComponentTreeElement::onSelected(QWidget* mainContent)
-{
-    // Open all available tabs by calling openTab for each
-    QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs)
-        openTab(tabName, mainContent);
-}
-
-void ComponentTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)
-{
-    for (int i = 0; i < tabWidget->count(); ++i)
-    {
-        if (tabWidget->tabText(i) == tabName)
-        {
-            tabWidget->setCurrentIndex(i);
-            return;
-        }
-    }
-
-    int index = tabWidget->addTab(tab, tabName);
-    // Store component globalId as property on the tab widget so we can find and close tabs when component is removed
-    tab->setProperty("componentGlobalId", globalId);
-    tabWidget->setCurrentIndex(index);
-}
-
 daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
 {
     return daqComponent;

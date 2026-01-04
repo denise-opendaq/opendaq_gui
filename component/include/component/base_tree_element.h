@@ -7,11 +7,11 @@
 #include <QString>
 #include <QMap>
 #include <QIcon>
+#include <QPointer>
 #include <memory>
 #include <map>
-#include "context/icon_provider.h"
-#include "context/AppContext.h"
 
+#include "DetachableTabWidget.h"
 
 // Forward declaration
 class BaseTreeElement;
@@ -59,6 +59,8 @@ public:
 
     // Open a specific tab by name
     virtual void openTab(const QString& tabName, QWidget* mainContent);
+
+    void addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName);
 
     // Create right-click context menu
     virtual QMenu* onCreateRightClickMenu(QWidget* parent);

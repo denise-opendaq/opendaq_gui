@@ -14,9 +14,6 @@ public:
 
     bool visible() const override;
 
-    // Override onSelected to show device-specific content
-    void onSelected(QWidget* mainContent) override;
-
     // Override to add device-specific context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
