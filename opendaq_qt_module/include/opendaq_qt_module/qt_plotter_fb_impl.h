@@ -7,6 +7,7 @@
 #include <opendaq/reader_factory.h>
 #include <opendaq/time_reader.h>
 #include <QWidget>
+#include <QMainWindow>
 #include <QPointer>
 #include <QPoint>
 #include <QVector>
@@ -17,6 +18,9 @@ class QChartView;
 class QChart;
 class QValueAxis;
 class QDateTimeAxis;
+class QMainWindow;
+class QShowEvent;
+class QCloseEvent;
 QT_END_NAMESPACE
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -42,6 +46,21 @@ private:
     QtPlotterFbImpl* m_plotter;
     bool m_isPanning;
     QPoint m_lastMousePos;
+};
+
+// Custom window for plot to handle show/close events
+class PlotWindow : public QMainWindow
+{
+    Q_OBJECT
+public:
+    PlotWindow(QtPlotterFbImpl* plotter, QWidget* parent = nullptr);
+
+protected:
+    void showEvent(QShowEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
+
+private:
+    QtPlotterFbImpl* m_plotter;
 };
 
 struct SignalContext
@@ -121,6 +140,7 @@ private:
     double duration;  // Time window to display in seconds
     bool showLegend;
     bool autoScale;
+    bool showGrid;
     
     // Performance limits
     static constexpr size_t MAX_POINTS_PER_SERIES = 5000;  // Maximum points to keep in each series (reduced for better performance)

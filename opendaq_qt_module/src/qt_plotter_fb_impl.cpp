@@ -10,6 +10,7 @@
 #include <opendaq/range_type.h>
 #include <coretypes/complex_number_type.h>
 #include <opendaq/reader_utils.h>
+#include <coreobjects/callable_info_factory.h>
 #include <coreobjects/property_object_factory.h>
 #include <coreobjects/property_factory.h>
 #include <QWidget>
@@ -25,12 +26,34 @@
 #include <QtCharts/QDateTimeAxis>
 #include <QDateTime>
 #include <QMouseEvent>
+#include <QShowEvent>
+#include <QCloseEvent>
 #include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
 
 namespace QtPlotter
 {
+
+// PlotWindow implementation
+PlotWindow::PlotWindow(QtPlotterFbImpl* plotter, QWidget* parent)
+    : QMainWindow(parent)
+    , m_plotter(plotter)
+{}
+
+void PlotWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+    if (m_plotter)
+        m_plotter->setActive(true);
+}
+
+void PlotWindow::closeEvent(QCloseEvent* event)
+{
+    if (m_plotter)
+        m_plotter->setActive(false);
+    QMainWindow::closeEvent(event);
+}
 
 // ChartEventFilter implementation
 ChartEventFilter::ChartEventFilter(QChartView* chartView, QtPlotterFbImpl* plotter)
@@ -105,6 +128,7 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     , duration(1.0)
     , showLegend(true)
     , autoScale(true)
+    , showGrid(true)
     , plotWindow(nullptr)
     , chartView(nullptr)
     , chart(nullptr)
@@ -166,12 +190,42 @@ void QtPlotterFbImpl::initProperties()
     objPtr.addProperty(autoScaleProp);
     objPtr.getOnPropertyValueWrite("AutoScale") += onPropertyValueWrite;
 
+    const auto showGridProp = daq::BoolProperty("ShowGrid", true);
+    objPtr.addProperty(showGridProp);
+    objPtr.getOnPropertyValueWrite("ShowGrid") += onPropertyValueWrite;
+
+    // Add procedure property to open plot window
+    objPtr.addProperty(daq::FunctionPropertyBuilder("OpenPlotWindow", daq::ProcedureInfo())
+                           .setReadOnly(true)
+                           .setDescription("Open the plotter window")
+                           .build());
+    objPtr.asPtr<daq::IPropertyObjectProtected>(true).setProtectedPropertyValue("OpenPlotWindow",
+                                                                                  daq::Procedure([this]() {
+                                                                                      openPlotWindow();
+                                                                                  }));
+
     readProperties();
 }
 
 void QtPlotterFbImpl::propertyChanged()
 {
     readProperties();
+
+    // Update chart properties
+    if (chart)
+    {
+        chart->legend()->setVisible(showLegend);
+    }
+
+    if (axisX)
+    {
+        axisX->setGridLineVisible(showGrid);
+    }
+
+    if (axisY)
+    {
+        axisY->setGridLineVisible(showGrid);
+    }
 }
 
 void QtPlotterFbImpl::readProperties()
@@ -179,9 +233,10 @@ void QtPlotterFbImpl::readProperties()
     duration = objPtr.getPropertyValue("Duration");
     showLegend = objPtr.getPropertyValue("ShowLegend");
     autoScale = objPtr.getPropertyValue("AutoScale");
+    showGrid = objPtr.getPropertyValue("ShowGrid");
 
-    LOG_T("Properties: Duration={}, ShowLegend={}, AutoScale={}",
-          duration, showLegend, autoScale)
+    LOG_T("Properties: Duration={}, ShowLegend={}, AutoScale={}, ShowGrid={}",
+          duration, showLegend, autoScale, showGrid)
 }
 
 void QtPlotterFbImpl::updateInputPorts()
@@ -214,16 +269,49 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
 void QtPlotterFbImpl::openPlotWindow()
 {
     if (plotWindow)
+    {
+        plotWindow->show();
         return;
+    }
 
-    // Create main window
-    auto* window = new QMainWindow();
+    // Create main window with event handling
+    auto* window = new PlotWindow(this);
     window->setWindowTitle("Qt Signal Plotter");
     window->resize(1024, 768);
 
     // Create central widget
     auto* centralWidget = new QWidget(window);
     auto* layout = new QVBoxLayout(centralWidget);
+
+    // Create toolbar with zoom controls
+    auto* toolbarWidget = new QWidget(centralWidget);
+    auto* toolbarLayout = new QHBoxLayout(toolbarWidget);
+    toolbarLayout->setContentsMargins(5, 5, 5, 5);
+
+    auto* zoomInBtn = new QPushButton("+", toolbarWidget);
+    zoomInBtn->setToolTip("Zoom In");
+    zoomInBtn->setMaximumWidth(40);
+
+    auto* zoomOutBtn = new QPushButton("-", toolbarWidget);
+    zoomOutBtn->setToolTip("Zoom Out");
+    zoomOutBtn->setMaximumWidth(40);
+
+    auto* resetZoomBtn = new QPushButton("Reset", toolbarWidget);
+    resetZoomBtn->setToolTip("Reset Zoom");
+    resetZoomBtn->setMaximumWidth(60);
+
+    auto* freezeBtn = new QPushButton("Freeze", toolbarWidget);
+    freezeBtn->setToolTip("Freeze/Unfreeze plot updates");
+    freezeBtn->setCheckable(true);
+    freezeBtn->setMaximumWidth(70);
+
+    toolbarLayout->addWidget(zoomInBtn);
+    toolbarLayout->addWidget(zoomOutBtn);
+    toolbarLayout->addWidget(resetZoomBtn);
+    toolbarLayout->addWidget(freezeBtn);
+    toolbarLayout->addStretch();
+
+    layout->addWidget(toolbarWidget);
 
     // Create chart
     chart = new QChart();
@@ -244,6 +332,7 @@ void QtPlotterFbImpl::openPlotWindow()
     axisX->setLabelsVisible(true);
     axisX->setLabelsColor(QColor(150, 150, 150));
     axisX->setGridLineColor(QColor(100, 100, 100));
+    axisX->setGridLineVisible(showGrid);
     axisX->setTitleBrush(QBrush(QColor(150, 150, 150)));
     // Initialize with a default range to ensure labels are visible
     QDateTime now = QDateTime::currentDateTime();
@@ -255,6 +344,7 @@ void QtPlotterFbImpl::openPlotWindow()
     axisY->setTickCount(3);
     axisY->setLabelsColor(QColor(150, 150, 150));
     axisY->setGridLineColor(QColor(100, 100, 100));
+    axisY->setGridLineVisible(showGrid);
     axisY->setTitleBrush(QBrush(QColor(150, 150, 150)));
     chart->addAxis(axisY, Qt::AlignLeft);
 
@@ -266,6 +356,49 @@ void QtPlotterFbImpl::openPlotWindow()
 
     // Install event filter for custom interactions
     chartView->viewport()->installEventFilter(new ChartEventFilter(chartView, this));
+
+    // Connect zoom buttons
+    QObject::connect(zoomInBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = true;
+            chart->zoomIn();
+        }
+    });
+
+    QObject::connect(zoomOutBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = true;
+            chart->zoomOut();
+        }
+    });
+
+    QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = false;
+            chart->zoomReset();
+        }
+    });
+
+    QObject::connect(freezeBtn, &QPushButton::toggled, [this, freezeBtn](bool checked)
+    {
+        this->setActive(!checked);
+        if (checked)
+        {
+            freezeBtn->setText("Unfreeze");
+            freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
+        }
+        else
+        {
+            freezeBtn->setText("Freeze");
+            freezeBtn->setStyleSheet("");
+        }
+    });
 
     layout->addWidget(chartView);
 
@@ -354,7 +487,33 @@ void QtPlotterFbImpl::updatePlot()
                 size_t count = sigCtx.timeReader.getAvailableCount();
 
                 count = std::min(count, samples.size());
-                sigCtx.timeReader.readWithDomain(samples.data(), timeStamps.data(), &count);
+                daq::ReaderStatusPtr status;
+                sigCtx.timeReader.readWithDomain(samples.data(), timeStamps.data(), &count, 0, &status);
+                if (status.assigned())
+                {
+                    auto eventPacket = status.getEventPacket();
+                    if (eventPacket.assigned() && (eventPacket.getEventId() == event_packet_id::DATA_DESCRIPTOR_CHANGED))
+                    {
+                        auto sig = sigCtx.inputPort.getSignal();
+                        if (sig.assigned())
+                            sigCtx.caption = sig.getName().toStdString();
+                        else
+                            sigCtx.caption = "N/A";
+
+                        const DataDescriptorPtr descriptor = eventPacket.getParameters()[event_packet_param::DATA_DESCRIPTOR];
+                        if (descriptor.assigned())
+                        {
+                            auto unit = descriptor.getUnit();
+                            if (unit.assigned() && !unit.getSymbol().toStdString().empty())
+                                sigCtx.caption += fmt::format(" [{}]", unit.getSymbol().toStdString());
+                        }
+                        // Update series name if caption has changed
+                        if (series && series->name() != QString::fromStdString(sigCtx.caption))
+                        {
+                            series->setName(QString::fromStdString(sigCtx.caption));
+                        }
+                    }
+                }
                 
                 if (count > 0)
                 {
