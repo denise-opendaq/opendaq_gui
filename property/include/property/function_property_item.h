@@ -18,3 +18,4 @@ public:
     void handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item) override;
 };
 
+

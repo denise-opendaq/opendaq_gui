@@ -18,3 +18,4 @@ public:
     static std::shared_ptr<BaseCoreTypeHandler> createHandler(const daq::BaseObjectPtr& value, daq::CoreType coreType);
 };
 
+

@@ -135,3 +135,4 @@ daq::CoreType ListCoreTypeHandler::getCoreType() const
     return daq::CoreType::ctList;
 }
 
+

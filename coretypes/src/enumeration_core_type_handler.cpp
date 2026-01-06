@@ -94,3 +94,4 @@ daq::CoreType EnumerationCoreTypeHandler::getCoreType() const
     return daq::CoreType::ctEnumeration;
 }
 
+

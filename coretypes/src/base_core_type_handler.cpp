@@ -66,3 +66,4 @@ bool BaseCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
     return true;
 }
 
+

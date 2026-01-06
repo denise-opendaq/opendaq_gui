@@ -17,6 +17,7 @@ set(HEADERS
     include/component/function_block_tree_element.h
     include/component/server_tree_element.h
     include/component/input_port_tree_element.h
+    include/component/input_port_folder_tree_element.h
     include/component/signal_tree_element.h
     include/component/component_factory.h
     include/component/component_tree_widget.h
@@ -36,6 +37,7 @@ set(SOURCES
     src/server_tree_element.cpp
     src/signal_tree_element.cpp
     src/input_port_tree_element.cpp
+    src/input_port_folder_tree_element.cpp
     src/component_factory.cpp
     src/component.cpp
 )

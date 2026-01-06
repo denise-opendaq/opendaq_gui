@@ -8,6 +8,7 @@
 #include "component/devices_folder_tree_element.h"
 #include "component/function_blocks_folder_tree_element.h"
 #include "component/servers_folder_tree_element.h"
+#include "component/input_port_folder_tree_element.h"
 #include "component/signal_tree_element.h"
 #include "component/input_port_tree_element.h"
 #include "component/component_tree_element.h"
@@ -60,6 +61,10 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
             if (localId == "Srv")
             {
                 return new ServersFolderTreeElement(tree, folder, parent);
+            }
+            if (localId == "IP")
+            {
+                return new InputPortFolderTreeElement(tree, folder, parent);
             }
             return new FolderTreeElement(tree, folder, parent);
         }

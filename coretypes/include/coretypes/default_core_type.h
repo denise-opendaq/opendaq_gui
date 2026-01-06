@@ -22,3 +22,4 @@ static daq::BaseObjectPtr createDefaultValue(daq::CoreType type)
     }
 }
 
+

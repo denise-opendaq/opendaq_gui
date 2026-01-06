@@ -53,3 +53,4 @@ bool BoolCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
     return true;  // Handled
 }
 
+
