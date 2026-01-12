@@ -26,34 +26,12 @@
 #include <QtCharts/QDateTimeAxis>
 #include <QDateTime>
 #include <QMouseEvent>
-#include <QShowEvent>
-#include <QCloseEvent>
 #include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
 
 namespace QtPlotter
 {
-
-// PlotWindow implementation
-PlotWindow::PlotWindow(QtPlotterFbImpl* plotter, QWidget* parent)
-    : QMainWindow(parent)
-    , m_plotter(plotter)
-{}
-
-void PlotWindow::showEvent(QShowEvent* event)
-{
-    QMainWindow::showEvent(event);
-    if (m_plotter)
-        m_plotter->setActive(true);
-}
-
-void PlotWindow::closeEvent(QCloseEvent* event)
-{
-    if (m_plotter)
-        m_plotter->setActive(false);
-    QMainWindow::closeEvent(event);
-}
 
 // ChartEventFilter implementation
 ChartEventFilter::ChartEventFilter(QChartView* chartView, QtPlotterFbImpl* plotter)
@@ -123,18 +101,18 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
                                  const daq::ComponentPtr& parent,
                                  const daq::StringPtr& localId,
                                  const daq::PropertyObjectPtr& config)
-    : FunctionBlock(CreateType(), ctx, parent, localId)
+    : Super(CreateType(), ctx, parent, localId)
     , inputPortCount(0)
     , duration(1.0)
     , showLegend(true)
     , autoScale(true)
     , showGrid(true)
-    , plotWindow(nullptr)
-    , chartView(nullptr)
     , chart(nullptr)
     , axisX(nullptr)
     , axisY(nullptr)
     , userInteracting(false)
+    , embeddedWidget(nullptr)
+    , updateTimer(nullptr)
 {
     // Pre-allocate buffers with reasonable initial size
     samples.resize(200);
@@ -143,12 +121,14 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     
     initProperties();
     updateInputPorts();
-    openPlotWindow();
+    
+    // Timer will be created when embeddedWidget is created
 }
 
 QtPlotterFbImpl::~QtPlotterFbImpl()
 {
-    closePlotWindow();
+    // Timer and embedded widget will be deleted automatically when parent is deleted
+    // (timer is a child of embeddedWidget, so it will be cleaned up automatically)
 }
 
 daq::FunctionBlockTypePtr QtPlotterFbImpl::CreateType()
@@ -163,7 +143,7 @@ daq::FunctionBlockTypePtr QtPlotterFbImpl::CreateType()
 
 void QtPlotterFbImpl::removed()
 {
-    closePlotWindow();
+    // Embedded widget will be deleted automatically when parent is deleted
     FunctionBlockImpl::removed();
 }
 
@@ -194,15 +174,7 @@ void QtPlotterFbImpl::initProperties()
     objPtr.addProperty(showGridProp);
     objPtr.getOnPropertyValueWrite("ShowGrid") += onPropertyValueWrite;
 
-    // Add procedure property to open plot window
-    objPtr.addProperty(daq::FunctionPropertyBuilder("OpenPlotWindow", daq::ProcedureInfo())
-                           .setReadOnly(true)
-                           .setDescription("Open the plotter window")
-                           .build());
-    objPtr.asPtr<daq::IPropertyObjectProtected>(true).setProtectedPropertyValue("OpenPlotWindow",
-                                                                                  daq::Procedure([this]() {
-                                                                                      openPlotWindow();
-                                                                                  }));
+    // Plot window functionality removed - widget is now only available as embedded tab
 
     readProperties();
 }
@@ -266,177 +238,12 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
     LOG_T("Disconnected from port {}", inputPort.getLocalId());
 }
 
-void QtPlotterFbImpl::openPlotWindow()
-{
-    if (plotWindow)
-    {
-        plotWindow->show();
-        return;
-    }
-
-    // Create main window with event handling
-    auto* window = new PlotWindow(this);
-    window->setWindowTitle("Qt Signal Plotter");
-    window->resize(1024, 768);
-
-    // Create central widget
-    auto* centralWidget = new QWidget(window);
-    auto* layout = new QVBoxLayout(centralWidget);
-
-    // Create toolbar with zoom controls
-    auto* toolbarWidget = new QWidget(centralWidget);
-    auto* toolbarLayout = new QHBoxLayout(toolbarWidget);
-    toolbarLayout->setContentsMargins(5, 5, 5, 5);
-
-    auto* zoomInBtn = new QPushButton("+", toolbarWidget);
-    zoomInBtn->setToolTip("Zoom In");
-    zoomInBtn->setMaximumWidth(40);
-
-    auto* zoomOutBtn = new QPushButton("-", toolbarWidget);
-    zoomOutBtn->setToolTip("Zoom Out");
-    zoomOutBtn->setMaximumWidth(40);
-
-    auto* resetZoomBtn = new QPushButton("Reset", toolbarWidget);
-    resetZoomBtn->setToolTip("Reset Zoom");
-    resetZoomBtn->setMaximumWidth(60);
-
-    auto* freezeBtn = new QPushButton("Freeze", toolbarWidget);
-    freezeBtn->setToolTip("Freeze/Unfreeze plot updates");
-    freezeBtn->setCheckable(true);
-    freezeBtn->setMaximumWidth(70);
-
-    toolbarLayout->addWidget(zoomInBtn);
-    toolbarLayout->addWidget(zoomOutBtn);
-    toolbarLayout->addWidget(resetZoomBtn);
-    toolbarLayout->addWidget(freezeBtn);
-    toolbarLayout->addStretch();
-
-    layout->addWidget(toolbarWidget);
-
-    // Create chart
-    chart = new QChart();
-    chart->setTitle("Signal Plotter");
-    chart->setAnimationOptions(QChart::NoAnimation);
-
-    // Setup dark theme
-    chart->setBackgroundBrush(QBrush(QColor(43, 43, 43)));
-    chart->setTitleBrush(QBrush(QColor(200, 200, 200)));
-    chart->legend()->setLabelColor(QColor(200, 200, 200));
-    chart->legend()->setVisible(showLegend);
-
-    // Create axes
-    axisX = new QDateTimeAxis();
-    axisX->setTitleText("Time");
-    axisX->setTickCount(3);
-    axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
-    axisX->setLabelsVisible(true);
-    axisX->setLabelsColor(QColor(150, 150, 150));
-    axisX->setGridLineColor(QColor(100, 100, 100));
-    axisX->setGridLineVisible(showGrid);
-    axisX->setTitleBrush(QBrush(QColor(150, 150, 150)));
-    // Initialize with a default range to ensure labels are visible
-    QDateTime now = QDateTime::currentDateTime();
-    axisX->setRange(now.addSecs(-1), now);
-    chart->addAxis(axisX, Qt::AlignBottom);
-
-    axisY = new QValueAxis();
-    axisY->setTitleText("Value");
-    axisY->setTickCount(3);
-    axisY->setLabelsColor(QColor(150, 150, 150));
-    axisY->setGridLineColor(QColor(100, 100, 100));
-    axisY->setGridLineVisible(showGrid);
-    axisY->setTitleBrush(QBrush(QColor(150, 150, 150)));
-    chart->addAxis(axisY, Qt::AlignLeft);
-
-    // Create chart view
-    chartView = new QChartView(chart, centralWidget);
-    chartView->setRenderHint(QPainter::Antialiasing);
-    chartView->setRubberBand(QChartView::NoRubberBand);  // Disable default rubber band
-    chartView->setDragMode(QGraphicsView::NoDrag);  // We'll handle dragging manually
-
-    // Install event filter for custom interactions
-    chartView->viewport()->installEventFilter(new ChartEventFilter(chartView, this));
-
-    // Connect zoom buttons
-    QObject::connect(zoomInBtn, &QPushButton::clicked, [this]()
-    {
-        if (chart)
-        {
-            userInteracting = true;
-            chart->zoomIn();
-        }
-    });
-
-    QObject::connect(zoomOutBtn, &QPushButton::clicked, [this]()
-    {
-        if (chart)
-        {
-            userInteracting = true;
-            chart->zoomOut();
-        }
-    });
-
-    QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
-    {
-        if (chart)
-        {
-            userInteracting = false;
-            chart->zoomReset();
-        }
-    });
-
-    QObject::connect(freezeBtn, &QPushButton::toggled, [this, freezeBtn](bool checked)
-    {
-        this->setActive(!checked);
-        if (checked)
-        {
-            freezeBtn->setText("Unfreeze");
-            freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
-        }
-        else
-        {
-            freezeBtn->setText("Freeze");
-            freezeBtn->setStyleSheet("");
-        }
-    });
-
-    layout->addWidget(chartView);
-
-    window->setCentralWidget(centralWidget);
-    plotWindow = window;
-    window->show();
-
-    // Setup periodic redraw timer
-    auto* updateTimer = new QTimer(window);
-    QObject::connect(updateTimer, &QTimer::timeout, [this]()
-    {
-        if (plotWindow)
-        {
-            updatePlot();
-        }
-    });
-    updateTimer->start(40);  // Redraw at ~20 FPS
-
-    LOG_I("Plot window opened");
-}
-
-void QtPlotterFbImpl::closePlotWindow()
-{
-    if (plotWindow)
-    {
-        plotWindow->deleteLater();
-        plotWindow = nullptr;
-        chartView = nullptr;
-        chart = nullptr;
-        axisX = nullptr;
-        axisY = nullptr;
-        LOG_I("Plot window closed");
-    }
-}
+// openPlotWindow() and closePlotWindow() removed - only embedded widget is used now
 
 void QtPlotterFbImpl::updatePlot()
 {
-    if (!chart || !plotWindow)
+    // Update plot if chart exists and embeddedWidget is available
+    if (!chart || !embeddedWidget)
         return;
 
     qint64 globalLatestTime = 0;
@@ -692,6 +499,173 @@ void QtPlotterFbImpl::processCoreEvent(daq::ComponentPtr& component, daq::CoreEv
     {
         // Handle attribute changes if needed
     }
+}
+
+ErrCode QtPlotterFbImpl::getWidget(struct QWidget** widget)
+{
+    if (widget == nullptr)
+        return OPENDAQ_ERR_ARGUMENT_NULL;
+
+    // Get the embedded widget (for tabs) or create it if needed
+    QWidget* qtWidget = getQtWidget();
+    if (!qtWidget)
+        return OPENDAQ_ERR_NOTFOUND;
+
+    *widget = qtWidget;
+    return OPENDAQ_SUCCESS;
+}
+
+QWidget* QtPlotterFbImpl::getQtWidget()
+{
+    // Create embedded widget if it doesn't exist
+    if (!embeddedWidget)
+    {
+        // Ensure chart is created
+        if (!chart)
+        {
+            // Initialize chart if not already done
+            chart = new QChart();
+            chart->setTitle("Signal Plotter");
+            chart->setAnimationOptions(QChart::NoAnimation);
+            
+            // Setup dark theme
+            chart->setBackgroundBrush(QBrush(QColor(43, 43, 43)));
+            chart->setTitleBrush(QBrush(QColor(200, 200, 200)));
+            chart->legend()->setLabelColor(QColor(200, 200, 200));
+            chart->legend()->setVisible(showLegend);
+            
+            // Create axes
+            axisX = new QDateTimeAxis();
+            axisX->setTitleText("Time");
+            axisX->setTickCount(3);
+            axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+            axisX->setLabelsVisible(true);
+            axisX->setLabelsColor(QColor(150, 150, 150));
+            axisX->setGridLineColor(QColor(100, 100, 100));
+            axisX->setGridLineVisible(showGrid);
+            axisX->setTitleBrush(QBrush(QColor(150, 150, 150)));
+            QDateTime now = QDateTime::currentDateTime();
+            axisX->setRange(now.addSecs(-1), now);
+            chart->addAxis(axisX, Qt::AlignBottom);
+            
+            axisY = new QValueAxis();
+            axisY->setTitleText("Value");
+            axisY->setTickCount(3);
+            axisY->setLabelsColor(QColor(150, 150, 150));
+            axisY->setGridLineColor(QColor(100, 100, 100));
+            axisY->setGridLineVisible(showGrid);
+            axisY->setTitleBrush(QBrush(QColor(150, 150, 150)));
+            chart->addAxis(axisY, Qt::AlignLeft);
+        }
+        
+        // Create widget for embedding
+        auto* widget = new QWidget();
+        auto* layout = new QVBoxLayout(widget);
+        layout->setContentsMargins(0, 0, 0, 0);
+        
+        // Create toolbar
+        auto* toolbarWidget = new QWidget(widget);
+        auto* toolbarLayout = new QHBoxLayout(toolbarWidget);
+        toolbarLayout->setContentsMargins(5, 5, 5, 5);
+        
+        auto* zoomInBtn = new QPushButton("+", toolbarWidget);
+        zoomInBtn->setToolTip("Zoom In");
+        zoomInBtn->setMaximumWidth(40);
+        
+        auto* zoomOutBtn = new QPushButton("-", toolbarWidget);
+        zoomOutBtn->setToolTip("Zoom Out");
+        zoomOutBtn->setMaximumWidth(40);
+        
+        auto* resetZoomBtn = new QPushButton("Reset", toolbarWidget);
+        resetZoomBtn->setToolTip("Reset Zoom");
+        resetZoomBtn->setMaximumWidth(60);
+        
+        auto* freezeBtn = new QPushButton("Freeze", toolbarWidget);
+        freezeBtn->setToolTip("Freeze/Unfreeze plot updates");
+        freezeBtn->setCheckable(true);
+        freezeBtn->setMaximumWidth(70);
+        
+        toolbarLayout->addWidget(zoomInBtn);
+        toolbarLayout->addWidget(zoomOutBtn);
+        toolbarLayout->addWidget(resetZoomBtn);
+        toolbarLayout->addWidget(freezeBtn);
+        toolbarLayout->addStretch();
+        
+        layout->addWidget(toolbarWidget);
+        
+        // Create chart view (reuse the same chart)
+        auto* embeddedChartView = new QChartView(chart, widget);
+        embeddedChartView->setRenderHint(QPainter::Antialiasing);
+        embeddedChartView->setRubberBand(QChartView::NoRubberBand);
+        embeddedChartView->setDragMode(QGraphicsView::NoDrag);
+        
+        // Install event filter
+        embeddedChartView->viewport()->installEventFilter(new ChartEventFilter(embeddedChartView, this));
+        
+        // Connect buttons
+        QObject::connect(zoomInBtn, &QPushButton::clicked, [this]()
+        {
+            if (chart)
+            {
+                userInteracting = true;
+                chart->zoomIn();
+            }
+        });
+        
+        QObject::connect(zoomOutBtn, &QPushButton::clicked, [this]()
+        {
+            if (chart)
+            {
+                userInteracting = true;
+                chart->zoomOut();
+            }
+        });
+        
+        QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
+        {
+            if (chart)
+            {
+                userInteracting = false;
+                chart->zoomReset();
+            }
+        });
+        
+        QObject::connect(freezeBtn, &QPushButton::toggled, [this, freezeBtn](bool checked)
+        {
+            this->setActive(!checked);
+            if (checked)
+            {
+                freezeBtn->setText("Unfreeze");
+                freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
+            }
+            else
+            {
+                freezeBtn->setText("Freeze");
+                freezeBtn->setStyleSheet("");
+            }
+        });
+        
+        layout->addWidget(embeddedChartView);
+        
+        embeddedWidget = widget;
+        
+        // Create update timer with embeddedWidget as parent
+        if (!updateTimer)
+        {
+            updateTimer = new QTimer(embeddedWidget);
+            QObject::connect(updateTimer, &QTimer::timeout, [this]()
+            {
+                // Update plot if embeddedWidget exists
+                if (embeddedWidget)
+                {
+                    updatePlot();
+                }
+            });
+            updateTimer->start(40);  // Redraw at ~20 FPS
+        }
+    }
+    
+    return embeddedWidget;
 }
 
 }  // namespace QtPlotter

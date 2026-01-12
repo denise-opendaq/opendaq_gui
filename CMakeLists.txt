@@ -41,6 +41,7 @@ add_subdirectory(coretypes)
 add_subdirectory(property)
 add_subdirectory(widgets)
 add_subdirectory(dialogs)
+add_subdirectory(utils)
 add_subdirectory(component)
 add_subdirectory(opendaq_qt_module)
 
@@ -69,6 +70,7 @@ add_executable(${PROJECT_NAME}
 # Link Qt6 libraries
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
+        utils
         Qt6::Core
         Qt6::Widgets
         context

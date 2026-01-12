@@ -6,8 +6,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-# Note: We don't disable Qt keywords here for Qt compatibility
-# add_compile_definitions(QT_NO_KEYWORDS)
+add_compile_definitions(QT_NO_KEYWORDS)
 
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS Core Widgets Charts)
@@ -50,6 +49,7 @@ target_link_libraries(${LIB_NAME}
         daq::opendaq
         daq::coretypes
         daq::coreobjects
+        utils
     PRIVATE
         Qt6::Core
         Qt6::Widgets

@@ -65,6 +65,7 @@ target_link_libraries(${PROJECT_NAME}
         dialogs
         property
         widgets
+        utils
         daq::coreobjects
         daq::coretypes
         daq::opendaq

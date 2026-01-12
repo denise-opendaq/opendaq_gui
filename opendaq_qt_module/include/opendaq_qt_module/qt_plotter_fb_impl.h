@@ -1,5 +1,6 @@
 #pragma once
 #include <opendaq_qt_module/common.h>
+#include <qt_widget_interface/qt_widget_interface.h>
 #include <opendaq/function_block_impl.h>
 #include <opendaq/function_block_type_factory.h>
 #include <opendaq/signal_ptr.h>
@@ -7,7 +8,6 @@
 #include <opendaq/reader_factory.h>
 #include <opendaq/time_reader.h>
 #include <QWidget>
-#include <QMainWindow>
 #include <QPointer>
 #include <QPoint>
 #include <QVector>
@@ -18,9 +18,7 @@ class QChartView;
 class QChart;
 class QValueAxis;
 class QDateTimeAxis;
-class QMainWindow;
-class QShowEvent;
-class QCloseEvent;
+class QTimer;
 QT_END_NAMESPACE
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -46,21 +44,6 @@ private:
     QtPlotterFbImpl* m_plotter;
     bool m_isPanning;
     QPoint m_lastMousePos;
-};
-
-// Custom window for plot to handle show/close events
-class PlotWindow : public QMainWindow
-{
-    Q_OBJECT
-public:
-    PlotWindow(QtPlotterFbImpl* plotter, QWidget* parent = nullptr);
-
-protected:
-    void showEvent(QShowEvent* event) override;
-    void closeEvent(QCloseEvent* event) override;
-
-private:
-    QtPlotterFbImpl* m_plotter;
 };
 
 struct SignalContext
@@ -98,9 +81,10 @@ struct InputPortEqual
     }
 };
 
-class QtPlotterFbImpl : public daq::FunctionBlock
+class QtPlotterFbImpl : public daq::FunctionBlockImpl<daq::IFunctionBlock, IQTWidget>
 {
     friend class ChartEventFilter;
+    using Super = daq::FunctionBlockImpl<daq::IFunctionBlock, IQTWidget>;
 
 public:
     explicit QtPlotterFbImpl(const daq::ContextPtr& ctx,
@@ -117,6 +101,10 @@ public:
     void onConnected(const daq::InputPortPtr& inputPort) override;
     void onDisconnected(const daq::InputPortPtr& inputPort) override;
 
+    // Implement IQTWidget interface
+    QWidget* getQtWidget();
+    ErrCode getWidget(struct QWidget** widget) override;
+
 private:
     void initProperties();
     void propertyChanged();
@@ -124,8 +112,6 @@ private:
 
     void updateInputPorts();
 
-    void openPlotWindow();
-    void closePlotWindow();
     void updatePlot();
 
     void subscribeToSignalCoreEvent(const daq::SignalPtr& signal);
@@ -148,12 +134,16 @@ private:
     static constexpr size_t DOWNSAMPLE_THRESHOLD = 1000;  // Start downsampling if more points than this
 
     // Qt Widget
-    QPointer<QWidget> plotWindow;
-    QPointer<QChartView> chartView;
     QPointer<QChart> chart;
     QPointer<QDateTimeAxis> axisX;
     QPointer<QValueAxis> axisY;
     bool userInteracting;  // Track if user is zooming/panning
+    
+    // Widget for embedding in tabs
+    QPointer<QWidget> embeddedWidget;
+    
+    // Update timer for plot
+    QPointer<QTimer> updateTimer;
 
     std::vector<double> samples;
     std::vector<std::chrono::system_clock::time_point> timeStamps;
