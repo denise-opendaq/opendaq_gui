@@ -19,6 +19,9 @@ class QChart;
 class QValueAxis;
 class QDateTimeAxis;
 class QTimer;
+class QLineSeries;
+class QScatterSeries;
+class QGraphicsTextItem;
 QT_END_NAMESPACE
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -44,6 +47,10 @@ private:
     QtPlotterFbImpl* m_plotter;
     bool m_isPanning;
     QPoint m_lastMousePos;
+    QPoint m_clickStartPos;
+    bool m_isClick;  // Track if this is a click (not drag)
+    bool m_isDraggingMarker;  // Track if dragging a marker
+    int m_draggedMarkerIndex;  // Index of marker being dragged
 };
 
 struct SignalContext
@@ -54,11 +61,15 @@ struct SignalContext
     daq::TimeReader<daq::StreamReaderPtr> timeReader;
 
     std::string caption;
+    double lastValue;
+    bool hasLastValue;
 
     SignalContext(const daq::InputPortPtr& port)
         : inputPort(port)
         , streamReader(daq::StreamReaderFromPort(port, daq::SampleType::Float64, daq::SampleType::Int64))
         , timeReader(streamReader)
+        , lastValue(0.0)
+        , hasLastValue(false)
     {
     }
 };
@@ -92,18 +103,20 @@ public:
                              const daq::StringPtr& localId,
                              const daq::PropertyObjectPtr& config = nullptr);
 
-    ~QtPlotterFbImpl() override;
-
     static daq::FunctionBlockTypePtr CreateType();
-
-    void removed() override;
 
     void onConnected(const daq::InputPortPtr& inputPort) override;
     void onDisconnected(const daq::InputPortPtr& inputPort) override;
 
     // Implement IQTWidget interface
-    QWidget* getQtWidget();
+    void initWidget();
     ErrCode getWidget(struct QWidget** widget) override;
+    
+    // Widget initialization helpers
+    void createChart();
+    void createWidget();
+    void setupButtons(QWidget* widget);
+    void setupTimer();
 
 private:
     void initProperties();
@@ -117,6 +130,17 @@ private:
     void subscribeToSignalCoreEvent(const daq::SignalPtr& signal);
     void processCoreEvent(daq::ComponentPtr& component, daq::CoreEventArgsPtr& args);
     
+    // Marker methods
+    void addMarkerAtTime(qint64 timeMsec);
+    void updateMarkers();
+    void removeMarker(int index);
+    void moveMarker(int index, qint64 newTimeMsec);
+    int findMarkerAtPosition(const QPointF& scenePos, qreal tolerance = 10.0);
+    bool isDeleteButtonAtPosition(int markerIndex, const QPointF& scenePos);
+    void showDeleteButton(int markerIndex);
+    void hideDeleteButtons();
+    double getSignalValueAtTime(QLineSeries* series, qint64 timeMsec);
+    QPointF constrainLabelPosition(const QPointF& pos, const QRectF& labelRect, const QRectF& plotArea);
 
 private:
     std::unordered_map<daq::InputPortPtr, SignalContext, InputPortHash, InputPortEqual> signalContexts;
@@ -127,6 +151,7 @@ private:
     bool showLegend;
     bool autoScale;
     bool showGrid;
+    bool showLastValue;
     
     // Performance limits
     static constexpr size_t MAX_POINTS_PER_SERIES = 5000;  // Maximum points to keep in each series (reduced for better performance)
@@ -135,6 +160,7 @@ private:
 
     // Qt Widget
     QPointer<QChart> chart;
+    QPointer<QChartView> chartView;  // Keep reference to chart view for scene access
     QPointer<QDateTimeAxis> axisX;
     QPointer<QValueAxis> axisY;
     bool userInteracting;  // Track if user is zooming/panning
@@ -150,6 +176,20 @@ private:
     
     // Reusable buffer for QPointF to avoid allocations
     QVector<QPointF> pointsBuffer;
+    
+    // Markers (vertical lines with value annotations)
+    struct Marker
+    {
+        qint64 timeMsec = 0;
+        QPointer<QLineSeries> verticalLine;
+        QPointer<QScatterSeries> valuePoints;  // Scatter points at signal intersections
+        QList<QString> valueLabels;  // Store labels for each signal
+        QList<QPointF> valuePositions;  // Store positions (time, value) for each signal
+        QPointer<QGraphicsTextItem> timeLabel;  // Time label at bottom
+        QList<QPointer<QGraphicsTextItem>> valueLabelsItems;  // Value labels near intersection points
+        QPointer<QGraphicsTextItem> deleteButton;  // Delete button (X) shown on hover
+    };
+    QList<Marker> markers;
 };
 
 }  // namespace QtPlotter

@@ -22,10 +22,17 @@
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QDateTimeAxis>
+#include <QtCharts/QLegendMarker>
 #include <QDateTime>
 #include <QMouseEvent>
+#include <QWheelEvent>
+#include <QApplication>
+#include <QPalette>
+#include <QGraphicsTextItem>
+#include <QGraphicsScene>
 #include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -39,25 +46,144 @@ ChartEventFilter::ChartEventFilter(QChartView* chartView, QtPlotterFbImpl* plott
     , m_chartView(chartView)
     , m_plotter(plotter)
     , m_isPanning(false)
+    , m_isClick(false)
+    , m_isDraggingMarker(false)
+    , m_draggedMarkerIndex(-1)
 {}
 
 bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
 {
-    if (event->type() == QEvent::MouseButtonDblClick)
+    if (event->type() == QEvent::Wheel)
     {
-        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        m_plotter->userInteracting = true;
-
-        if (mouseEvent->button() == Qt::LeftButton)
+        QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
+        
+        // Only zoom if Ctrl key is pressed
+        if (wheelEvent->modifiers() & Qt::ControlModifier)
         {
-            // Zoom in at mouse position
-            m_chartView->chart()->zoomIn();
+            m_plotter->userInteracting = true;
+            
+            // Get mouse position in chart coordinates
+            QPointF scenePos = m_chartView->mapToScene(wheelEvent->position().toPoint());
+            auto seriesList = m_chartView->chart()->series();
+            if (!seriesList.isEmpty())
+            {
+                QPointF valuePos = m_chartView->chart()->mapToValue(scenePos, seriesList.first());
+                
+                // Get current axis ranges
+                if (m_chartView->chart()->axisX() && m_chartView->chart()->axisY())
+                {
+                    QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
+                    QValueAxis* axisY = qobject_cast<QValueAxis*>(m_chartView->chart()->axisY());
+                    
+                    if (axisX && axisY)
+                    {
+                        QDateTime minTime = axisX->min();
+                        QDateTime maxTime = axisX->max();
+                        qreal minY = axisY->min();
+                        qreal maxY = axisY->max();
+                        
+                        // Calculate zoom factor (1.1 for scroll up, 1/1.1 for scroll down)
+                        qreal zoomFactor = wheelEvent->angleDelta().y() > 0 ? 1.1 : 1.0 / 1.1;
+                        
+                        // Get mouse position in chart value coordinates
+                        qint64 mouseTime = static_cast<qint64>(valuePos.x());
+                        qreal mouseY = valuePos.y();
+                        
+                        // Calculate relative position of mouse in current range (0.0 to 1.0)
+                        qint64 currentTimeRange = maxTime.toMSecsSinceEpoch() - minTime.toMSecsSinceEpoch();
+                        qreal timeRatio = currentTimeRange > 0 ? 
+                            static_cast<qreal>(mouseTime - minTime.toMSecsSinceEpoch()) / static_cast<qreal>(currentTimeRange) : 0.5;
+                        
+                        qreal currentYRange = maxY - minY;
+                        qreal yRatio = currentYRange > 0 ? (mouseY - minY) / currentYRange : 0.5;
+                        
+                        // Calculate new ranges
+                        qint64 newTimeRange = static_cast<qint64>(currentTimeRange / zoomFactor);
+                        qreal newYRange = currentYRange / zoomFactor;
+                        
+                        // Keep mouse position fixed - adjust min/max based on mouse position ratio
+                        qint64 newMinTime = mouseTime - static_cast<qint64>(newTimeRange * timeRatio);
+                        qint64 newMaxTime = mouseTime + static_cast<qint64>(newTimeRange * (1.0 - timeRatio));
+                        
+                        qreal newMinY = mouseY - newYRange * yRatio;
+                        qreal newMaxY = mouseY + newYRange * (1.0 - yRatio);
+                        
+                        // Apply zoom
+                        axisX->setRange(QDateTime::fromMSecsSinceEpoch(newMinTime), QDateTime::fromMSecsSinceEpoch(newMaxTime));
+                        axisY->setRange(newMinY, newMaxY);
+                    }
+                }
+            }
+            
             return true;
         }
-        else if (mouseEvent->button() == Qt::RightButton)
+    }
+    else if (event->type() == QEvent::MouseMove)
+    {
+        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
+        QPointF scenePos = m_chartView->mapToScene(mouseEvent->pos());
+        
+        // Check if hovering over a marker
+        int markerIndex = m_plotter->findMarkerAtPosition(scenePos);
+        if (markerIndex >= 0)
         {
-            // Zoom out at mouse position
-            m_chartView->chart()->zoomOut();
+            m_chartView->setCursor(Qt::SizeHorCursor);  // Horizontal resize cursor
+            m_plotter->showDeleteButton(markerIndex);
+        }
+        else
+        {
+            if (!m_isDraggingMarker)
+                m_chartView->setCursor(Qt::ArrowCursor);
+            m_plotter->hideDeleteButtons();
+        }
+        
+        if (m_isDraggingMarker && m_draggedMarkerIndex >= 0)
+        {
+            // Drag marker - check if within plot area
+            QRectF plotArea = m_chartView->chart()->plotArea();
+            if (plotArea.contains(scenePos))
+            {
+                auto seriesList = m_chartView->chart()->series();
+                if (!seriesList.isEmpty())
+                {
+                    QPointF valuePos = m_chartView->chart()->mapToValue(scenePos, seriesList.first());
+                    qint64 timeMsec = static_cast<qint64>(valuePos.x());
+                    
+                    // Check if time is within visible axis range
+                    if (m_chartView->chart()->axisX())
+                    {
+                        QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
+                        if (axisX)
+                        {
+                            qint64 minTime = axisX->min().toMSecsSinceEpoch();
+                            qint64 maxTime = axisX->max().toMSecsSinceEpoch();
+                            
+                            // Clamp time to visible range
+                            if (timeMsec < minTime)
+                                timeMsec = minTime;
+                            else if (timeMsec > maxTime)
+                                timeMsec = maxTime;
+                            
+                            m_plotter->moveMarker(m_draggedMarkerIndex, timeMsec);
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        else if (m_isPanning)
+        {
+            QPoint delta = mouseEvent->pos() - m_lastMousePos;
+            m_lastMousePos = mouseEvent->pos();
+
+            // If moved more than a few pixels, it's a drag, not a click
+            if (m_isClick && (mouseEvent->pos() - m_clickStartPos).manhattanLength() > 5)
+            {
+                m_isClick = false;
+            }
+
+            // Scroll the chart
+            m_chartView->chart()->scroll(-delta.x(), delta.y());
             return true;
         }
     }
@@ -66,31 +192,99 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
         if (mouseEvent->button() == Qt::LeftButton)
         {
-            m_isPanning = true;
-            m_lastMousePos = mouseEvent->pos();
-            m_plotter->userInteracting = true;
-            m_chartView->setCursor(Qt::ClosedHandCursor);
-            return true;
+            QPointF scenePos = m_chartView->mapToScene(mouseEvent->pos());
+            int markerIndex = m_plotter->findMarkerAtPosition(scenePos);
+            
+            if (markerIndex >= 0)
+            {
+                // Check if clicking on delete button first
+                if (m_plotter->isDeleteButtonAtPosition(markerIndex, scenePos))
+                {
+                    m_plotter->removeMarker(markerIndex);
+                    return true;
+                }
+                
+                // Start dragging marker
+                m_isDraggingMarker = true;
+                m_draggedMarkerIndex = markerIndex;
+                m_isPanning = false;
+                m_chartView->setCursor(Qt::SizeHorCursor);
+                return true;
+            }
+            else
+            {
+                m_isPanning = true;
+                m_isClick = true;
+                m_lastMousePos = mouseEvent->pos();
+                m_clickStartPos = mouseEvent->pos();
+                m_plotter->userInteracting = true;
+                m_chartView->setCursor(Qt::ClosedHandCursor);
+                return true;
+            }
         }
-    }
-    else if (event->type() == QEvent::MouseMove && m_isPanning)
-    {
-        QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        QPoint delta = mouseEvent->pos() - m_lastMousePos;
-        m_lastMousePos = mouseEvent->pos();
-
-        // Scroll the chart
-        m_chartView->chart()->scroll(-delta.x(), delta.y());
-        return true;
     }
     else if (event->type() == QEvent::MouseButtonRelease)
     {
         QMouseEvent* mouseEvent = static_cast<QMouseEvent*>(event);
-        if (mouseEvent->button() == Qt::LeftButton && m_isPanning)
+        if (mouseEvent->button() == Qt::LeftButton)
         {
-            m_isPanning = false;
-            m_chartView->setCursor(Qt::ArrowCursor);
-            return true;
+            if (m_isDraggingMarker)
+            {
+                m_isDraggingMarker = false;
+                m_draggedMarkerIndex = -1;
+                m_chartView->setCursor(Qt::ArrowCursor);
+                return true;
+            }
+            else if (m_isPanning)
+            {
+                m_isPanning = false;
+                m_chartView->setCursor(Qt::ArrowCursor);
+                
+                // If it was a click (not a drag), add marker
+                if (m_isClick)
+                {
+                    // Convert screen coordinates to chart value coordinates
+                    QPointF scenePos = m_chartView->mapToScene(mouseEvent->pos());
+                    
+                    // Check if click is within plot area
+                    QRectF plotArea = m_chartView->chart()->plotArea();
+                    if (!plotArea.contains(scenePos))
+                    {
+                        m_isClick = false;
+                        return true;
+                    }
+                    
+                    // Get first series for coordinate mapping
+                    auto seriesList = m_chartView->chart()->series();
+                    if (!seriesList.isEmpty())
+                    {
+                        QPointF valuePos = m_chartView->chart()->mapToValue(scenePos, seriesList.first());
+                        
+                        // Get time from X coordinate
+                        qint64 timeMsec = static_cast<qint64>(valuePos.x());
+                        
+                        // Check if time is within visible axis range
+                        if (m_chartView->chart()->axisX())
+                        {
+                            QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
+                            if (axisX)
+                            {
+                                qint64 minTime = axisX->min().toMSecsSinceEpoch();
+                                qint64 maxTime = axisX->max().toMSecsSinceEpoch();
+                                
+                                // Only add marker if time is within visible range
+                                if (timeMsec >= minTime && timeMsec <= maxTime)
+                                {
+                                    m_plotter->addMarkerAtTime(timeMsec);
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                m_isClick = false;
+                return true;
+            }
         }
     }
 
@@ -107,6 +301,7 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     , showLegend(true)
     , autoScale(true)
     , showGrid(true)
+    , showLastValue(false)
     , chart(nullptr)
     , axisX(nullptr)
     , axisY(nullptr)
@@ -122,14 +317,10 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     initProperties();
     updateInputPorts();
     
-    // Timer will be created when embeddedWidget is created
+    // Initialize widget in constructor
+    initWidget();
 }
 
-QtPlotterFbImpl::~QtPlotterFbImpl()
-{
-    // Timer and embedded widget will be deleted automatically when parent is deleted
-    // (timer is a child of embeddedWidget, so it will be cleaned up automatically)
-}
 
 daq::FunctionBlockTypePtr QtPlotterFbImpl::CreateType()
 {
@@ -139,12 +330,6 @@ daq::FunctionBlockTypePtr QtPlotterFbImpl::CreateType()
         "Real-time signal visualization with zoom and time range control",
         daq::PropertyObject()
     );
-}
-
-void QtPlotterFbImpl::removed()
-{
-    // Embedded widget will be deleted automatically when parent is deleted
-    FunctionBlockImpl::removed();
 }
 
 void QtPlotterFbImpl::initProperties()
@@ -174,6 +359,10 @@ void QtPlotterFbImpl::initProperties()
     objPtr.addProperty(showGridProp);
     objPtr.getOnPropertyValueWrite("ShowGrid") += onPropertyValueWrite;
 
+    const auto showLastValueProp = daq::BoolProperty("ShowLastValue", false);
+    objPtr.addProperty(showLastValueProp);
+    objPtr.getOnPropertyValueWrite("ShowLastValue") += onPropertyValueWrite;
+
     // Plot window functionality removed - widget is now only available as embedded tab
 
     readProperties();
@@ -185,19 +374,13 @@ void QtPlotterFbImpl::propertyChanged()
 
     // Update chart properties
     if (chart)
-    {
         chart->legend()->setVisible(showLegend);
-    }
 
     if (axisX)
-    {
         axisX->setGridLineVisible(showGrid);
-    }
 
     if (axisY)
-    {
         axisY->setGridLineVisible(showGrid);
-    }
 }
 
 void QtPlotterFbImpl::readProperties()
@@ -206,9 +389,10 @@ void QtPlotterFbImpl::readProperties()
     showLegend = objPtr.getPropertyValue("ShowLegend");
     autoScale = objPtr.getPropertyValue("AutoScale");
     showGrid = objPtr.getPropertyValue("ShowGrid");
+    showLastValue = objPtr.getPropertyValue("ShowLastValue");
 
-    LOG_T("Properties: Duration={}, ShowLegend={}, AutoScale={}, ShowGrid={}",
-          duration, showLegend, autoScale, showGrid)
+    LOG_W("Properties: Duration={}, ShowLegend={}, AutoScale={}, ShowGrid={}, ShowLastValue={}",
+          duration, showLegend, autoScale, showGrid, showLastValue)
 }
 
 void QtPlotterFbImpl::updateInputPorts()
@@ -226,7 +410,7 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 
     subscribeToSignalCoreEvent(inputPort.getSignal());
     updateInputPorts();
-    LOG_T("Connected to port {}", inputPort.getLocalId());
+    LOG_W("Connected to port {}", inputPort.getLocalId());
 }
 
 void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
@@ -235,10 +419,8 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
 
     signalContexts.erase(inputPort);
     removeInputPort(inputPort);
-    LOG_T("Disconnected from port {}", inputPort.getLocalId());
+    LOG_W("Disconnected from port {}", inputPort.getLocalId());
 }
-
-// openPlotWindow() and closePlotWindow() removed - only embedded widget is used now
 
 void QtPlotterFbImpl::updatePlot()
 {
@@ -259,12 +441,38 @@ void QtPlotterFbImpl::updatePlot()
             continue;
 
         // Get or create series for this signal
+        // Skip marker series (they have empty names and are in markers list)
         QLineSeries* series = nullptr;
-        if (seriesIndex < static_cast<size_t>(seriesList.size()))
+        size_t validSeriesIndex = 0;
+        for (int i = 0; i < seriesList.size(); ++i)
         {
-            series = qobject_cast<QLineSeries*>(seriesList[seriesIndex]);
+            auto* lineSeries = qobject_cast<QLineSeries*>(seriesList[i]);
+            if (lineSeries)
+            {
+                // Check if this is a marker series
+                bool isMarker = false;
+                for (const auto& marker : markers)
+                {
+                    if (marker.verticalLine == lineSeries)
+                    {
+                        isMarker = true;
+                        break;
+                    }
+                }
+                
+                if (!isMarker && !lineSeries->name().isEmpty())
+                {
+                    if (validSeriesIndex == seriesIndex)
+                    {
+                        series = lineSeries;
+                        break;
+                    }
+                    validSeriesIndex++;
+                }
+            }
         }
-        else
+        
+        if (!series)
         {
             series = new QLineSeries();
             series->setName(QString::fromStdString(sigCtx.caption));
@@ -313,11 +521,6 @@ void QtPlotterFbImpl::updatePlot()
                             auto unit = descriptor.getUnit();
                             if (unit.assigned() && !unit.getSymbol().toStdString().empty())
                                 sigCtx.caption += fmt::format(" [{}]", unit.getSymbol().toStdString());
-                        }
-                        // Update series name if caption has changed
-                        if (series && series->name() != QString::fromStdString(sigCtx.caption))
-                        {
-                            series->setName(QString::fromStdString(sigCtx.caption));
                         }
                     }
                 }
@@ -381,6 +584,10 @@ void QtPlotterFbImpl::updatePlot()
                         }
                     }
 
+                    // Store last value from the most recent sample
+                    sigCtx.lastValue = samples[count - 1];
+                    sigCtx.hasLastValue = true;
+
                     if (latestTime > globalLatestTime)
                         globalLatestTime = latestTime;
 
@@ -391,6 +598,16 @@ void QtPlotterFbImpl::updatePlot()
             {
                 LOG_W("Error reading data from TimeReader: {}", e.what())
             }
+        }
+
+        // Update series name with last value if enabled
+        if (series)
+        {
+            std::string seriesName = sigCtx.caption;
+            if (showLastValue && sigCtx.hasLastValue)
+                seriesName += fmt::format(" = {:.6g}", sigCtx.lastValue);
+            if (series->name() != QString::fromStdString(seriesName))
+                series->setName(QString::fromStdString(seriesName));
         }
 
         seriesIndex++;
@@ -471,6 +688,10 @@ void QtPlotterFbImpl::updatePlot()
             auto* lineSeries = qobject_cast<QLineSeries*>(series);
             if (lineSeries)
             {
+                // Skip marker series (they have empty names)
+                if (lineSeries->name().isEmpty())
+                    continue;
+                    
                 for (const auto& point : lineSeries->points())
                 {
                     if (point.y() < minY) minY = point.y();
@@ -483,9 +704,12 @@ void QtPlotterFbImpl::updatePlot()
         {
             qreal margin = (maxY - minY) * 0.1;
             axisY->setRange(minY - margin, maxY + margin);
-            axisY->setTickCount(3);
+            axisY->setTickCount(5);
         }
     }
+    
+    // Update markers when plot updates
+    updateMarkers();
 }
 
 void QtPlotterFbImpl::subscribeToSignalCoreEvent(const daq::SignalPtr& signal)
@@ -501,171 +725,777 @@ void QtPlotterFbImpl::processCoreEvent(daq::ComponentPtr& component, daq::CoreEv
     }
 }
 
+double QtPlotterFbImpl::getSignalValueAtTime(QLineSeries* series, qint64 timeMsec)
+{
+    if (!series || series->count() == 0)
+        return std::numeric_limits<double>::quiet_NaN();
+    
+    const auto& points = series->points();
+    
+    // Find the two points that bracket the time
+    for (int i = 0; i < points.size() - 1; ++i)
+    {
+        qint64 t1 = static_cast<qint64>(points[i].x());
+        qint64 t2 = static_cast<qint64>(points[i + 1].x());
+        
+        if (timeMsec >= t1 && timeMsec <= t2)
+        {
+            // Linear interpolation
+            double ratio = static_cast<double>(timeMsec - t1) / static_cast<double>(t2 - t1);
+            return points[i].y() + ratio * (points[i + 1].y() - points[i].y());
+        }
+    }
+    
+    // If time is before first point or after last point, return closest value
+    if (timeMsec <= static_cast<qint64>(points.first().x()))
+        return points.first().y();
+    if (timeMsec >= static_cast<qint64>(points.last().x()))
+        return points.last().y();
+    
+    return std::numeric_limits<double>::quiet_NaN();
+}
+
+QPointF QtPlotterFbImpl::constrainLabelPosition(const QPointF& pos, const QRectF& labelRect, const QRectF& plotArea)
+{
+    QPointF constrainedPos = pos;
+    QRectF labelBounds = QRectF(constrainedPos, labelRect.size());
+    
+    // Constrain horizontally
+    if (labelBounds.left() < plotArea.left())
+        constrainedPos.setX(plotArea.left());
+    else if (labelBounds.right() > plotArea.right())
+        constrainedPos.setX(plotArea.right() - labelRect.width());
+    
+    // Constrain vertically
+    if (labelBounds.top() < plotArea.top())
+        constrainedPos.setY(plotArea.top());
+    else if (labelBounds.bottom() > plotArea.bottom())
+        constrainedPos.setY(plotArea.bottom() - labelRect.height());
+    
+    return constrainedPos;
+}
+
+void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
+{
+    if (!chart || !axisX || !axisY)
+        return;
+    
+    // Get Y-axis range
+    qreal minY = axisY->min();
+    qreal maxY = axisY->max();
+    
+    // Create vertical line
+    auto* verticalLine = new QLineSeries();
+    verticalLine->append(timeMsec, minY);
+    verticalLine->append(timeMsec, maxY);
+    
+    QPalette palette = QApplication::palette();
+    QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
+    verticalLine->setPen(pen);
+    verticalLine->setName("");  // Don't show in legend
+    
+    chart->addSeries(verticalLine);
+    verticalLine->attachAxis(axisX);
+    verticalLine->attachAxis(axisY);
+    
+    // Explicitly hide marker from legend
+    auto legendMarkers = chart->legend()->markers(verticalLine);
+    for (auto* marker : legendMarkers)
+        marker->setVisible(false);
+    
+    // Create scatter series for value points
+    auto* valuePoints = new QScatterSeries();
+    valuePoints->setMarkerSize(8);
+    valuePoints->setColor(palette.color(QPalette::Highlight));
+    valuePoints->setBorderColor(palette.color(QPalette::Base));
+    valuePoints->setName("");  // Don't show in legend
+    
+    // Find intersections with all signal series
+    QStringList valueLabels;
+    QList<QPointF> valuePositions;  // Store positions for value labels
+    for (auto* series : chart->series())
+    {
+        auto* lineSeries = qobject_cast<QLineSeries*>(series);
+        if (lineSeries && lineSeries->count() > 0 && !lineSeries->name().isEmpty() && lineSeries != verticalLine)
+        {
+            double value = getSignalValueAtTime(lineSeries, timeMsec);
+            if (!std::isnan(value))
+            {
+                valuePoints->append(timeMsec, value);
+                valueLabels.append(QString("%1: %2").arg(lineSeries->name()).arg(value, 0, 'g', 6));
+                valuePositions.append(QPointF(timeMsec, value));
+            }
+        }
+    }
+    
+    if (valuePoints->count() > 0)
+    {
+        chart->addSeries(valuePoints);
+        valuePoints->attachAxis(axisX);
+        valuePoints->attachAxis(axisY);
+        
+        // Explicitly hide marker from legend
+        auto legendMarkers = chart->legend()->markers(valuePoints);
+        for (auto* marker : legendMarkers)
+            marker->setVisible(false);
+    }
+    else
+    {
+        delete valuePoints;
+        valuePoints = nullptr;
+    }
+    
+    // Create time label at bottom of marker
+    QGraphicsTextItem* timeLabel = nullptr;
+    if (chartView && chartView->scene())
+    {
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(timeMsec);
+        QString timeText = dateTime.toString("HH:mm:ss.zzz");
+        
+        timeLabel = new QGraphicsTextItem(timeText);
+        timeLabel->setDefaultTextColor(palette.color(QPalette::Text));
+        QFont font = timeLabel->font();
+        font.setBold(true);
+        timeLabel->setFont(font);
+        
+        // Position below axis X labels
+        QAbstractSeries* seriesForMapping = valuePoints ? static_cast<QAbstractSeries*>(valuePoints) : static_cast<QAbstractSeries*>(verticalLine);
+        QPointF scenePos = chart->mapToPosition(QPointF(timeMsec, minY), seriesForMapping);
+        // Position label below the axis X labels area
+        QPointF labelPos(scenePos.x() - timeLabel->boundingRect().width() / 2, 
+                         scenePos.y());
+        
+        // Constrain label position to plot area
+        QRectF plotArea = chart->plotArea();
+        labelPos = constrainLabelPosition(labelPos, timeLabel->boundingRect(), plotArea);
+        timeLabel->setPos(labelPos);
+        
+        chartView->scene()->addItem(timeLabel);
+    }
+    
+    // Create value labels near intersection points
+    QList<QPointer<QGraphicsTextItem>> valueLabelsItems;
+    if (chartView && chartView->scene() && valuePoints)
+    {
+        for (int i = 0; i < valueLabels.size() && i < valuePositions.size(); ++i)
+        {
+            auto* valueLabel = new QGraphicsTextItem(valueLabels[i]);
+            valueLabel->setDefaultTextColor(palette.color(QPalette::Text));
+            QFont font = valueLabel->font();
+            font.setPointSize(font.pointSize() - 1);
+            valueLabel->setFont(font);
+            
+            QPointF scenePos = chart->mapToPosition(valuePositions[i], valuePoints);
+            QPointF labelPos(scenePos.x() + 10, scenePos.y() - 15);  // Offset to the right and up
+            
+            // Constrain label position to plot area
+            QRectF plotArea = chart->plotArea();
+            labelPos = constrainLabelPosition(labelPos, valueLabel->boundingRect(), plotArea);
+            valueLabel->setPos(labelPos);
+            
+            chartView->scene()->addItem(valueLabel);
+            valueLabelsItems.append(valueLabel);
+        }
+    }
+    
+    // Store marker
+    Marker marker;
+    marker.timeMsec = timeMsec;
+    marker.verticalLine = verticalLine;
+    marker.valuePoints = valuePoints;
+    marker.valueLabels = valueLabels;
+    marker.valuePositions = valuePositions;  // Store positions for updating labels
+    marker.timeLabel = timeLabel;
+    marker.valueLabelsItems = valueLabelsItems;
+    marker.deleteButton = nullptr;  // Will be created on hover
+    markers.append(marker);
+    
+    // Update markers to refresh display
+    updateMarkers();
+}
+
+int QtPlotterFbImpl::findMarkerAtPosition(const QPointF& scenePos, qreal tolerance)
+{
+    if (!chart || !chartView)
+        return -1;
+    
+    for (int i = 0; i < markers.size(); ++i)
+    {
+        const Marker& marker = markers[i];
+        if (!marker.verticalLine)
+            continue;
+        
+        // Convert marker time to scene position
+        QAbstractSeries* seriesForMapping = marker.valuePoints ? static_cast<QAbstractSeries*>(marker.valuePoints) : static_cast<QAbstractSeries*>(marker.verticalLine);
+        QPointF markerScenePos = chart->mapToPosition(QPointF(marker.timeMsec, axisY ? axisY->min() : 0), seriesForMapping);
+        
+        // Check if mouse is near the marker line (within tolerance)
+        qreal distance = qAbs(scenePos.x() - markerScenePos.x());
+        if (distance <= tolerance)
+        {
+            return i;
+        }
+    }
+    
+    return -1;
+}
+
+bool QtPlotterFbImpl::isDeleteButtonAtPosition(int markerIndex, const QPointF& scenePos)
+{
+    if (markerIndex < 0 || markerIndex >= markers.size())
+        return false;
+    
+    const Marker& marker = markers[markerIndex];
+    if (marker.deleteButton && marker.deleteButton->isVisible())
+    {
+        QRectF deleteRect = marker.deleteButton->boundingRect();
+        QPointF deletePos = marker.deleteButton->pos();
+        QRectF deleteArea(deletePos, deleteRect.size());
+        return deleteArea.contains(scenePos);
+    }
+    return false;
+}
+
+void QtPlotterFbImpl::showDeleteButton(int markerIndex)
+{
+    if (markerIndex < 0 || markerIndex >= markers.size() || !chartView || !chartView->scene())
+        return;
+    
+    Marker& marker = markers[markerIndex];
+    
+    // Create delete button if it doesn't exist
+    if (!marker.deleteButton)
+    {
+        marker.deleteButton = new QGraphicsTextItem("✕");
+        QPalette palette = QApplication::palette();
+        marker.deleteButton->setDefaultTextColor(palette.color(QPalette::Highlight));
+        QFont font = marker.deleteButton->font();
+        font.setBold(true);
+        font.setPointSize(font.pointSize() + 2);
+        marker.deleteButton->setFont(font);
+        marker.deleteButton->setZValue(1000);  // Make sure it's on top
+        chartView->scene()->addItem(marker.deleteButton);
+    }
+    
+    // Position delete button at top of marker
+    if (marker.verticalLine && axisY)
+    {
+        QAbstractSeries* seriesForMapping = marker.valuePoints ? static_cast<QAbstractSeries*>(marker.valuePoints) : static_cast<QAbstractSeries*>(marker.verticalLine);
+        QPointF scenePos = chart->mapToPosition(QPointF(marker.timeMsec, axisY->max()), seriesForMapping);
+        marker.deleteButton->setPos(scenePos.x() - marker.deleteButton->boundingRect().width() / 2, 
+                                   scenePos.y() - marker.deleteButton->boundingRect().height() - 5);
+        marker.deleteButton->setVisible(true);
+    }
+}
+
+void QtPlotterFbImpl::hideDeleteButtons()
+{
+    for (auto& marker : markers)
+        if (marker.deleteButton)
+            marker.deleteButton->setVisible(false);
+}
+
+void QtPlotterFbImpl::moveMarker(int index, qint64 newTimeMsec)
+{
+    if (index < 0 || index >= markers.size())
+        return;
+    
+    Marker& marker = markers[index];
+    marker.timeMsec = newTimeMsec;
+    
+    // Remove old series
+    if (marker.verticalLine)
+    {
+        chart->removeSeries(marker.verticalLine);
+        marker.verticalLine->deleteLater();
+    }
+    
+    if (marker.valuePoints)
+    {
+        chart->removeSeries(marker.valuePoints);
+        marker.valuePoints->deleteLater();
+    }
+    
+    // Remove old labels
+    if (marker.timeLabel && chartView && chartView->scene())
+    {
+        chartView->scene()->removeItem(marker.timeLabel);
+        marker.timeLabel->deleteLater();
+    }
+    
+    for (auto& valueLabel : marker.valueLabelsItems)
+    {
+        if (valueLabel && chartView && chartView->scene())
+        {
+            chartView->scene()->removeItem(valueLabel);
+            valueLabel->deleteLater();
+        }
+    }
+    marker.valueLabelsItems.clear();
+    
+    // Recreate marker at new position
+    qreal minY = axisY->min();
+    qreal maxY = axisY->max();
+    
+    // Create new vertical line
+    auto* verticalLine = new QLineSeries();
+    verticalLine->append(newTimeMsec, minY);
+    verticalLine->append(newTimeMsec, maxY);
+    
+    QPalette palette = QApplication::palette();
+    QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
+    verticalLine->setPen(pen);
+    verticalLine->setName("");
+    
+    chart->addSeries(verticalLine);
+    verticalLine->attachAxis(axisX);
+    verticalLine->attachAxis(axisY);
+    
+    // Explicitly hide marker from legend
+    auto legendMarkers = chart->legend()->markers(verticalLine);
+    for (auto* marker : legendMarkers)
+        marker->setVisible(false);
+    
+    marker.verticalLine = verticalLine;
+    
+    // Create scatter series for value points
+    auto* valuePoints = new QScatterSeries();
+    valuePoints->setMarkerSize(8);
+    valuePoints->setColor(palette.color(QPalette::Highlight));
+    valuePoints->setBorderColor(palette.color(QPalette::Base));
+    valuePoints->setName("");  // Don't show in legend
+    
+    // Find intersections with all signal series
+    QStringList valueLabels;
+    QList<QPointF> valuePositions;
+    for (auto* series : chart->series())
+    {
+        auto* lineSeries = qobject_cast<QLineSeries*>(series);
+        if (lineSeries && lineSeries->count() > 0 && !lineSeries->name().isEmpty() && lineSeries != verticalLine)
+        {
+            double value = getSignalValueAtTime(lineSeries, newTimeMsec);
+            if (!std::isnan(value))
+            {
+                valuePoints->append(newTimeMsec, value);
+                valueLabels.append(QString("%1: %2").arg(lineSeries->name()).arg(value, 0, 'g', 6));
+                valuePositions.append(QPointF(newTimeMsec, value));
+            }
+        }
+    }
+    
+    if (valuePoints->count() > 0)
+    {
+        chart->addSeries(valuePoints);
+        valuePoints->attachAxis(axisX);
+        valuePoints->attachAxis(axisY);
+        
+        // Explicitly hide marker from legend
+        auto legendMarkers = chart->legend()->markers(valuePoints);
+        for (auto* marker : legendMarkers)
+            marker->setVisible(false);
+    }
+    else
+    {
+        delete valuePoints;
+        valuePoints = nullptr;
+    }
+    
+    marker.valuePoints = valuePoints;
+    marker.valueLabels = valueLabels;
+    marker.valuePositions = valuePositions;  // Store positions for updating labels
+    
+    // Create time label
+    if (chartView && chartView->scene())
+    {
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(newTimeMsec);
+        QString timeText = dateTime.toString("HH:mm:ss.zzz");
+        
+        marker.timeLabel = new QGraphicsTextItem(timeText);
+        marker.timeLabel->setDefaultTextColor(palette.color(QPalette::Text));
+        QFont font = marker.timeLabel->font();
+        font.setBold(true);
+        marker.timeLabel->setFont(font);
+        
+        // Position below axis X labels
+        QAbstractSeries* seriesForMapping = valuePoints ? static_cast<QAbstractSeries*>(valuePoints) : static_cast<QAbstractSeries*>(verticalLine);
+        QPointF scenePos = chart->mapToPosition(QPointF(newTimeMsec, minY), seriesForMapping);
+        QPointF labelPos(scenePos.x() - marker.timeLabel->boundingRect().width() / 2, 
+                         scenePos.y());  // Below axis X labels
+        
+        // Constrain label position to plot area
+        QRectF plotArea = chart->plotArea();
+        labelPos = constrainLabelPosition(labelPos, marker.timeLabel->boundingRect(), plotArea);
+        marker.timeLabel->setPos(labelPos);
+        
+        chartView->scene()->addItem(marker.timeLabel);
+    }
+    
+    // Create value labels
+    if (chartView && chartView->scene() && valuePoints)
+    {
+        for (int i = 0; i < valueLabels.size() && i < valuePositions.size(); ++i)
+        {
+            auto* valueLabel = new QGraphicsTextItem(valueLabels[i]);
+            valueLabel->setDefaultTextColor(palette.color(QPalette::Text));
+            QFont font = valueLabel->font();
+            font.setPointSize(font.pointSize() - 1);
+            valueLabel->setFont(font);
+            
+            QPointF scenePos = chart->mapToPosition(valuePositions[i], valuePoints);
+            QPointF labelPos(scenePos.x() + 10, scenePos.y() - 15);
+            
+            // Constrain label position to plot area
+            QRectF plotArea = chart->plotArea();
+            labelPos = constrainLabelPosition(labelPos, valueLabel->boundingRect(), plotArea);
+            valueLabel->setPos(labelPos);
+            
+            chartView->scene()->addItem(valueLabel);
+            marker.valueLabelsItems.append(valueLabel);
+        }
+    }
+    
+    // Update delete button position if it exists
+    if (marker.deleteButton)
+        showDeleteButton(index);
+}
+
+void QtPlotterFbImpl::removeMarker(int index)
+{
+    if (index < 0 || index >= markers.size())
+        return;
+    
+    Marker& marker = markers[index];
+    
+    if (marker.verticalLine)
+    {
+        chart->removeSeries(marker.verticalLine);
+        marker.verticalLine->deleteLater();
+    }
+    
+    if (marker.valuePoints)
+    {
+        chart->removeSeries(marker.valuePoints);
+        marker.valuePoints->deleteLater();
+    }
+    
+    if (marker.timeLabel && chartView && chartView->scene())
+    {
+        chartView->scene()->removeItem(marker.timeLabel);
+        marker.timeLabel->deleteLater();
+    }
+    
+    for (auto& valueLabel : marker.valueLabelsItems)
+    {
+        if (valueLabel && chartView && chartView->scene())
+        {
+            chartView->scene()->removeItem(valueLabel);
+            valueLabel->deleteLater();
+        }
+    }
+    
+    if (marker.deleteButton && chartView && chartView->scene())
+    {
+        chartView->scene()->removeItem(marker.deleteButton);
+        marker.deleteButton->deleteLater();
+    }
+    
+    markers.removeAt(index);
+}
+
+void QtPlotterFbImpl::updateMarkers()
+{
+    if (!chart || !axisX || !axisY || !chartView)
+        return;
+    
+    qreal minY = axisY->min();
+    qreal maxY = axisY->max();
+    
+    // Update all markers
+    for (int markerIndex = 0; markerIndex < markers.size(); ++markerIndex)
+    {
+        Marker& marker = markers[markerIndex];
+        if (!marker.verticalLine)
+            continue;
+        
+        // Update vertical line range
+        marker.verticalLine->clear();
+        marker.verticalLine->append(marker.timeMsec, minY);
+        marker.verticalLine->append(marker.timeMsec, maxY);
+        
+        // Update time label position
+        if (marker.timeLabel && chartView->scene())
+        {
+            // Position below axis X labels
+            QAbstractSeries* seriesForMapping = marker.valuePoints ? static_cast<QAbstractSeries*>(marker.valuePoints) : static_cast<QAbstractSeries*>(marker.verticalLine);
+            QPointF scenePos = chart->mapToPosition(QPointF(marker.timeMsec, minY), seriesForMapping);
+            QPointF labelPos(scenePos.x() - marker.timeLabel->boundingRect().width() / 2, 
+                            scenePos.y());  // Below axis X labels
+            
+            // Constrain label position to plot area
+            QRectF plotArea = chart->plotArea();
+            labelPos = constrainLabelPosition(labelPos, marker.timeLabel->boundingRect(), plotArea);
+            marker.timeLabel->setPos(labelPos);
+        }
+        
+        // Update value points if they exist
+        if (marker.valuePoints)
+            // Value points are already at correct positions, just ensure they're visible
+            marker.valuePoints->setVisible(true);
+        
+        // Update value labels positions
+        if (marker.valuePoints && chartView->scene())
+        {
+            const auto& points = marker.valuePoints->points();
+            QRectF plotArea = chart->plotArea();
+            for (int i = 0; i < marker.valueLabelsItems.size() && i < points.size(); ++i)
+            {
+                if (marker.valueLabelsItems[i])
+                {
+                    QPointF scenePos = chart->mapToPosition(points[i], marker.valuePoints);
+                    QPointF labelPos(scenePos.x() + 10, scenePos.y() - 15);
+                    
+                    // Constrain label position to plot area
+                    labelPos = constrainLabelPosition(labelPos, marker.valueLabelsItems[i]->boundingRect(), plotArea);
+                    marker.valueLabelsItems[i]->setPos(labelPos);
+                }
+            }
+        }
+        
+        // Update delete button position if visible
+        if (marker.deleteButton && marker.deleteButton->isVisible())
+            showDeleteButton(markerIndex);
+    }
+}
+
 ErrCode QtPlotterFbImpl::getWidget(struct QWidget** widget)
 {
     if (widget == nullptr)
         return OPENDAQ_ERR_ARGUMENT_NULL;
 
-    // Get the embedded widget (for tabs) or create it if needed
-    QWidget* qtWidget = getQtWidget();
-    if (!qtWidget)
+    // Recreate widget if it was deleted by parent
+    if (!embeddedWidget)
+    {
+        initWidget();
+    }
+
+    if (!embeddedWidget)
         return OPENDAQ_ERR_NOTFOUND;
 
-    *widget = qtWidget;
+    *widget = embeddedWidget;
     return OPENDAQ_SUCCESS;
 }
 
-QWidget* QtPlotterFbImpl::getQtWidget()
+void QtPlotterFbImpl::initWidget()
 {
-    // Create embedded widget if it doesn't exist
-    if (!embeddedWidget)
+    createChart();
+    createWidget();
+    setupTimer();
+}
+
+void QtPlotterFbImpl::createChart()
+{
+    // Don't recreate chart if it already exists
+    if (chart)
+        return;
+    
+    // Initialize chart
+    chart = new QChart();
+    chart->setTitle("Signal Plotter");
+    chart->setAnimationOptions(QChart::NoAnimation);
+    
+    // Use system colors from palette
+    QPalette palette = QApplication::palette();
+    chart->setBackgroundBrush(palette.brush(QPalette::Base));
+    chart->setTitleBrush(palette.brush(QPalette::Text));
+    chart->legend()->setLabelColor(palette.color(QPalette::Text));
+    chart->legend()->setVisible(showLegend);
+    
+    // Reduce chart margins
+    chart->setMargins(QMargins(5, 5, 5, 5));
+    
+    // Create axes
+    axisX = new QDateTimeAxis();
+    axisX->setTickCount(3);
+    axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+    axisX->setLabelsVisible(true);
+    axisX->setLabelsColor(palette.color(QPalette::Text));
+    axisX->setGridLineVisible(showGrid);
+    axisX->setTitleBrush(palette.brush(QPalette::Text));
+    QDateTime now = QDateTime::currentDateTime();
+    axisX->setRange(now.addSecs(-1), now);
+    chart->addAxis(axisX, Qt::AlignBottom);
+    
+    axisY = new QValueAxis();
+    axisY->setTickCount(5);
+    axisY->setLabelsColor(palette.color(QPalette::Text));
+    axisY->setGridLineVisible(showGrid);
+    axisY->setTitleBrush(palette.brush(QPalette::Text));
+    chart->addAxis(axisY, Qt::AlignLeft);
+}
+
+void QtPlotterFbImpl::createWidget()
+{
+    // Don't recreate widget if it already exists and is valid
+    if (embeddedWidget)
+        return;
+    
+    // Clean up timer if it exists
+    if (updateTimer)
     {
-        // Ensure chart is created
-        if (!chart)
-        {
-            // Initialize chart if not already done
-            chart = new QChart();
-            chart->setTitle("Signal Plotter");
-            chart->setAnimationOptions(QChart::NoAnimation);
-            
-            // Setup dark theme
-            chart->setBackgroundBrush(QBrush(QColor(43, 43, 43)));
-            chart->setTitleBrush(QBrush(QColor(200, 200, 200)));
-            chart->legend()->setLabelColor(QColor(200, 200, 200));
-            chart->legend()->setVisible(showLegend);
-            
-            // Create axes
-            axisX = new QDateTimeAxis();
-            axisX->setTitleText("Time");
-            axisX->setTickCount(3);
-            axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
-            axisX->setLabelsVisible(true);
-            axisX->setLabelsColor(QColor(150, 150, 150));
-            axisX->setGridLineColor(QColor(100, 100, 100));
-            axisX->setGridLineVisible(showGrid);
-            axisX->setTitleBrush(QBrush(QColor(150, 150, 150)));
-            QDateTime now = QDateTime::currentDateTime();
-            axisX->setRange(now.addSecs(-1), now);
-            chart->addAxis(axisX, Qt::AlignBottom);
-            
-            axisY = new QValueAxis();
-            axisY->setTitleText("Value");
-            axisY->setTickCount(3);
-            axisY->setLabelsColor(QColor(150, 150, 150));
-            axisY->setGridLineColor(QColor(100, 100, 100));
-            axisY->setGridLineVisible(showGrid);
-            axisY->setTitleBrush(QBrush(QColor(150, 150, 150)));
-            chart->addAxis(axisY, Qt::AlignLeft);
-        }
-        
-        // Create widget for embedding
-        auto* widget = new QWidget();
-        auto* layout = new QVBoxLayout(widget);
-        layout->setContentsMargins(0, 0, 0, 0);
-        
-        // Create toolbar
-        auto* toolbarWidget = new QWidget(widget);
-        auto* toolbarLayout = new QHBoxLayout(toolbarWidget);
-        toolbarLayout->setContentsMargins(5, 5, 5, 5);
-        
-        auto* zoomInBtn = new QPushButton("+", toolbarWidget);
-        zoomInBtn->setToolTip("Zoom In");
-        zoomInBtn->setMaximumWidth(40);
-        
-        auto* zoomOutBtn = new QPushButton("-", toolbarWidget);
-        zoomOutBtn->setToolTip("Zoom Out");
-        zoomOutBtn->setMaximumWidth(40);
-        
-        auto* resetZoomBtn = new QPushButton("Reset", toolbarWidget);
-        resetZoomBtn->setToolTip("Reset Zoom");
-        resetZoomBtn->setMaximumWidth(60);
-        
-        auto* freezeBtn = new QPushButton("Freeze", toolbarWidget);
-        freezeBtn->setToolTip("Freeze/Unfreeze plot updates");
-        freezeBtn->setCheckable(true);
-        freezeBtn->setMaximumWidth(70);
-        
-        toolbarLayout->addWidget(zoomInBtn);
-        toolbarLayout->addWidget(zoomOutBtn);
-        toolbarLayout->addWidget(resetZoomBtn);
-        toolbarLayout->addWidget(freezeBtn);
-        toolbarLayout->addStretch();
-        
-        layout->addWidget(toolbarWidget);
-        
-        // Create chart view (reuse the same chart)
-        auto* embeddedChartView = new QChartView(chart, widget);
-        embeddedChartView->setRenderHint(QPainter::Antialiasing);
-        embeddedChartView->setRubberBand(QChartView::NoRubberBand);
-        embeddedChartView->setDragMode(QGraphicsView::NoDrag);
-        
-        // Install event filter
-        embeddedChartView->viewport()->installEventFilter(new ChartEventFilter(embeddedChartView, this));
-        
-        // Connect buttons
-        QObject::connect(zoomInBtn, &QPushButton::clicked, [this]()
-        {
-            if (chart)
-            {
-                userInteracting = true;
-                chart->zoomIn();
-            }
-        });
-        
-        QObject::connect(zoomOutBtn, &QPushButton::clicked, [this]()
-        {
-            if (chart)
-            {
-                userInteracting = true;
-                chart->zoomOut();
-            }
-        });
-        
-        QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
-        {
-            if (chart)
-            {
-                userInteracting = false;
-                chart->zoomReset();
-            }
-        });
-        
-        QObject::connect(freezeBtn, &QPushButton::toggled, [this, freezeBtn](bool checked)
-        {
-            this->setActive(!checked);
-            if (checked)
-            {
-                freezeBtn->setText("Unfreeze");
-                freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
-            }
-            else
-            {
-                freezeBtn->setText("Freeze");
-                freezeBtn->setStyleSheet("");
-            }
-        });
-        
-        layout->addWidget(embeddedChartView);
-        
-        embeddedWidget = widget;
-        
-        // Create update timer with embeddedWidget as parent
-        if (!updateTimer)
-        {
-            updateTimer = new QTimer(embeddedWidget);
-            QObject::connect(updateTimer, &QTimer::timeout, [this]()
-            {
-                // Update plot if embeddedWidget exists
-                if (embeddedWidget)
-                {
-                    updatePlot();
-                }
-            });
-            updateTimer->start(40);  // Redraw at ~20 FPS
-        }
+        updateTimer->stop();
+        updateTimer->deleteLater();
+        updateTimer = nullptr;
     }
     
-    return embeddedWidget;
+    // Create widget for embedding
+    auto* widget = new QWidget();
+    auto* layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    
+    // Create toolbar
+    auto* toolbarWidget = new QWidget(widget);
+    auto* toolbarLayout = new QHBoxLayout(toolbarWidget);
+    toolbarLayout->setContentsMargins(5, 5, 5, 5);
+    
+    setupButtons(toolbarWidget);
+    
+    toolbarLayout->addStretch();
+    layout->addWidget(toolbarWidget);
+    
+    // Create chart view (reuse the same chart)
+    auto* embeddedChartView = new QChartView(chart, widget);
+    embeddedChartView->setRenderHint(QPainter::Antialiasing);
+    embeddedChartView->setRubberBand(QChartView::NoRubberBand);
+    embeddedChartView->setDragMode(QGraphicsView::NoDrag);
+    
+    // Store reference to chart view
+    chartView = embeddedChartView;
+    
+    // Install event filter
+    embeddedChartView->viewport()->installEventFilter(new ChartEventFilter(embeddedChartView, this));
+    
+    layout->addWidget(embeddedChartView);
+    
+    embeddedWidget = widget;
+}
+
+void QtPlotterFbImpl::setupButtons(QWidget* toolbarWidget)
+{
+    auto* toolbarLayout = qobject_cast<QHBoxLayout*>(toolbarWidget->layout());
+    if (!toolbarLayout)
+        return;
+    
+    auto* zoomInBtn = new QPushButton("+", toolbarWidget);
+    zoomInBtn->setToolTip("Zoom In");
+    zoomInBtn->setMaximumWidth(40);
+    
+    auto* zoomOutBtn = new QPushButton("-", toolbarWidget);
+    zoomOutBtn->setToolTip("Zoom Out");
+    zoomOutBtn->setMaximumWidth(40);
+    
+    auto* resetZoomBtn = new QPushButton("Reset", toolbarWidget);
+    resetZoomBtn->setToolTip("Reset Zoom");
+    resetZoomBtn->setMaximumWidth(60);
+    
+    auto* freezeBtn = new QPushButton("Freeze", toolbarWidget);
+    freezeBtn->setToolTip("Freeze/Unfreeze plot updates");
+    freezeBtn->setCheckable(true);
+    freezeBtn->setMaximumWidth(70);
+    
+    auto* clearBtn = new QPushButton("Clear", toolbarWidget);
+    clearBtn->setToolTip("Clear all plot data");
+    clearBtn->setMaximumWidth(60);
+    
+    auto* clearMarkersBtn = new QPushButton("Clear Markers", toolbarWidget);
+    clearMarkersBtn->setToolTip("Clear all markers");
+    clearMarkersBtn->setMaximumWidth(100);
+    
+    toolbarLayout->addWidget(zoomInBtn);
+    toolbarLayout->addWidget(zoomOutBtn);
+    toolbarLayout->addWidget(resetZoomBtn);
+    toolbarLayout->addWidget(freezeBtn);
+    toolbarLayout->addWidget(clearBtn);
+    toolbarLayout->addWidget(clearMarkersBtn);
+    
+    // Connect buttons
+    QObject::connect(zoomInBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = true;
+            chart->zoomIn();
+        }
+    });
+    
+    QObject::connect(zoomOutBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = true;
+            chart->zoomOut();
+        }
+    });
+    
+    QObject::connect(resetZoomBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            userInteracting = false;
+            chart->zoomReset();
+        }
+    });
+    
+    QObject::connect(freezeBtn, &QPushButton::toggled, [this, freezeBtn](bool checked)
+    {
+        this->setActive(!checked);
+        if (checked)
+        {
+            freezeBtn->setText("Unfreeze");
+            freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
+        }
+        else
+        {
+            freezeBtn->setText("Freeze");
+            freezeBtn->setStyleSheet("");
+        }
+    });
+    
+    QObject::connect(clearBtn, &QPushButton::clicked, [this]()
+    {
+        if (chart)
+        {
+            // Clear all series
+            for (auto* series : chart->series())
+            {
+                auto* lineSeries = qobject_cast<QLineSeries*>(series);
+                if (lineSeries)
+                    lineSeries->clear();
+            }
+            userInteracting = false;
+        }
+    });
+    
+    QObject::connect(clearMarkersBtn, &QPushButton::clicked, [this]()
+    {
+        // Clear all markers
+        while (!markers.isEmpty())
+            removeMarker(0);
+    });
+}
+
+void QtPlotterFbImpl::setupTimer()
+{
+    if (!updateTimer)
+    {
+        updateTimer = new QTimer(embeddedWidget);
+        QObject::connect(updateTimer, &QTimer::timeout, [this]()
+        {
+            // Update plot if embeddedWidget exists
+            if (embeddedWidget)
+                updatePlot();
+        });
+        updateTimer->start(40);  // Redraw at ~20 FPS
+    }
 }
 
 }  // namespace QtPlotter
