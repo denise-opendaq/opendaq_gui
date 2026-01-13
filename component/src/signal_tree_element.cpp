@@ -12,14 +12,13 @@ SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& da
 QStringList SignalTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
-    tabs << (getName() + " Value");
+    tabs << "Value";
     return tabs;
 }
 
 void SignalTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
-    QString valueTabName = getName() + " Value";
-    if (tabName == valueTabName) 
+    if (tabName == "Value") 
     {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
         if (tabWidget) 

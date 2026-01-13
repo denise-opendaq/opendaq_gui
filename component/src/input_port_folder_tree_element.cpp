@@ -15,15 +15,13 @@ InputPortFolderTreeElement::InputPortFolderTreeElement(QTreeWidget* tree, const 
 QStringList InputPortFolderTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = FolderTreeElement::getAvailableTabNames();
-    tabs << getName();
+    tabs << "Signal Selector";
     return tabs;
 }
 
 void InputPortFolderTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
-    QString folderTabName = getName();
-
-    if (tabName == folderTabName)
+    if (tabName == "Signal Selector")
     {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
         if (tabWidget)

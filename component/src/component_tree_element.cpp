@@ -5,6 +5,7 @@
 #include "widgets/component_widget.h"
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
+#include <qt_widget_interface/qt_widget_interface.h>
 
 ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QObject* parent)
     : BaseTreeElement(tree, parent)
@@ -27,8 +28,7 @@ void ComponentTreeElement::init(BaseTreeElement* parent)
     }
     catch (const std::exception& e)
     {
-        const auto context = daqComponent.getContext();
-        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to subscribe to component events: {}", e.what());
     }
 }
@@ -43,8 +43,7 @@ ComponentTreeElement::~ComponentTreeElement()
     }
     catch (const std::exception& e)
     {
-        const auto context = daqComponent.getContext();
-        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Failed to unsubscribe from component events: {}", e.what());
     }
 }
@@ -95,8 +94,7 @@ void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEvent
     }
     catch (const std::exception& e)
     {
-        const auto context = daqComponent.getContext();
-        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error handling core event: {}", e.what());
     }
 }
@@ -112,8 +110,7 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
         }
         catch (const std::exception& e)
         {
-            const auto context = daqComponent.getContext();
-            const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+            const auto loggerComponent = AppContext::LoggerComponent();
             LOG_W("Error updating name: {}", e.what());
         }
     }
@@ -127,8 +124,10 @@ daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
 QStringList ComponentTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
-    tabs << (getName() + " Component");
-    tabs << (getName() + " Properties");
+    tabs << "Attributes";
+    tabs << "Properties";
+    if (daqComponent.supportsInterface<IQTWidget>())
+       tabs << "QTWidget";
     return tabs;
 }
 
@@ -138,18 +137,26 @@ void ComponentTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     if (!tabWidget)
         return;
 
-    QString componentTabName = getName() + " Component";
-    QString propertiesTabName = getName() + " Properties";
-
-    if (tabName == componentTabName)
+    if (tabName == "Attributes")
     {
-        auto componentWidget = new ComponentWidget(daqComponent);
+        auto* componentWidget = new ComponentWidget(daqComponent);
         addTab(tabWidget, componentWidget, tabName);
     }
-    else if (tabName == propertiesTabName)
+    else if (tabName == "Properties")
     {
-        auto propertyView = new PropertyObjectView(daqComponent, tabWidget, daqComponent);
+        auto* propertyView = new PropertyObjectView(daqComponent, tabWidget, daqComponent);
         addTab(tabWidget, propertyView, tabName);
+    }
+    else if (tabName == "QTWidget")
+    {
+        auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
+        if (widgetComponent.assigned())
+        {
+            QWidget* qtWidget;
+            widgetComponent->getWidget(&qtWidget);
+            if (qtWidget)
+                addTab(tabWidget, qtWidget, tabName);
+        }
     }
 }
 
@@ -176,8 +183,7 @@ void ComponentTreeElement::onBeginUpdate()
     }
     catch (const std::exception& e)
     {
-        const auto context = daqComponent.getContext();
-        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to begin update: {}", e.what());
     }
 }
@@ -190,8 +196,7 @@ void ComponentTreeElement::onEndUpdate()
     }
     catch (const std::exception& e)
     {
-        const auto context = daqComponent.getContext();
-        const auto loggerComponent = context.getLogger().getOrAddComponent("openDAQ GUI");
+        const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to end update: {}", e.what());
     }
 }

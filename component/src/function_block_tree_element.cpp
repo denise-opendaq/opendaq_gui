@@ -3,7 +3,6 @@
 #include "widgets/function_block_widget.h"
 #include "component/component_tree_widget.h"
 #include "DetachableTabWidget.h"
-#include <qt_widget_interface/qt_widget_interface.h>
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
@@ -80,10 +79,7 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
 QStringList FunctionBlockTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
-    tabs << "Input Ports";
-    if (daqComponent.supportsInterface<IQTWidget>())
-        tabs << getName() + " Widget";
-    
+    tabs << "Signal Selector";    
     return tabs;
 }
 
@@ -93,24 +89,11 @@ void FunctionBlockTreeElement::openTab(const QString& tabName, QWidget* mainCont
     if (!tabWidget)
         return;
 
-    if (tabName == "Input Ports") 
+    if (tabName == "Signal Selector") 
     {
-        auto functionBlock = getFunctionBlock();
         auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-        auto functionBlockWidget = new FunctionBlockWidget(functionBlock, componentTree);
+        auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
         addTab(tabWidget, functionBlockWidget, tabName);
-    }
-    else if (tabName == getName() + " Widget")
-    {
-        // Check if function block supports IQTWidget interface
-        auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
-        if (widgetComponent.assigned())
-        {
-            QWidget* qtWidget;
-            widgetComponent->getWidget(&qtWidget);
-            if (qtWidget)
-                addTab(tabWidget, qtWidget, tabName);
-        }
     }
     else 
     {

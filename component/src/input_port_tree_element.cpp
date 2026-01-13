@@ -13,15 +13,13 @@ InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPo
 QStringList InputPortTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
-    tabs << getName();
+    tabs << "Signal Selector";
     return tabs;
 }
 
 void InputPortTreeElement::openTab(const QString& tabName, QWidget* mainContent)
 {
-    QString inputPortTabName = getName();
-    
-    if (tabName == inputPortTabName) 
+    if (tabName == "Signal Selector") 
     {
         auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
         if (tabWidget) 

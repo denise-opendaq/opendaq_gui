@@ -267,9 +267,9 @@ void BaseTreeElement::openTab(const QString& tabName, QWidget* mainContent)
     // Base class does nothing
 }
 
-void BaseTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName)
+void BaseTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString& tabName)
 {
-    int index = tabWidget->addTab(tab, tabName);
+    int index = tabWidget->addTab(tab, name + " - " + tabName);
     tabWidget->setCurrentIndex(index);
     tab->setProperty("componentGlobalId", globalId);
 }
