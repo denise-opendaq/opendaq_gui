@@ -7,9 +7,9 @@ class InputPortFolderTreeElement : public FolderTreeElement
     Q_OBJECT
 
 public:
-    InputPortFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent = nullptr);
+    InputPortFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent = nullptr);
 
     QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName, QWidget* mainContent) override;
+    void openTab(const QString& tabName) override;
 };
 

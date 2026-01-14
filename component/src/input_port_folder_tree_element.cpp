@@ -5,8 +5,8 @@
 #include <QWidget>
 #include <QVBoxLayout>
 
-InputPortFolderTreeElement::InputPortFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
-    : FolderTreeElement(tree, daqFolder, parent)
+InputPortFolderTreeElement::InputPortFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
+    : FolderTreeElement(tree, daqFolder, layoutManager, parent)
 {
     this->type = "InputPortFolder";
     this->iconName = "folder";
@@ -19,29 +19,28 @@ QStringList InputPortFolderTreeElement::getAvailableTabNames() const
     return tabs;
 }
 
-void InputPortFolderTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void InputPortFolderTreeElement::openTab(const QString& tabName)
 {
+    if (!layoutManager)
+        return;
+        
     if (tabName == "Signal Selector")
     {
-        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget)
-        {
-            auto folder = daqComponent.asPtr<daq::IFolder>(true);
-            auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-            auto inputPortFolderSelector = new InputPortFolderSelector(folder, componentTree);
-            
-            // Add margins for standalone usage in tab
-            auto container = new QWidget();
-            auto containerLayout = new QVBoxLayout(container);
-            containerLayout->setContentsMargins(10, 10, 10, 10);
-            containerLayout->addWidget(inputPortFolderSelector);
-            
-            addTab(tabWidget, container, tabName);
-        }
+        auto folder = daqComponent.asPtr<daq::IFolder>(true);
+        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+        auto inputPortFolderSelector = new InputPortFolderSelector(folder, componentTree);
+
+        // Add margins for standalone usage in tab
+        auto container = new QWidget();
+        auto containerLayout = new QVBoxLayout(container);
+        containerLayout->setContentsMargins(10, 10, 10, 10);
+        containerLayout->addWidget(inputPortFolderSelector);
+
+        addTab(container, tabName, LayoutZone::Right);
     }
     else
     {
-        FolderTreeElement::openTab(tabName, mainContent);
+        FolderTreeElement::openTab(tabName);
     }
 }
 

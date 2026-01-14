@@ -1,13 +1,15 @@
 #include "component/component_tree_widget.h"
 #include "component/device_tree_element.h"
+#include "LayoutManager.h"
 #include "context/AppContext.h"
 #include <functional>
 #include <QMessageBox>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
-ComponentTreeWidget::ComponentTreeWidget(QWidget* parent)
+ComponentTreeWidget::ComponentTreeWidget(LayoutManager* layoutManager, QWidget* parent)
     : QTreeWidget(parent)
+    , layoutManager(layoutManager)
 {
     setupUI();
 }
@@ -30,8 +32,15 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
     try
     {
+        if (!layoutManager)
+        {
+            const auto loggerComponent = AppContext::LoggerComponent();
+            LOG_E("ComponentTreeWidget::loadInstance: layoutManager is null");
+            return;
+        }
+        
         // Create root element
-        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice());
+        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), layoutManager);
         rootElement->init();
 
         // Expand the root
@@ -48,6 +57,11 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
         QMessageBox::critical(this, "Error", 
             QString("Failed to load instance: %1").arg(e.what()));
     }
+}
+
+void ComponentTreeWidget::setLayoutManager(LayoutManager* layoutManager)
+{
+    this->layoutManager = layoutManager;
 }
 
 BaseTreeElement* ComponentTreeWidget::getSelectedElement() const

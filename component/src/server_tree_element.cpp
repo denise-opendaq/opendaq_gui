@@ -6,8 +6,8 @@
 #include "context/AppContext.h"
 #include <opendaq/instance_ptr.h>
 
-ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QObject* parent)
-    : FolderTreeElement(tree, daqServer, parent)
+ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, LayoutManager* layoutManager, QObject* parent)
+    : FolderTreeElement(tree, daqServer, layoutManager, parent)
 {
     this->type = "Server";
     this->iconName = "server";

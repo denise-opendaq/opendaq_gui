@@ -56,7 +56,7 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
     if (event->type() == QEvent::Wheel)
     {
         QWheelEvent* wheelEvent = static_cast<QWheelEvent*>(event);
-        
+
         // Only zoom if Ctrl key is pressed
         if (wheelEvent->modifiers() & Qt::ControlModifier)
         {
@@ -70,48 +70,53 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
                 QPointF valuePos = m_chartView->chart()->mapToValue(scenePos, seriesList.first());
                 
                 // Get current axis ranges
-                if (m_chartView->chart()->axisX() && m_chartView->chart()->axisY())
+                auto axes = m_chartView->chart()->axes();
+                QDateTimeAxis* axisX = nullptr;
+                QValueAxis* axisY = nullptr;
+                for (auto* axis : axes)
                 {
-                    QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
-                    QValueAxis* axisY = qobject_cast<QValueAxis*>(m_chartView->chart()->axisY());
+                    if (!axisX)
+                        axisX = qobject_cast<QDateTimeAxis*>(axis);
+                    if (!axisY)
+                        axisY = qobject_cast<QValueAxis*>(axis);
+                }
+
+                if (axisX && axisY)
+                {
+                    QDateTime minTime = axisX->min();
+                    QDateTime maxTime = axisX->max();
+                    qreal minY = axisY->min();
+                    qreal maxY = axisY->max();
                     
-                    if (axisX && axisY)
-                    {
-                        QDateTime minTime = axisX->min();
-                        QDateTime maxTime = axisX->max();
-                        qreal minY = axisY->min();
-                        qreal maxY = axisY->max();
+                    // Calculate zoom factor (1.1 for scroll up, 1/1.1 for scroll down)
+                    qreal zoomFactor = wheelEvent->angleDelta().y() > 0 ? 1.1 : 1.0 / 1.1;
+                    
+                    // Get mouse position in chart value coordinates
+                    qint64 mouseTime = static_cast<qint64>(valuePos.x());
+                    qreal mouseY = valuePos.y();
+                    
+                    // Calculate relative position of mouse in current range (0.0 to 1.0)
+                    qint64 currentTimeRange = maxTime.toMSecsSinceEpoch() - minTime.toMSecsSinceEpoch();
+                    qreal timeRatio = currentTimeRange > 0 ? 
+                        static_cast<qreal>(mouseTime - minTime.toMSecsSinceEpoch()) / static_cast<qreal>(currentTimeRange) : 0.5;
+                    
+                    qreal currentYRange = maxY - minY;
+                    qreal yRatio = currentYRange > 0 ? (mouseY - minY) / currentYRange : 0.5;
+                    
+                    // Calculate new ranges
+                    qint64 newTimeRange = static_cast<qint64>(currentTimeRange / zoomFactor);
+                    qreal newYRange = currentYRange / zoomFactor;
+                    
+                    // Keep mouse position fixed - adjust min/max based on mouse position ratio
+                    qint64 newMinTime = mouseTime - static_cast<qint64>(newTimeRange * timeRatio);
+                    qint64 newMaxTime = mouseTime + static_cast<qint64>(newTimeRange * (1.0 - timeRatio));
+                    
+                    qreal newMinY = mouseY - newYRange * yRatio;
+                    qreal newMaxY = mouseY + newYRange * (1.0 - yRatio);
                         
-                        // Calculate zoom factor (1.1 for scroll up, 1/1.1 for scroll down)
-                        qreal zoomFactor = wheelEvent->angleDelta().y() > 0 ? 1.1 : 1.0 / 1.1;
-                        
-                        // Get mouse position in chart value coordinates
-                        qint64 mouseTime = static_cast<qint64>(valuePos.x());
-                        qreal mouseY = valuePos.y();
-                        
-                        // Calculate relative position of mouse in current range (0.0 to 1.0)
-                        qint64 currentTimeRange = maxTime.toMSecsSinceEpoch() - minTime.toMSecsSinceEpoch();
-                        qreal timeRatio = currentTimeRange > 0 ? 
-                            static_cast<qreal>(mouseTime - minTime.toMSecsSinceEpoch()) / static_cast<qreal>(currentTimeRange) : 0.5;
-                        
-                        qreal currentYRange = maxY - minY;
-                        qreal yRatio = currentYRange > 0 ? (mouseY - minY) / currentYRange : 0.5;
-                        
-                        // Calculate new ranges
-                        qint64 newTimeRange = static_cast<qint64>(currentTimeRange / zoomFactor);
-                        qreal newYRange = currentYRange / zoomFactor;
-                        
-                        // Keep mouse position fixed - adjust min/max based on mouse position ratio
-                        qint64 newMinTime = mouseTime - static_cast<qint64>(newTimeRange * timeRatio);
-                        qint64 newMaxTime = mouseTime + static_cast<qint64>(newTimeRange * (1.0 - timeRatio));
-                        
-                        qreal newMinY = mouseY - newYRange * yRatio;
-                        qreal newMaxY = mouseY + newYRange * (1.0 - yRatio);
-                        
-                        // Apply zoom
-                        axisX->setRange(QDateTime::fromMSecsSinceEpoch(newMinTime), QDateTime::fromMSecsSinceEpoch(newMaxTime));
-                        axisY->setRange(newMinY, newMaxY);
-                    }
+                    // Apply zoom
+                    axisX->setRange(QDateTime::fromMSecsSinceEpoch(newMinTime), QDateTime::fromMSecsSinceEpoch(newMaxTime));
+                    axisY->setRange(newMinY, newMaxY);
                 }
             }
             
@@ -150,22 +155,26 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
                     qint64 timeMsec = static_cast<qint64>(valuePos.x());
                     
                     // Check if time is within visible axis range
-                    if (m_chartView->chart()->axisX())
+                    QDateTimeAxis* axisX = nullptr;
+                    for (auto* axis : m_chartView->chart()->axes())
                     {
-                        QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
+                        axisX = qobject_cast<QDateTimeAxis*>(axis);
                         if (axisX)
-                        {
-                            qint64 minTime = axisX->min().toMSecsSinceEpoch();
-                            qint64 maxTime = axisX->max().toMSecsSinceEpoch();
-                            
-                            // Clamp time to visible range
-                            if (timeMsec < minTime)
-                                timeMsec = minTime;
-                            else if (timeMsec > maxTime)
-                                timeMsec = maxTime;
-                            
-                            m_plotter->moveMarker(m_draggedMarkerIndex, timeMsec);
-                        }
+                            break;
+                    }
+
+                    if (axisX)
+                    {
+                        qint64 minTime = axisX->min().toMSecsSinceEpoch();
+                        qint64 maxTime = axisX->max().toMSecsSinceEpoch();
+
+                        // Clamp time to visible range
+                        if (timeMsec < minTime)
+                            timeMsec = minTime;
+                        else if (timeMsec > maxTime)
+                            timeMsec = maxTime;
+
+                        m_plotter->moveMarker(m_draggedMarkerIndex, timeMsec);
                     }
                 }
             }
@@ -178,9 +187,7 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
 
             // If moved more than a few pixels, it's a drag, not a click
             if (m_isClick && (mouseEvent->pos() - m_clickStartPos).manhattanLength() > 5)
-            {
                 m_isClick = false;
-            }
 
             // Scroll the chart
             m_chartView->chart()->scroll(-delta.x(), delta.y());
@@ -264,20 +271,22 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
                         qint64 timeMsec = static_cast<qint64>(valuePos.x());
                         
                         // Check if time is within visible axis range
-                        if (m_chartView->chart()->axisX())
+                        QDateTimeAxis* axisX = nullptr;
+                        for (auto* axis : m_chartView->chart()->axes())
                         {
-                            QDateTimeAxis* axisX = qobject_cast<QDateTimeAxis*>(m_chartView->chart()->axisX());
+                            axisX = qobject_cast<QDateTimeAxis*>(axis);
                             if (axisX)
-                            {
-                                qint64 minTime = axisX->min().toMSecsSinceEpoch();
-                                qint64 maxTime = axisX->max().toMSecsSinceEpoch();
-                                
-                                // Only add marker if time is within visible range
-                                if (timeMsec >= minTime && timeMsec <= maxTime)
-                                {
-                                    m_plotter->addMarkerAtTime(timeMsec);
-                                }
-                            }
+                                break;
+                        }
+
+                        if (axisX)
+                        {
+                            qint64 minTime = axisX->min().toMSecsSinceEpoch();
+                            qint64 maxTime = axisX->max().toMSecsSinceEpoch();
+
+                            // Only add marker if time is within visible range
+                            if (timeMsec >= minTime && timeMsec <= maxTime)
+                                m_plotter->addMarkerAtTime(timeMsec);
                         }
                     }
                 }
@@ -363,7 +372,9 @@ void QtPlotterFbImpl::initProperties()
     objPtr.addProperty(showLastValueProp);
     objPtr.getOnPropertyValueWrite("ShowLastValue") += onPropertyValueWrite;
 
-    // Plot window functionality removed - widget is now only available as embedded tab
+    const auto autoClearProp = daq::BoolProperty("AutoClear", true);
+    objPtr.addProperty(autoClearProp);
+    objPtr.getOnPropertyValueWrite("AutoClear") += onPropertyValueWrite;
 
     readProperties();
 }
@@ -390,6 +401,7 @@ void QtPlotterFbImpl::readProperties()
     autoScale = objPtr.getPropertyValue("AutoScale");
     showGrid = objPtr.getPropertyValue("ShowGrid");
     showLastValue = objPtr.getPropertyValue("ShowLastValue");
+    autoClear = objPtr.getPropertyValue("AutoClear");
 
     LOG_W("Properties: Duration={}, ShowLegend={}, AutoScale={}, ShowGrid={}, ShowLastValue={}",
           duration, showLegend, autoScale, showGrid, showLastValue)
@@ -408,7 +420,6 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 {
     auto lock = this->getRecursiveConfigLock();
 
-    subscribeToSignalCoreEvent(inputPort.getSignal());
     updateInputPorts();
     LOG_W("Connected to port {}", inputPort.getLocalId());
 }
@@ -416,6 +427,35 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
 {
     auto lock = this->getRecursiveConfigLock();
+
+    // Find and remove the series associated with this port
+    if (autoClear && chart)
+    {
+        auto it = signalContexts.find(inputPort);
+        if (it != signalContexts.end())
+        {
+            QString seriesName = QString::fromStdString(it->second.caption);
+
+            // Find the series with this name and remove it
+            for (auto* series : chart->series())
+            {
+                auto* lineSeries = qobject_cast<QLineSeries*>(series);
+                if (lineSeries && !lineSeries->name().isEmpty())
+                {
+                    // Check if series name matches (handle case where last value is appended)
+                    QString currentName = lineSeries->name();
+                    if (currentName == seriesName || currentName.startsWith(seriesName + " ="))
+                    {
+                        chart->removeSeries(lineSeries);
+                        lineSeries->deleteLater();
+                        LOG_W("Removed series '{}' for disconnected port {}",
+                              seriesName.toStdString(), inputPort.getLocalId());
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     signalContexts.erase(inputPort);
     removeInputPort(inputPort);
@@ -712,19 +752,6 @@ void QtPlotterFbImpl::updatePlot()
     updateMarkers();
 }
 
-void QtPlotterFbImpl::subscribeToSignalCoreEvent(const daq::SignalPtr& signal)
-{
-    signal.getOnComponentCoreEvent() += daq::event(this, &QtPlotterFbImpl::processCoreEvent);
-}
-
-void QtPlotterFbImpl::processCoreEvent(daq::ComponentPtr& component, daq::CoreEventArgsPtr& args)
-{
-    if (args.getEventId() == static_cast<daq::Int>(daq::CoreEventId::AttributeChanged))
-    {
-        // Handle attribute changes if needed
-    }
-}
-
 double QtPlotterFbImpl::getSignalValueAtTime(QLineSeries* series, qint64 timeMsec)
 {
     if (!series || series->count() == 0)
@@ -792,7 +819,7 @@ void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
     QPalette palette = QApplication::palette();
     QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
     verticalLine->setPen(pen);
-    verticalLine->setName("");  // Don't show in legend
+    // verticalLine->setName("");  // Don't show in legend
     
     chart->addSeries(verticalLine);
     verticalLine->attachAxis(axisX);
@@ -808,7 +835,7 @@ void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
     valuePoints->setMarkerSize(8);
     valuePoints->setColor(palette.color(QPalette::Highlight));
     valuePoints->setBorderColor(palette.color(QPalette::Base));
-    valuePoints->setName("");  // Don't show in legend
+    // valuePoints->setName("");  // Don't show in legend
     
     // Find intersections with all signal series
     QStringList valueLabels;
@@ -932,9 +959,7 @@ int QtPlotterFbImpl::findMarkerAtPosition(const QPointF& scenePos, qreal toleran
         // Check if mouse is near the marker line (within tolerance)
         qreal distance = qAbs(scenePos.x() - markerScenePos.x());
         if (distance <= tolerance)
-        {
             return i;
-        }
     }
     
     return -1;
@@ -1045,7 +1070,7 @@ void QtPlotterFbImpl::moveMarker(int index, qint64 newTimeMsec)
     QPalette palette = QApplication::palette();
     QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
     verticalLine->setPen(pen);
-    verticalLine->setName("");
+    // verticalLine->setName("");
     
     chart->addSeries(verticalLine);
     verticalLine->attachAxis(axisX);
@@ -1063,7 +1088,7 @@ void QtPlotterFbImpl::moveMarker(int index, qint64 newTimeMsec)
     valuePoints->setMarkerSize(8);
     valuePoints->setColor(palette.color(QPalette::Highlight));
     valuePoints->setBorderColor(palette.color(QPalette::Base));
-    valuePoints->setName("");  // Don't show in legend
+    // valuePoints->setName("");  // Don't show in legend
     
     // Find intersections with all signal series
     QStringList valueLabels;
@@ -1274,9 +1299,7 @@ ErrCode QtPlotterFbImpl::getWidget(struct QWidget** widget)
 
     // Recreate widget if it was deleted by parent
     if (!embeddedWidget)
-    {
         initWidget();
-    }
 
     if (!embeddedWidget)
         return OPENDAQ_ERR_NOTFOUND;
@@ -1408,7 +1431,7 @@ void QtPlotterFbImpl::setupButtons(QWidget* toolbarWidget)
     
     auto* clearMarkersBtn = new QPushButton("Clear Markers", toolbarWidget);
     clearMarkersBtn->setToolTip("Clear all markers");
-    clearMarkersBtn->setMaximumWidth(100);
+    clearMarkersBtn->setMaximumWidth(120);
     
     toolbarLayout->addWidget(zoomInBtn);
     toolbarLayout->addWidget(zoomOutBtn);

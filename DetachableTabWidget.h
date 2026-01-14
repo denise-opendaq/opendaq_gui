@@ -12,6 +12,8 @@
 #include <QIcon>
 #include <QVariant>
 #include <QPoint>
+#include <QToolButton>
+#include <QMap>
 
 #include "DropOverlay.h"
 
@@ -72,6 +74,11 @@ public:
     int insertTabInfo(int index, TabInfo&& info);
 
     static bool decodeTabMime(const QMimeData* mime, DetachableTabWidget*& outSource, int& outIndex);
+    
+    // Pin management
+    void setTabPinned(int index, bool pinned);
+    bool isTabPinned(int index) const;
+    void updatePinButton(int index);
 
 Q_SIGNALS:
     // Detach tab to a floating window. (Closing the window destroys the content.)
@@ -82,6 +89,9 @@ Q_SIGNALS:
 
     // Emitted after a successful move/reorder between tab widgets (via drop on tab bar)
     void tabMoveCompleted(DetachableTabWidget* sourceWidget);
+    
+    // Pin/unpin tab
+    void tabPinToggled(QWidget* widget, bool pinned);
 
 private Q_SLOTS:
     void onDetachRequested(int index, const QPoint& globalPos);
@@ -90,12 +100,17 @@ protected:
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
     void dropEvent(QDropEvent* event) override;
+    void tabInserted(int index) override;
+    void tabRemoved(int index) override;
 
 private:
     bool isPointOnTabBar(const QPoint& widgetPos) const;
     int dropInsertIndexFromPos(const QPoint& widgetPos) const;
+    QToolButton* createPinButton(int index);
+    void onPinButtonClicked(int index);
 
 private:
     bool detachEnabled = true;
     bool splitEnabled = true;
+    QMap<int, QToolButton*> pinButtons; // Map tab index to pin button
 };

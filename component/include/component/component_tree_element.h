@@ -14,7 +14,7 @@ class ComponentTreeElement : public BaseTreeElement
     Q_OBJECT
 
 public:
-    ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QObject* parent = nullptr);
+    ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, LayoutManager* layoutManager, QObject* parent = nullptr);
     ~ComponentTreeElement() override;
 
     void init(BaseTreeElement* parent = nullptr) override;
@@ -30,7 +30,7 @@ public:
 
     // Override to return available tabs
     QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName, QWidget* mainContent) override;
+    void openTab(const QString& tabName) override;
 
     // Get the underlying openDAQ component
     daq::ComponentPtr getDaqComponent() const;

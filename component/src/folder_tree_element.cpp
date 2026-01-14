@@ -5,8 +5,8 @@
 #include <QMetaObject>
 #include "context/AppContext.h"
 
-FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
-    : ComponentTreeElement(tree, daqFolder, parent)
+FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
+    : ComponentTreeElement(tree, daqFolder, layoutManager, parent)
 {
     this->type = "Folder";
     this->iconName = "folder";
@@ -17,6 +17,10 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 {
     ComponentTreeElement::init(parent);
 
+    // If layoutManager is null, try to get it from parent
+    if (!layoutManager && parent)
+        layoutManager = parent->getLayoutManager();
+
     // Add all items from the folder as children
     try
     {
@@ -24,7 +28,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 
         for (const auto & item : folder.getItems())
         {
-            auto childElement = createTreeElement(tree, item, this);
+            auto childElement = createTreeElement(tree, item, layoutManager, this);
             if (childElement)
                 addChild(std::unique_ptr<BaseTreeElement>(childElement));
         }
@@ -47,6 +51,10 @@ bool FolderTreeElement::visible() const
 
 void FolderTreeElement::refresh()
 {
+    // If layoutManager is null, try to get it from parent
+    if (!layoutManager && parentElement)
+        layoutManager = parentElement->getLayoutManager();
+
     try
     {
         auto folder = daqComponent.asPtr<daq::IFolder>(true);
@@ -60,7 +68,7 @@ void FolderTreeElement::refresh()
             if (children.find(itemLocalId) == children.end())
             {
                 // This is a new item, add it
-                auto childElement = createTreeElement(tree, item, this);
+                auto childElement = createTreeElement(tree, item, layoutManager, this);
                 if (childElement)
                     addChild(std::unique_ptr<BaseTreeElement>(childElement));
             }

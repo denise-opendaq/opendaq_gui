@@ -3,8 +3,8 @@
 #include "component/component_tree_widget.h"
 #include "DetachableTabWidget.h"
 
-InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, QObject* parent)
-    : ComponentTreeElement(tree, daqInputPort, parent)
+InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, LayoutManager* layoutManager, QObject* parent)
+    : ComponentTreeElement(tree, daqInputPort, layoutManager, parent)
 {
     this->type = "InputPort";
     this->iconName = "input_port";
@@ -17,22 +17,21 @@ QStringList InputPortTreeElement::getAvailableTabNames() const
     return tabs;
 }
 
-void InputPortTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void InputPortTreeElement::openTab(const QString& tabName)
 {
-    if (tabName == "Signal Selector") 
+    if (!layoutManager)
+        return;
+        
+    if (tabName == "Signal Selector")
     {
-        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) 
-        {
-            auto inputPort = getInputPort();
-            auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-            auto inputPortWidget = new InputPortWidget(inputPort, componentTree);
-            addTab(tabWidget, inputPortWidget, tabName);
-        }
-    } 
-    else 
+        auto inputPort = getInputPort();
+        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+        auto inputPortWidget = new InputPortWidget(inputPort, componentTree);
+        addTab(inputPortWidget, tabName, LayoutZone::Right);
+    }
+    else
     {
-        Super::openTab(tabName, mainContent);
+        Super::openTab(tabName);
     }
 }
 

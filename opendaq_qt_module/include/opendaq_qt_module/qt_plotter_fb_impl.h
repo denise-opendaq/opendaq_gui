@@ -126,9 +126,6 @@ private:
     void updateInputPorts();
 
     void updatePlot();
-
-    void subscribeToSignalCoreEvent(const daq::SignalPtr& signal);
-    void processCoreEvent(daq::ComponentPtr& component, daq::CoreEventArgsPtr& args);
     
     // Marker methods
     void addMarkerAtTime(qint64 timeMsec);
@@ -152,6 +149,7 @@ private:
     bool autoScale;
     bool showGrid;
     bool showLastValue;
+    bool autoClear;
     
     // Performance limits
     static constexpr size_t MAX_POINTS_PER_SERIES = 5000;  // Maximum points to keep in each series (reduced for better performance)

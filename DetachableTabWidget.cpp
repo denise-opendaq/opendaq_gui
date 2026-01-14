@@ -3,6 +3,11 @@
 #include <QApplication>
 #include <QCursor>
 #include <QPointer>
+#include <QToolButton>
+#include <QStyle>
+#include <QStyleOption>
+#include <QPainter>
+#include <QTimer>
 
 namespace {
 
@@ -58,8 +63,25 @@ void DetachableTabBar::mousePressEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton) 
     {
+        // Check if click is on a pin button
+        int tabIdx = tabAt(event->pos());
+        if (tabIdx >= 0)
+        {
+            auto* tabWidget = qobject_cast<DetachableTabWidget*>(parentWidget());
+            if (tabWidget)
+            {
+                QWidget* button = tabWidget->tabBar()->tabButton(tabIdx, QTabBar::RightSide);
+                if (button && button->geometry().contains(event->pos()))
+                {
+                    // Click is on pin button, let it handle the event
+                    QTabBar::mousePressEvent(event);
+                    return;
+                }
+            }
+        }
+        
         dragStartPos = event->pos();
-        dragIndex = tabAt(event->pos());
+        dragIndex = tabIdx;
         dragArmed = (dragIndex >= 0);
     }
 
@@ -325,4 +347,169 @@ void DetachableTabWidget::dropEvent(QDropEvent* event)
     event->accept();
 
     Q_EMIT tabMoveCompleted(source);
+}
+
+void DetachableTabWidget::setTabPinned(int index, bool pinned)
+{
+    if (index < 0 || index >= count())
+        return;
+    
+    QWidget* tabPage = widget(index);
+    if (!tabPage)
+        return;
+    
+    // Check if state is already set to avoid recursion
+    bool currentPinned = isTabPinned(index);
+    if (currentPinned == pinned)
+        return; // Already in the desired state
+    
+    // Store pin state in widget property
+    tabPage->setProperty("tabPinned", pinned);
+    
+    // Store in tab data
+    tabBar()->setTabData(index, pinned);
+    
+    // Update pin button
+    updatePinButton(index);
+    
+    // Emit signal
+    Q_EMIT tabPinToggled(tabPage, pinned);
+}
+
+bool DetachableTabWidget::isTabPinned(int index) const
+{
+    if (index < 0 || index >= count())
+        return false;
+    
+    QWidget* tabPage = widget(index);
+    if (!tabPage)
+        return false;
+    
+    // Check widget property first
+    QVariant pinnedProperty = tabPage->property("tabPinned");
+    if (pinnedProperty.isValid())
+    {
+        return pinnedProperty.toBool();
+    }
+    
+    // Check tab data
+    QVariant tabData = tabBar()->tabData(index);
+    if (tabData.isValid())
+    {
+        return tabData.toBool();
+    }
+    
+    return false; // Default: not pinned
+}
+
+QToolButton* DetachableTabWidget::createPinButton(int index)
+{
+    QToolButton* button = new QToolButton(tabBar());
+    button->setAutoRaise(true);
+    button->setIconSize(QSize(12, 12));
+    button->setFixedSize(16, 16);
+    button->setToolTip(isTabPinned(index) ? "Unpin tab" : "Pin tab");
+    
+    // Set icon based on pin state
+    if (isTabPinned(index))
+    {
+        // Pinned icon (you can use a custom icon or style icon)
+        QStyleOption opt;
+        opt.initFrom(button);
+        QPixmap pixmap(12, 12);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(opt.palette.text().color(), 1.5));
+        // Draw pin icon (simple vertical line with horizontal bar)
+        painter.drawLine(6, 2, 6, 10);
+        painter.drawLine(4, 4, 8, 4);
+        button->setIcon(QIcon(pixmap));
+    }
+    else
+    {
+        // Unpinned icon (empty circle or outline)
+        QStyleOption opt;
+        opt.initFrom(button);
+        QPixmap pixmap(12, 12);
+        pixmap.fill(Qt::transparent);
+        QPainter painter(&pixmap);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(QPen(opt.palette.text().color(), 1));
+        // Draw unpinned icon (circle outline)
+        painter.drawEllipse(QRect(3, 3, 6, 6));
+        button->setIcon(QIcon(pixmap));
+    }
+    
+    // Connect button click
+    connect(button, &QToolButton::clicked, this, [this, index]() {
+        onPinButtonClicked(index);
+    });
+    
+    return button;
+}
+
+void DetachableTabWidget::updatePinButton(int index)
+{
+    if (index < 0 || index >= count())
+        return;
+    
+    // Defer button update to avoid issues during tab layout
+    // Use QTimer to schedule update in next event loop iteration
+    QTimer::singleShot(0, this, [this, index]() {
+        if (index < 0 || index >= count())
+            return;
+        
+        // Remove old button if exists
+        if (pinButtons.contains(index))
+        {
+            tabBar()->setTabButton(index, QTabBar::RightSide, nullptr);
+            pinButtons[index]->deleteLater();
+            pinButtons.remove(index);
+        }
+        
+        // Create and add pin button
+        QToolButton* button = createPinButton(index);
+        tabBar()->setTabButton(index, QTabBar::RightSide, button);
+        pinButtons[index] = button;
+    });
+}
+
+void DetachableTabWidget::onPinButtonClicked(int index)
+{
+    if (index < 0 || index >= count())
+        return;
+    
+    bool currentPinned = isTabPinned(index);
+    setTabPinned(index, !currentPinned);
+}
+
+void DetachableTabWidget::tabInserted(int index)
+{
+    QTabWidget::tabInserted(index);
+    updatePinButton(index);
+}
+
+void DetachableTabWidget::tabRemoved(int index)
+{
+    // Clean up pin button for removed tab
+    if (pinButtons.contains(index))
+    {
+        pinButtons[index]->deleteLater();
+        pinButtons.remove(index);
+    }
+    
+    // Update indices for buttons after removed tab
+    QMap<int, QToolButton*> newMap;
+    for (auto it = pinButtons.begin(); it != pinButtons.end(); ++it)
+    {
+        int oldIndex = it.key();
+        if (oldIndex > index)
+            newMap[oldIndex - 1] = it.value();
+        else if (oldIndex < index)
+            newMap[oldIndex] = it.value();
+    }
+    pinButtons = newMap;
+    
+    QTabWidget::tabRemoved(index);
 }

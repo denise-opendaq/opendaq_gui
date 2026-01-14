@@ -49,6 +49,7 @@ add_subdirectory(opendaq_qt_module)
 set(SOURCES
     main.cpp
     MainWindow.cpp
+    LayoutManager.cpp
     DetachableTabWidget.cpp
     DetachedWindow.cpp
     DropOverlay.cpp
@@ -56,6 +57,7 @@ set(SOURCES
 
 set(HEADERS
     MainWindow.h
+    LayoutManager.h
     DetachableTabWidget.h
     DetachedWindow.h
     DropOverlay.h

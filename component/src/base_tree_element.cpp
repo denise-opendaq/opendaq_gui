@@ -3,6 +3,7 @@
 #include "context/AppContext.h"
 #include "DetachableTabWidget.h"
 #include "DetachedWindow.h"
+#include "LayoutManager.h"
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QMenu>
@@ -13,17 +14,23 @@
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
-BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QObject* parent)
+BaseTreeElement::BaseTreeElement(QTreeWidget* tree, LayoutManager* layoutManager, QObject* parent)
     : QObject(parent)
     , tree(tree)
     , treeItem(nullptr)
     , parentElement(nullptr)
+    , layoutManager(layoutManager)
     , localId("/")
     , globalId("/")
     , name(localId)
     , type("PropertyObject")
     , iconName("")
 {
+    if (!layoutManager)
+    {
+        const auto loggerComponent = AppContext::LoggerComponent();
+        LOG_W("BaseTreeElement: layoutManager is null in constructor for '{}'", name.toStdString());
+    }
 }
 
 BaseTreeElement::~BaseTreeElement()
@@ -144,47 +151,52 @@ BaseTreeElement* BaseTreeElement::addChild(std::unique_ptr<BaseTreeElement> chil
 
 void BaseTreeElement::closeTabs()
 {
-    // Find all DetachableTabWidget instances and replace content of tabs associated with this component
-    QWidgetList widgets = QApplication::allWidgets();
-    for (QWidget* widget : widgets)
+    if (!layoutManager)
+        return; // No layout manager, nothing to close
+    
+    // Helper lambda to create "Component removed" widget
+    auto createRemovedWidget = [this](QWidget* parent) -> QWidget* {
+        QWidget* removedWidget = new QWidget(parent);
+        QVBoxLayout* layout = new QVBoxLayout(removedWidget);
+        layout->setContentsMargins(20, 20, 20, 20);
+
+        QLabel* label = new QLabel(QString("Component '%1' has been removed").arg(name), removedWidget);
+        label->setAlignment(Qt::AlignCenter);
+        label->setStyleSheet("QLabel { font-size: 14pt; color: #666; }");
+
+        layout->addWidget(label);
+        layout->addStretch();
+        return removedWidget;
+    };
+    
+    // Close tabs in all tab widgets (including mainWidget)
+    for (DetachableTabWidget* tabWidget : layoutManager->getAllTabWidgets())
     {
-        if (auto tabWidget = qobject_cast<DetachableTabWidget*>(widget); tabWidget)
+        for (int i = tabWidget->count() - 1; i >= 0; --i)
         {
-            for (int i = tabWidget->count() - 1; i >= 0; --i)
+            QWidget* tabPage = tabWidget->widget(i);
+            if (tabPage)
             {
-                QWidget* tabPage = tabWidget->widget(i);
-                if (tabPage)
+                QVariant tabGlobalId = tabPage->property("componentGlobalId");
+                if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
                 {
-                    QVariant tabGlobalId = tabPage->property("componentGlobalId");
-                    if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
-                        tabWidget->removeTab(i);
+                    layoutManager->removeTab(tabPage);
                 }
             }
         }
-        else if (auto detachedWindow = qobject_cast<DetachedWindow*>(widget); detachedWindow)
+    }
+    
+    // Handle detached windows
+    for (DetachedWindow* detachedWindow : layoutManager->getDetachedWindows())
+    {
+        QWidget* contentWidget = detachedWindow->contentWidget();
+        if (contentWidget)
         {
-            QWidget* contentWidget = detachedWindow->contentWidget();
-            if (contentWidget)
+            QVariant contentGlobalId = contentWidget->property("componentGlobalId");
+            if (contentGlobalId.isValid() && contentGlobalId.toString() == globalId)
             {
-                QVariant contentGlobalId = contentWidget->property("componentGlobalId");
-                if (contentGlobalId.isValid() && contentGlobalId.toString() == globalId)
-                {
-                    // Replace content with "Component removed" message
-                    QWidget* removedWidget = new QWidget(detachedWindow);
-                    QVBoxLayout* layout = new QVBoxLayout(removedWidget);
-                    layout->setContentsMargins(20, 20, 20, 20);
-
-                    QLabel* label = new QLabel(QString("Component '%1' has been removed").arg(name), removedWidget);
-                    label->setAlignment(Qt::AlignCenter);
-                    label->setStyleSheet("QLabel { font-size: 14pt; color: #666; }");
-
-                    layout->addWidget(label);
-                    layout->addStretch();
-
-                    // Replace central widget
-                    detachedWindow->setCentralWidget(removedWidget);
-                    contentWidget->deleteLater();
-                }
+                detachedWindow->setCentralWidget(createRemovedWidget(detachedWindow));
+                contentWidget->deleteLater();
             }
         }
     }
@@ -248,11 +260,11 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
     }
 }
 
-void BaseTreeElement::onSelected(QWidget* mainContent)
-{
+void BaseTreeElement::onSelected()
+{   
     QStringList availableTabs = getAvailableTabNames();
     for (const QString& tabName : availableTabs)
-        openTab(tabName, mainContent);
+        openTab(tabName);
 }
 
 QStringList BaseTreeElement::getAvailableTabNames() const
@@ -260,17 +272,19 @@ QStringList BaseTreeElement::getAvailableTabNames() const
     return QStringList(); // Base class returns empty list
 }
 
-void BaseTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void BaseTreeElement::openTab(const QString& tabName)
 {
     Q_UNUSED(tabName);
-    Q_UNUSED(mainContent);
     // Base class does nothing
 }
 
-void BaseTreeElement::addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString& tabName)
+void BaseTreeElement::addTab(QWidget* tab, const QString& tabName, LayoutZone zone)
 {
-    int index = tabWidget->addTab(tab, name + " - " + tabName);
-    tabWidget->setCurrentIndex(index);
+    if (!layoutManager)
+        return;
+    
+    QString fullTabName = name + " - " + tabName;
+    layoutManager->addTab(tab, fullTabName, zone);
     tab->setProperty("componentGlobalId", globalId);
 }
 

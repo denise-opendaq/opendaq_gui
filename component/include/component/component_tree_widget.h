@@ -6,6 +6,7 @@
 
 class BaseTreeElement;
 class AppContext;
+class LayoutManager;
 
 // Forward declarations for openDAQ
 namespace daq 
@@ -19,11 +20,14 @@ class ComponentTreeWidget : public QTreeWidget
     Q_OBJECT
 
 public:
-    ComponentTreeWidget(QWidget* parent = nullptr);
+    ComponentTreeWidget(LayoutManager* layoutManager, QWidget* parent = nullptr);
     ~ComponentTreeWidget() override;
 
     // Load openDAQ instance into the tree
     void loadInstance(const daq::InstancePtr& instance);
+    
+    // Set layout manager (for elements created after construction)
+    void setLayoutManager(LayoutManager* layoutManager);
 
     // Get the selected BaseTreeElement
     BaseTreeElement* getSelectedElement() const;
@@ -53,4 +57,5 @@ private Q_SLOTS:
 
 private:
     std::unique_ptr<BaseTreeElement> rootElement;
+    LayoutManager* layoutManager = nullptr;
 };

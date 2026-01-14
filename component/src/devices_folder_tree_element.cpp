@@ -5,8 +5,8 @@
 #include <QAction>
 #include <QMessageBox>
 
-DevicesFolderTreeElement::DevicesFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent)
-    : FolderTreeElement(tree, daqFolder, parent)
+DevicesFolderTreeElement::DevicesFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
+    : FolderTreeElement(tree, daqFolder, layoutManager, parent)
 {
     this->type = "DevicesFolder";
     this->iconName = "folder";

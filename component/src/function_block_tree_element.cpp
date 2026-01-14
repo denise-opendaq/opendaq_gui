@@ -2,13 +2,13 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "widgets/function_block_widget.h"
 #include "component/component_tree_widget.h"
-#include "DetachableTabWidget.h"
+#include <qt_widget_interface/qt_widget_interface.h>
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent)
-    : FolderTreeElement(tree, daqFunctionBlock, parent)
+FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, LayoutManager* layoutManager, QObject* parent)
+    : FolderTreeElement(tree, daqFunctionBlock, layoutManager, parent)
 {
     this->type = "FunctionBlock";
     this->iconName = "function_block";
@@ -83,21 +83,20 @@ QStringList FunctionBlockTreeElement::getAvailableTabNames() const
     return tabs;
 }
 
-void FunctionBlockTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void FunctionBlockTreeElement::openTab(const QString& tabName)
 {
-    auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-    if (!tabWidget)
+    if (!layoutManager)
         return;
-
-    if (tabName == "Signal Selector") 
+        
+    if (tabName == "Signal Selector")
     {
         auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
         auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
-        addTab(tabWidget, functionBlockWidget, tabName);
+        addTab(functionBlockWidget, tabName, daqComponent.supportsInterface<IQTWidget>() ? LayoutZone::Bottom : LayoutZone::Right);
     }
-    else 
+    else
     {
-        Super::openTab(tabName, mainContent);
+        Super::openTab(tabName);
     }
 }
 
