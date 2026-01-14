@@ -1,0 +1,19 @@
+name: Build All Packages
+
+on:
+  workflow_dispatch:
+  release:
+    types: [ created ]
+
+jobs:
+  build-linux:
+    uses: ./.github/workflows/linux-deb.yml
+    secrets: inherit
+
+  build-macos:
+    uses: ./.github/workflows/macos-dmg.yml
+    secrets: inherit
+
+  build-windows:
+    uses: ./.github/workflows/windows-installer.yml
+    secrets: inherit
