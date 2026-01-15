@@ -2,8 +2,8 @@
 #include "DetachableTabWidget.h"
 #include "widgets/signal_value_widget.h"
 
-SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QObject* parent)
-    : ComponentTreeElement(tree, daqSignal, parent)
+SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, LayoutManager* layoutManager, QObject* parent)
+    : ComponentTreeElement(tree, daqSignal, layoutManager, parent)
 {
     this->type = "Signal";
     this->iconName = "signal";
@@ -12,25 +12,23 @@ SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& da
 QStringList SignalTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
-    tabs << (getName() + " Value");
+    tabs << "Value";
     return tabs;
 }
 
-void SignalTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void SignalTreeElement::openTab(const QString& tabName)
 {
-    QString valueTabName = getName() + " Value";
-    if (tabName == valueTabName) 
+    if (!layoutManager)
+        return;
+        
+    if (tabName == "Value")
     {
-        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) 
-        {
-            auto valueWidget = new SignalValueWidget(daqComponent);
-            addTab(tabWidget, valueWidget, tabName);
-        }
-    } 
-    else 
+        auto valueWidget = new SignalValueWidget(daqComponent);
+        addTab(valueWidget, tabName, LayoutZone::Right);
+    }
+    else
     {
-        Super::openTab(tabName, mainContent);
+        Super::openTab(tabName);
     }
 }
 

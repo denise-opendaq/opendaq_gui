@@ -281,3 +281,4 @@ main.cpp
 3. Register in PropertyObjectView
 4. Handle serialization/deserialization
 
+

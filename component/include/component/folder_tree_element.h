@@ -4,14 +4,15 @@
 #include <coreobjects/core_event_args_ptr.h>
 
 // Forward declaration for factory function
-BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QObject* parent);
+class LayoutManager;
+BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, LayoutManager* layoutManager, QObject* parent);
 
 class FolderTreeElement : public ComponentTreeElement
 {
     Q_OBJECT
 
 public:
-    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent = nullptr);
+    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent = nullptr);
 
     void init(BaseTreeElement* parent = nullptr) override;
 

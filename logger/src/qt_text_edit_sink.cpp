@@ -14,6 +14,27 @@ QTextEditSpdlogSink::QTextEditSpdlogSink(QTextEdit* textEdit)
 {
 }
 
+QString getColorForLevel(spdlog::level::level_enum level)
+{
+    switch (level)
+    {
+        case spdlog::level::trace:
+            return "#808080"; // gray
+        case spdlog::level::debug:
+            return "#0066CC"; // light blue
+        case spdlog::level::info: 
+            return "#009900"; // green
+        case spdlog::level::warn:
+            return "#CCCC00"; // dark yellow
+        case spdlog::level::err:
+            return "#FF0000"; // red
+        case spdlog::level::critical:
+            return "#CC0000"; // dark red
+        default:
+            return ""; // default system color
+    }
+}
+
 void QTextEditSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
 {
     if (!textEdit)
@@ -24,53 +45,29 @@ void QTextEditSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
     formatter_->format(msg, formatted);
     QString message = QString::fromUtf8(formatted.data(), static_cast<int>(formatted.size()));
 
-    // Remove trailing newline if present
-    if (message.endsWith('\n'))
-        message.chop(1);
-
-    // Get color based on log level
-    QString color;
-    switch (msg.level)
-    {
-        case spdlog::level::trace:
-            color = "#808080"; // gray
-            break;
-        case spdlog::level::debug:
-            color = "#0066CC"; // light blue
-            break;
-        case spdlog::level::info:
-            // Use default system color
-            color = "";
-            break;
-        case spdlog::level::warn:
-            color = "#FF8800"; // orange
-            break;
-        case spdlog::level::err:
-            color = "#CC0000"; // red
-            break;
-        case spdlog::level::critical:
-            color = "#990000"; // dark red
-            break;
-        default:
-            color = "";
-            break;
-    }
-
-    // Escape HTML special characters
-    message.replace("&", "&amp;");
-    message.replace("<", "&lt;");
-    message.replace(">", "&gt;");
-    
-    // Wrap in color tag only if color is specified
     QString coloredMessage;
-    if (color.isEmpty())
+    
+    // Check if color_range_start and color_range_end are set by the formatter
+    if (msg.color_range_start < msg.color_range_end && 
+        msg.color_range_end <= static_cast<size_t>(message.length()))
     {
+        QString color = getColorForLevel(msg.level);
+        if (!color.isEmpty())
+        {
+            // Apply color only to the specified range
+            QString beforeColor = message.left(static_cast<int>(msg.color_range_start));
+            QString colorRange = message.mid(static_cast<int>(msg.color_range_start), 
+                                            static_cast<int>(msg.color_range_end - msg.color_range_start));
+            QString afterColor = message.mid(static_cast<int>(msg.color_range_end));
+
+            coloredMessage = beforeColor + 
+                               QString("<span style=\"color:%1;\">%2</span>").arg(color, colorRange) + 
+                               afterColor;
+        }
+    }
+
+    if (coloredMessage.isEmpty())
         coloredMessage = message;
-    }
-    else
-    {
-        coloredMessage = QString("<span style=\"color:%1;\">%2</span>").arg(color, message);
-    }
 
     // Use QMetaObject::invokeMethod to ensure thread-safe GUI updates
     QMetaObject::invokeMethod(textEdit, [this, coloredMessage]() {

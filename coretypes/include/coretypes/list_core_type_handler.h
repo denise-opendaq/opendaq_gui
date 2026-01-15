@@ -23,3 +23,4 @@ private:
     daq::BaseObjectPtr parseItem(const QString& str) const;
 };
 
+

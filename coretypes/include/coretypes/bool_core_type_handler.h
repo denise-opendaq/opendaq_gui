@@ -19,3 +19,4 @@ public:
                           std::function<void(const daq::BaseObjectPtr&)> setValue) override;
 };
 
+

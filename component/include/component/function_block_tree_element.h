@@ -10,14 +10,14 @@ class FunctionBlockTreeElement : public FolderTreeElement
     using Super = FolderTreeElement;
 
 public:
-    FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent = nullptr);
+    FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, LayoutManager* layoutManager, QObject* parent = nullptr);
 
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
     // Override tab methods to add Input Ports tab
     QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName, QWidget* mainContent) override;
+    void openTab(const QString& tabName) override;
 
     // Get the function block
     daq::FunctionBlockPtr getFunctionBlock() const;

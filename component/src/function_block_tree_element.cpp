@@ -2,13 +2,13 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "widgets/function_block_widget.h"
 #include "component/component_tree_widget.h"
-#include "DetachableTabWidget.h"
+#include <qt_widget_interface/qt_widget_interface.h>
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QObject* parent)
-    : FolderTreeElement(tree, daqFunctionBlock, parent)
+FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, LayoutManager* layoutManager, QObject* parent)
+    : FolderTreeElement(tree, daqFunctionBlock, layoutManager, parent)
 {
     this->type = "FunctionBlock";
     this->iconName = "function_block";
@@ -79,26 +79,24 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
 QStringList FunctionBlockTreeElement::getAvailableTabNames() const
 {
     QStringList tabs = Super::getAvailableTabNames();
-    tabs << "Input Ports";
+    tabs << "Signal Selector";    
     return tabs;
 }
 
-void FunctionBlockTreeElement::openTab(const QString& tabName, QWidget* mainContent)
+void FunctionBlockTreeElement::openTab(const QString& tabName)
 {
-    if (tabName == "Input Ports") 
+    if (!layoutManager)
+        return;
+        
+    if (tabName == "Signal Selector")
     {
-        auto tabWidget = dynamic_cast<DetachableTabWidget*>(mainContent);
-        if (tabWidget) 
-        {
-            auto functionBlock = getFunctionBlock();
-            auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-            auto functionBlockWidget = new FunctionBlockWidget(functionBlock, componentTree);
-            addTab(tabWidget, functionBlockWidget, tabName);
-        }
-    } 
-    else 
+        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+        auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
+        addTab(functionBlockWidget, tabName, daqComponent.supportsInterface<IQTWidget>() ? LayoutZone::Bottom : LayoutZone::Right);
+    }
+    else
     {
-        Super::openTab(tabName, mainContent);
+        Super::openTab(tabName);
     }
 }
 

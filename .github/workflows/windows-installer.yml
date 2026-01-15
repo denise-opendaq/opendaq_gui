@@ -2,6 +2,7 @@ name: Windows Installer Build
 
 on:
   workflow_dispatch:
+  workflow_call:
   release:
     types: [ created ]
 
@@ -24,6 +25,7 @@ jobs:
       with:
         version: '6.8.0'
         arch: 'win64_msvc2022_64'
+        modules: 'qtcharts'
         cache: 'true'
 
     - name: Build installer

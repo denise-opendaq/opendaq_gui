@@ -2,7 +2,6 @@
 
 #include <opendaq/component_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
-#include <functional>
 #include <queue>
 #include <mutex>
 #include <map>

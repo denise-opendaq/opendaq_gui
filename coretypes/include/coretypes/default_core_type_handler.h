@@ -22,3 +22,4 @@ private:
     daq::CoreType coreType;
 };
 
+

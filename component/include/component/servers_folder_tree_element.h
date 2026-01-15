@@ -8,7 +8,7 @@ class ServersFolderTreeElement : public FolderTreeElement
     Q_OBJECT
 
 public:
-    ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QObject* parent = nullptr);
+    ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent = nullptr);
     bool isLocalDeviceFolder() const;
 
     bool visible() const override;

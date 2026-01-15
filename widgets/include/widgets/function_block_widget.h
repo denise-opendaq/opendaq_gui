@@ -9,7 +9,7 @@
 #include <coreobjects/core_event_args_ptr.h>
 
 class ComponentTreeWidget;
-class InputPortSignalSelector;
+class InputPortFolderSelector;
 class QHBoxLayout;
 class QCheckBox;
 
@@ -23,22 +23,17 @@ public:
     ~FunctionBlockWidget() override;
 
 private:
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
-    void setupInputPorts();
     void setupRecorderControls();
 
 private Q_SLOTS:
-    void updateInputPorts();
     void onRecordingToggled(bool checked);
     void updateRecordingStatus();
 
 private:
     daq::FunctionBlockPtr functionBlock;
-    daq::FolderPtr inputPortsFolder; // Folder containing input ports ("IP")
     ComponentTreeWidget* componentTree;
     QVBoxLayout* mainLayout;
-    QVBoxLayout* inputPortsLayout;  // Separate layout for input ports
-    QMap<QString, InputPortSignalSelector*> inputPortSelectors; // Map by global ID
+    InputPortFolderSelector* inputPortFolderSelector;
 
     // Recorder controls
     QCheckBox* recordingToggle;

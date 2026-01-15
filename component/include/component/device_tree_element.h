@@ -10,7 +10,7 @@ class DeviceTreeElement : public FolderTreeElement
     
 
 public:
-    DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QObject* parent = nullptr);
+    DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, LayoutManager* layoutManager, QObject* parent = nullptr);
 
     bool visible() const override;
 

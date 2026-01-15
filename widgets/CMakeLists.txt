@@ -11,6 +11,7 @@ set(HEADERS
     include/widgets/property_object_view.h
     include/widgets/input_port_widget.h
     include/widgets/input_port_signal_selector.h
+    include/widgets/input_port_folder_selector.h
     include/widgets/function_block_widget.h
     include/widgets/component_widget.h
 )
@@ -21,6 +22,7 @@ set(SOURCES
     src/property_object_view.cpp
     src/input_port_widget.cpp
     src/input_port_signal_selector.cpp
+    src/input_port_folder_selector.cpp
     src/function_block_widget.cpp
     src/component_widget.cpp
 )

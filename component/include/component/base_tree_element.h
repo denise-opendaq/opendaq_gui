@@ -11,7 +11,7 @@
 #include <memory>
 #include <map>
 
-#include "DetachableTabWidget.h"
+#include "LayoutManager.h"
 
 // Forward declaration
 class BaseTreeElement;
@@ -21,7 +21,7 @@ class BaseTreeElement : public QObject
     Q_OBJECT
 
 public:
-    BaseTreeElement(QTreeWidget* tree, QObject* parent = nullptr);
+    BaseTreeElement(QTreeWidget* tree, LayoutManager* layoutManager, QObject* parent = nullptr);
     virtual ~BaseTreeElement();
 
     // Initialize the tree element with optional parent
@@ -52,15 +52,16 @@ public:
     BaseTreeElement* getChild(const QString& path);
 
     // Called when this element is selected in the tree
-    virtual void onSelected(QWidget* mainContent);
+    virtual void onSelected();
 
     // Get list of available tab names for this component
     virtual QStringList getAvailableTabNames() const;
 
     // Open a specific tab by name
-    virtual void openTab(const QString& tabName, QWidget* mainContent);
+    virtual void openTab(const QString& tabName);
 
-    void addTab(DetachableTabWidget* tabWidget, QWidget* tab, const QString & tabName);
+    // Helper methods to add tabs
+    void addTab(QWidget* tab, const QString& tabName, LayoutZone zone = LayoutZone::Default);
 
     // Create right-click context menu
     virtual QMenu* onCreateRightClickMenu(QWidget* parent);
@@ -73,12 +74,14 @@ public:
     QTreeWidgetItem* getTreeItem() const { return treeItem; }
     BaseTreeElement* getParent() const { return parentElement; }
     QMap<QString, BaseTreeElement*> getChildren() const;
+    LayoutManager* getLayoutManager() const { return layoutManager; }
 
 protected:
     QTreeWidget* tree;
     QTreeWidgetItem* treeItem;
     BaseTreeElement* parentElement;
     std::map<QString, std::unique_ptr<BaseTreeElement>> children;
+    QPointer<LayoutManager> layoutManager;
 
     QString localId;
     QString globalId;

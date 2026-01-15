@@ -2,6 +2,7 @@ name: macOS DMG Build
 
 on:
   workflow_dispatch:
+  workflow_call:
   release:
     types: [ created ]
 
