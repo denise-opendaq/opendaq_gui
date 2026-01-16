@@ -33,6 +33,7 @@
 #include <QPalette>
 #include <QGraphicsTextItem>
 #include <QGraphicsScene>
+#include <QGraphicsLayout>
 #include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -307,10 +308,15 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     : Super(CreateType(), ctx, parent, localId)
     , inputPortCount(0)
     , duration(1.0)
+    , durationHistory(10.0)
     , showLegend(true)
     , autoScale(true)
     , showGrid(true)
-    , showLastValue(false)
+    , autoClear(true)
+    , defaultMinY(-10.0)
+    , defaultMaxY(10.0)
+    , downsampleMethod(QtPlotter::DownsampleMethod::LTTB)
+    , maxSamplesPerSeries(10000)
     , chart(nullptr)
     , axisX(nullptr)
     , axisY(nullptr)
@@ -321,7 +327,6 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     // Pre-allocate buffers with reasonable initial size
     samples.resize(200);
     timeStamps.resize(200);
-    pointsBuffer.reserve(200);
     
     initProperties();
     updateInputPorts();
@@ -345,66 +350,92 @@ void QtPlotterFbImpl::initProperties()
 {
     auto onPropertyValueWrite = [this](daq::PropertyObjectPtr& obj, daq::PropertyValueEventArgsPtr& args)
     {
-        propertyChanged();
+        propertyChanged(args.getProperty().getName(), args.getValue());
     };
 
-    const auto durationProp = daq::FloatPropertyBuilder("Duration", 1.0)
+    const auto durationProp = daq::FloatPropertyBuilder("Duration", duration)
                                   .setSuggestedValues(daq::List<daq::Float>(0.1, 0.5, 1.0, 5.0, 10.0))
                                   .setUnit(daq::Unit("s", -1, "second", "time"))
                                   .build();
     objPtr.addProperty(durationProp);
     objPtr.getOnPropertyValueWrite("Duration") += onPropertyValueWrite;
 
+    const auto durationHistoryProp = daq::FloatPropertyBuilder("DurationHistory", durationHistory)
+                                         .setSuggestedValues(daq::List<daq::Float>(1.0, 5.0, 10.0, 30.0, 60.0))
+                                         .setUnit(daq::Unit("s", -1, "second", "time"))
+                                         .build();
+    objPtr.addProperty(durationHistoryProp);
+    objPtr.getOnPropertyValueWrite("DurationHistory") += onPropertyValueWrite;
 
-    const auto showLegendProp = daq::BoolProperty("ShowLegend", true);
+    const auto showLegendProp = daq::BoolProperty("ShowLegend", showLegend);
     objPtr.addProperty(showLegendProp);
     objPtr.getOnPropertyValueWrite("ShowLegend") += onPropertyValueWrite;
 
-    const auto autoScaleProp = daq::BoolProperty("AutoScale", true);
+    const auto autoScaleProp = daq::BoolProperty("AutoScale", autoScale);
     objPtr.addProperty(autoScaleProp);
     objPtr.getOnPropertyValueWrite("AutoScale") += onPropertyValueWrite;
 
-    const auto showGridProp = daq::BoolProperty("ShowGrid", true);
+    const auto showGridProp = daq::BoolProperty("ShowGrid", showGrid);
     objPtr.addProperty(showGridProp);
     objPtr.getOnPropertyValueWrite("ShowGrid") += onPropertyValueWrite;
 
-    const auto showLastValueProp = daq::BoolProperty("ShowLastValue", false);
-    objPtr.addProperty(showLastValueProp);
-    objPtr.getOnPropertyValueWrite("ShowLastValue") += onPropertyValueWrite;
-
-    const auto autoClearProp = daq::BoolProperty("AutoClear", true);
+    const auto autoClearProp = daq::BoolProperty("AutoClear", autoClear);
     objPtr.addProperty(autoClearProp);
     objPtr.getOnPropertyValueWrite("AutoClear") += onPropertyValueWrite;
 
-    readProperties();
+    const auto defaultMinYProp = daq::FloatProperty("DefaultMinY", defaultMinY);
+    objPtr.addProperty(defaultMinYProp);
+    objPtr.getOnPropertyValueWrite("DefaultMinY") += onPropertyValueWrite;
+
+    const auto defaultMaxYProp = daq::FloatProperty("DefaultMaxY", defaultMaxY);
+    objPtr.addProperty(defaultMaxYProp);
+    objPtr.getOnPropertyValueWrite("DefaultMaxY") += onPropertyValueWrite;
+
+    const auto downsampleMethodProp = daq::SelectionProperty("DownsampleMethod", List<IString>("None", "Simple", "MinMax", "LTTB"), static_cast<Int>(downsampleMethod));
+    objPtr.addProperty(downsampleMethodProp);
+    objPtr.getOnPropertyValueWrite("DownsampleMethod") += onPropertyValueWrite;
+
+    const auto maxSamplesPerSeriesProp = daq::IntProperty("MaxSamplesPerSeries", static_cast<Int>(maxSamplesPerSeries));
+    objPtr.addProperty(maxSamplesPerSeriesProp);
+    objPtr.getOnPropertyValueWrite("MaxSamplesPerSeries") += onPropertyValueWrite;
 }
 
-void QtPlotterFbImpl::propertyChanged()
+void QtPlotterFbImpl::propertyChanged(const StringPtr& propertyName, const BaseObjectPtr& value)
 {
-    readProperties();
+    auto lock = getRecursiveConfigLock();
 
-    // Update chart properties
-    if (chart)
-        chart->legend()->setVisible(showLegend);
+    if (propertyName == "Duration")
+        duration = value;
+    else if (propertyName == "DurationHistory")
+        durationHistory = value;
+    else if (propertyName == "ShowLegend")
+    {
+        showLegend = value;
+        if (chart)
+            chart->legend()->setVisible(showLegend);
+    }
+    else if (propertyName == "AutoScale")
+        autoScale = value;
+    else if (propertyName == "ShowGrid")
+    {
+        showGrid = value;
+        if (axisX)
+            axisX->setGridLineVisible(showGrid);
+        if (axisY)
+            axisY->setGridLineVisible(showGrid);
+    }
+    else if (propertyName == "AutoClear")
+        autoClear = value;
+    else if (propertyName == "DefaultMinY")
+        defaultMinY = value;
+    else if (propertyName == "DefaultMaxY")
+        defaultMaxY = value;
+    else if (propertyName == "DownsampleMethod")
+        downsampleMethod = static_cast<QtPlotter::DownsampleMethod>(value.asPtr<IInteger>(true));
+    else if (propertyName == "MaxSamplesPerSeries")
+        maxSamplesPerSeries = value;
 
-    if (axisX)
-        axisX->setGridLineVisible(showGrid);
-
-    if (axisY)
-        axisY->setGridLineVisible(showGrid);
-}
-
-void QtPlotterFbImpl::readProperties()
-{
-    duration = objPtr.getPropertyValue("Duration");
-    showLegend = objPtr.getPropertyValue("ShowLegend");
-    autoScale = objPtr.getPropertyValue("AutoScale");
-    showGrid = objPtr.getPropertyValue("ShowGrid");
-    showLastValue = objPtr.getPropertyValue("ShowLastValue");
-    autoClear = objPtr.getPropertyValue("AutoClear");
-
-    LOG_W("Properties: Duration={}, ShowLegend={}, AutoScale={}, ShowGrid={}, ShowLastValue={}",
-          duration, showLegend, autoScale, showGrid, showLastValue)
+    LOG_W("Property {} changed to {}", propertyName, value.toString());
 }
 
 void QtPlotterFbImpl::updateInputPorts()
@@ -412,7 +443,7 @@ void QtPlotterFbImpl::updateInputPorts()
     const auto inputPort = createAndAddInputPort(
         fmt::format("Input{}", inputPortCount++),
         daq::PacketReadyNotification::SameThread);
-    auto [it, success] = signalContexts.emplace(inputPort, inputPort);
+    auto [it, _] = signalContexts.emplace(inputPort, inputPort);
     it->second.streamReader.setExternalListener(this->template borrowPtr<InputPortNotificationsPtr>());
 }
 
@@ -420,7 +451,18 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 {
     auto lock = this->getRecursiveConfigLock();
 
-    updateInputPorts();
+    auto it = signalContexts.find(inputPort);
+    bool createNewPort = true;
+    if (it != signalContexts.end())
+    {
+        if (it->second.isSignalConnected)
+            createNewPort = false;
+        it->second.isSignalConnected = true;
+    }
+
+    if (createNewPort)
+        updateInputPorts();
+
     LOG_W("Connected to port {}", inputPort.getLocalId());
 }
 
@@ -428,42 +470,133 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
 {
     auto lock = this->getRecursiveConfigLock();
 
-    // Find and remove the series associated with this port
-    if (autoClear && chart)
+    if (auto it = signalContexts.find(inputPort); it != signalContexts.end())
     {
-        auto it = signalContexts.find(inputPort);
-        if (it != signalContexts.end())
+        if (autoClear && chart && it->second.series)
         {
-            QString seriesName = QString::fromStdString(it->second.caption);
-
-            // Find the series with this name and remove it
-            for (auto* series : chart->series())
-            {
-                auto* lineSeries = qobject_cast<QLineSeries*>(series);
-                if (lineSeries && !lineSeries->name().isEmpty())
-                {
-                    // Check if series name matches (handle case where last value is appended)
-                    QString currentName = lineSeries->name();
-                    if (currentName == seriesName || currentName.startsWith(seriesName + " ="))
-                    {
-                        chart->removeSeries(lineSeries);
-                        lineSeries->deleteLater();
-                        LOG_W("Removed series '{}' for disconnected port {}",
-                              seriesName.toStdString(), inputPort.getLocalId());
-                        break;
-                    }
-                }
-            }
+            chart->removeSeries(it->second.series);
+            it->second.series->deleteLater();
+            LOG_W("Removed series '{}' for disconnected port {}",
+                  it->second.caption, inputPort.getLocalId());
         }
+        signalContexts.erase(it);
     }
 
-    signalContexts.erase(inputPort);
     removeInputPort(inputPort);
     LOG_W("Disconnected from port {}", inputPort.getLocalId());
 }
 
+void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx, size_t seriesIndex)
+{
+    if (!chart || !axisX || !axisY)
+        return;
+
+    sigCtx.series = new QLineSeries();
+    sigCtx.series->setName(QString::fromStdString(sigCtx.caption));
+
+    // Colors for different signals
+    static const QColor colors[] = {
+        QColor(255, 0, 0),      // Red
+        QColor(255, 255, 0),    // Yellow
+        QColor(0, 255, 0),      // Green
+        QColor(255, 0, 255),    // Magenta
+        QColor(0, 255, 255),    // Cyan
+        QColor(0, 0, 255)       // Blue
+    };
+    QPen pen(colors[seriesIndex % 6], 2);
+    sigCtx.series->setPen(pen);
+
+    chart->addSeries(sigCtx.series);
+    sigCtx.series->attachAxis(axisX);
+    sigCtx.series->attachAxis(axisY);
+}
+
+void QtPlotterFbImpl::handleEventPacket(SignalContext& sigCtx, const daq::EventPacketPtr& eventPacket)
+{
+    if (!eventPacket.assigned() || eventPacket.getEventId() != event_packet_id::DATA_DESCRIPTOR_CHANGED)
+        return;
+
+    auto sig = sigCtx.inputPort.getSignal();
+    if (sig.assigned())
+        sigCtx.caption = sig.getName().toStdString();
+    else
+        sigCtx.caption = "N/A";
+
+    const DataDescriptorPtr descriptor = eventPacket.getParameters()[event_packet_param::DATA_DESCRIPTOR];
+    if (descriptor.assigned())
+    {
+        auto unit = descriptor.getUnit();
+        if (unit.assigned() && !unit.getSymbol().toStdString().empty())
+            sigCtx.caption += fmt::format(" [{}]", unit.getSymbol().toStdString());
+
+        // Extract value range for auto-scale
+        auto valueRange = descriptor.getValueRange();
+        if (valueRange.assigned())
+        {
+            sigCtx.valueRangeMin = valueRange.getLowValue();
+            sigCtx.valueRangeMax = valueRange.getHighValue();
+        }
+    }
+
+}
+
+bool QtPlotterFbImpl::handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime)
+{
+    if (!series)
+        return false;
+
+    outLatestTime = 0;
+
+    // Sync buffer with series - but optimize: only copy if buffer is empty
+    // After first sync, buffer is maintained separately and series is updated from buffer
+    int currentPointCount = series->count();
+    if (sigCtx.pointsBuffer.isEmpty() && currentPointCount > 0)
+    {
+        // Initial sync: copy from series to buffer
+        const auto& existingPoints = series->points();
+        sigCtx.pointsBuffer = existingPoints;
+    }
+
+    // Trim old points by time (keep only durationHistory seconds)
+    if (!sigCtx.pointsBuffer.isEmpty())
+    {
+        auto timeMsec = std::chrono::duration_cast<std::chrono::milliseconds>(timeStamps[count - 1].time_since_epoch()).count();
+        qint64 latestTime = static_cast<qint64>(timeMsec);
+        qint64 historyMsec = static_cast<qint64>(durationHistory * 1000);
+        qint64 minTimeToKeep = latestTime - historyMsec;
+
+        // Use binary search to find first point >= minTimeToKeep
+        if (minTimeToKeep > 0)
+        {
+            int firstValidIdx = binarySearchFirstGE(sigCtx.pointsBuffer, minTimeToKeep);
+            if (firstValidIdx > 0)
+                sigCtx.pointsBuffer.remove(0, firstValidIdx);
+        }
+    }
+
+    // Add all new points to history buffer (pointsBuffer stores full duration history)
+    // No downsampling here - we'll downsample only visible points later
+    for (size_t i = 0; i < count; ++i)
+    {
+        auto timeMsec = std::chrono::duration_cast<std::chrono::milliseconds>(timeStamps[i].time_since_epoch()).count();
+        sigCtx.pointsBuffer.append(QPointF(timeMsec, samples[i]));
+    }
+
+    // Update time range for fast visible range check
+    if (!sigCtx.pointsBuffer.isEmpty())
+    {
+        sigCtx.dataMinTime = static_cast<qint64>(sigCtx.pointsBuffer.first().x());
+        sigCtx.dataMaxTime = static_cast<qint64>(sigCtx.pointsBuffer.last().x());
+        outLatestTime = sigCtx.dataMaxTime;
+    }
+
+    return true;
+}
+
 void QtPlotterFbImpl::updatePlot()
 {
+    auto lock = getRecursiveConfigLock();
+    
     // Update plot if chart exists and embeddedWidget is available
     if (!chart || !embeddedWidget)
         return;
@@ -473,66 +606,17 @@ void QtPlotterFbImpl::updatePlot()
 
     // For each valid signal, create or update series
     size_t seriesIndex = 0;
-    auto seriesList = chart->series();
 
     for (auto& [port, sigCtx] : signalContexts)
     {
-        if (!port.getSignal().assigned())
+        if (!sigCtx.isSignalConnected)
             continue;
 
-        // Get or create series for this signal
-        // Skip marker series (they have empty names and are in markers list)
-        QLineSeries* series = nullptr;
-        size_t validSeriesIndex = 0;
-        for (int i = 0; i < seriesList.size(); ++i)
-        {
-            auto* lineSeries = qobject_cast<QLineSeries*>(seriesList[i]);
-            if (lineSeries)
-            {
-                // Check if this is a marker series
-                bool isMarker = false;
-                for (const auto& marker : markers)
-                {
-                    if (marker.verticalLine == lineSeries)
-                    {
-                        isMarker = true;
-                        break;
-                    }
-                }
-                
-                if (!isMarker && !lineSeries->name().isEmpty())
-                {
-                    if (validSeriesIndex == seriesIndex)
-                    {
-                        series = lineSeries;
-                        break;
-                    }
-                    validSeriesIndex++;
-                }
-            }
-        }
-        
-        if (!series)
-        {
-            series = new QLineSeries();
-            series->setName(QString::fromStdString(sigCtx.caption));
+        // Get or create series for this signal (direct pointer access - O(1))
+        if (!sigCtx.series)
+            createSeriesForSignal(sigCtx, seriesIndex);
 
-            // Colors for different signals
-            QColor colors[] = {
-                QColor(255, 0, 0),      // Red
-                QColor(255, 255, 0),    // Yellow
-                QColor(0, 255, 0),      // Green
-                QColor(255, 0, 255),    // Magenta
-                QColor(0, 255, 255),    // Cyan
-                QColor(0, 0, 255)       // Blue
-            };
-            QPen pen(colors[seriesIndex % 6], 2);
-            series->setPen(pen);
-
-            chart->addSeries(series);
-            series->attachAxis(axisX);
-            series->attachAxis(axisY);
-        }
+        QLineSeries* series = sigCtx.series;
 
         // Extract and plot data using TimeReader
         if (sigCtx.timeReader.assigned())
@@ -540,98 +624,39 @@ void QtPlotterFbImpl::updatePlot()
             try
             {
                 size_t count = sigCtx.timeReader.getAvailableCount();
-
-                count = std::min(count, samples.size());
+                if (count > samples.size())
+                {
+                    samples.resize(count);
+                    timeStamps.resize(count);
+                }
+                
                 daq::ReaderStatusPtr status;
                 sigCtx.timeReader.readWithDomain(samples.data(), timeStamps.data(), &count, 0, &status);
                 if (status.assigned())
                 {
                     auto eventPacket = status.getEventPacket();
-                    if (eventPacket.assigned() && (eventPacket.getEventId() == event_packet_id::DATA_DESCRIPTOR_CHANGED))
-                    {
-                        auto sig = sigCtx.inputPort.getSignal();
-                        if (sig.assigned())
-                            sigCtx.caption = sig.getName().toStdString();
-                        else
-                            sigCtx.caption = "N/A";
-
-                        const DataDescriptorPtr descriptor = eventPacket.getParameters()[event_packet_param::DATA_DESCRIPTOR];
-                        if (descriptor.assigned())
-                        {
-                            auto unit = descriptor.getUnit();
-                            if (unit.assigned() && !unit.getSymbol().toStdString().empty())
-                                sigCtx.caption += fmt::format(" [{}]", unit.getSymbol().toStdString());
-                        }
-                    }
+                    if (eventPacket.assigned())
+                        handleEventPacket(sigCtx, eventPacket);
                 }
                 
                 if (count > 0)
                 {
                     qint64 latestTime = 0;
-                    
-                    // Use count() instead of points().size() to avoid expensive copy
-                    int currentPointCount = series->count();
-                    
-                    // Proactively remove points if we're near the limit (before adding new ones)
-                    if (currentPointCount >= static_cast<int>(MAX_POINTS_PER_SERIES * 0.8))
+                    if (handleData(sigCtx, series, count, latestTime))
                     {
-                        // Remove enough points to make room for new data
-                        int targetCount = static_cast<int>(MAX_POINTS_PER_SERIES * 0.6);
-                        int removeCount = currentPointCount - targetCount;
-                        if (removeCount > 0)
-                            series->removePoints(0, removeCount);
-                        currentPointCount = targetCount;
-                    }
-                    
-                    // Downsample if adding would exceed threshold
-                    size_t pointsToAdd = count;
-                    if (currentPointCount + static_cast<int>(count) > static_cast<int>(DOWNSAMPLE_THRESHOLD))
-                    {
-                        // Calculate downsampling step
-                        size_t totalAfterAdd = currentPointCount + count;
-                        size_t step = (totalAfterAdd / DOWNSAMPLE_THRESHOLD) + 1;
-                        pointsToAdd = (count + step - 1) / step;  // Ceiling division
-                    }
-                    
-                    // Reuse buffer, resize if needed
-                    pointsBuffer.resize(pointsToAdd);
-
-                    size_t bufferIndex = 0;
-                    size_t step = (pointsToAdd < count) ? (count / pointsToAdd) : 1;
-                    
-                    for (daq::SizeT i = 0; i < count && bufferIndex < pointsToAdd; i += step)
-                    {
-                        auto timeMsec = std::chrono::duration_cast<std::chrono::milliseconds>(timeStamps[i].time_since_epoch()).count();
-                        pointsBuffer[bufferIndex++] = QPointF(timeMsec, samples[i]);
-                        if (timeMsec > latestTime)
-                            latestTime = timeMsec;
-                    }
-                    
-                    // Adjust size if we got fewer points
-                    if (bufferIndex < pointsToAdd)
-                        pointsBuffer.resize(bufferIndex);
-
-                    if (bufferIndex > 0)
-                    {
-                        series->append(pointsBuffer);
-
-                        // Final check using count() instead of points().size()
-                        currentPointCount = series->count();
-                        if (currentPointCount > static_cast<int>(MAX_POINTS_PER_SERIES))
+                        if (latestTime > globalLatestTime)
+                            globalLatestTime = latestTime;
+                        hasData = true;
+                        
+                        // Update visible series immediately when adding new data
+                        // (debouncing only applies to zoom/pan operations)
+                        if (axisX)
                         {
-                            int removeCount = currentPointCount - static_cast<int>(MAX_POINTS_PER_SERIES);
-                            series->removePoints(0, removeCount);
+                            qint64 visibleMin = axisX->min().toMSecsSinceEpoch();
+                            qint64 visibleMax = axisX->max().toMSecsSinceEpoch();
+                            updateVisibleSeries(sigCtx, series, visibleMin, visibleMax);
                         }
                     }
-
-                    // Store last value from the most recent sample
-                    sigCtx.lastValue = samples[count - 1];
-                    sigCtx.hasLastValue = true;
-
-                    if (latestTime > globalLatestTime)
-                        globalLatestTime = latestTime;
-
-                    hasData = true;
                 }
             }
             catch (const std::exception& e)
@@ -640,12 +665,10 @@ void QtPlotterFbImpl::updatePlot()
             }
         }
 
-        // Update series name with last value if enabled
+        // Update series name
         if (series)
         {
             std::string seriesName = sigCtx.caption;
-            if (showLastValue && sigCtx.hasLastValue)
-                seriesName += fmt::format(" = {:.6g}", sigCtx.lastValue);
             if (series->name() != QString::fromStdString(seriesName))
                 series->setName(QString::fromStdString(seriesName));
         }
@@ -674,25 +697,19 @@ void QtPlotterFbImpl::updatePlot()
             
             qint64 visibleMin = minTime.toMSecsSinceEpoch();
             qint64 visibleMax = maxTime.toMSecsSinceEpoch();
-            
-            // Check if any series has data in the visible range
+
+            // Check if any signal has data overlapping with visible range (O(n) where n = signals, not points)
             bool hasDataInRange = false;
-            for (auto* series : chart->series())
+            for (const auto& [port, sigCtx] : signalContexts)
             {
-                auto* lineSeries = qobject_cast<QLineSeries*>(series);
-                if (lineSeries)
+                if (!sigCtx.isSignalConnected)
+                    continue;
+
+                // Check if data time range overlaps with visible range
+                if (sigCtx.dataMaxTime >= visibleMin && sigCtx.dataMinTime <= visibleMax)
                 {
-                    for (const auto& point : lineSeries->points())
-                    {
-                        qint64 pointTime = static_cast<qint64>(point.x());
-                        if (pointTime >= visibleMin && pointTime <= visibleMax)
-                        {
-                            hasDataInRange = true;
-                            break;
-                        }
-                    }
-                    if (hasDataInRange)
-                        break;
+                    hasDataInRange = true;
+                    break;
                 }
             }
             
@@ -708,12 +725,13 @@ void QtPlotterFbImpl::updatePlot()
         }
 
         // Update range - QDateTimeAxis handles labels automatically
+        // Visible series will be updated via rangeChanged signal with debouncing
         if (minTime.isValid() && maxTime.isValid() && minTime < maxTime)
         {
             axisX->setRange(minTime, maxTime);
             axisX->setTickCount(3);
             axisX->setLabelsVisible(true);
-            axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+            axisX->setFormat("HH:mm:ss.zzz");
         }
     }
 
@@ -723,21 +741,27 @@ void QtPlotterFbImpl::updatePlot()
         qreal minY = std::numeric_limits<qreal>::max();
         qreal maxY = std::numeric_limits<qreal>::lowest();
 
-        for (auto* series : chart->series())
+        // Use value range from descriptor if available, otherwise use default
+        for (const auto& [port, sigCtx] : signalContexts)
         {
-            auto* lineSeries = qobject_cast<QLineSeries*>(series);
-            if (lineSeries)
+            if (!sigCtx.isSignalConnected)
+                continue;
+
+            if (sigCtx.valueRangeMin < sigCtx.valueRangeMax)
             {
-                // Skip marker series (they have empty names)
-                if (lineSeries->name().isEmpty())
-                    continue;
-                    
-                for (const auto& point : lineSeries->points())
-                {
-                    if (point.y() < minY) minY = point.y();
-                    if (point.y() > maxY) maxY = point.y();
-                }
+                // Use range from descriptor
+                if (sigCtx.valueRangeMin < minY)
+                    minY = sigCtx.valueRangeMin;
+                if (sigCtx.valueRangeMax > maxY)
+                    maxY = sigCtx.valueRangeMax;
             }
+        }
+
+        // Fall back to default range if no valid ranges from descriptors
+        if (minY >= maxY)
+        {
+            minY = defaultMinY;
+            maxY = defaultMaxY;
         }
 
         if (minY < maxY)
@@ -756,30 +780,42 @@ double QtPlotterFbImpl::getSignalValueAtTime(QLineSeries* series, qint64 timeMse
 {
     if (!series || series->count() == 0)
         return std::numeric_limits<double>::quiet_NaN();
-    
+
     const auto& points = series->points();
-    
-    // Find the two points that bracket the time
-    for (int i = 0; i < points.size() - 1; ++i)
-    {
-        qint64 t1 = static_cast<qint64>(points[i].x());
-        qint64 t2 = static_cast<qint64>(points[i + 1].x());
-        
-        if (timeMsec >= t1 && timeMsec <= t2)
-        {
-            // Linear interpolation
-            double ratio = static_cast<double>(timeMsec - t1) / static_cast<double>(t2 - t1);
-            return points[i].y() + ratio * (points[i + 1].y() - points[i].y());
-        }
-    }
-    
-    // If time is before first point or after last point, return closest value
+    int n = points.size();
+
+    // Handle edge cases
     if (timeMsec <= static_cast<qint64>(points.first().x()))
         return points.first().y();
     if (timeMsec >= static_cast<qint64>(points.last().x()))
         return points.last().y();
+
+    // Use binary search to find the interval containing timeMsec
+    // Find first index where points[i].x() >= timeMsec
+    int right = binarySearchFirstGE(points, timeMsec);
     
-    return std::numeric_limits<double>::quiet_NaN();
+    // If right is 0, we're at the beginning (already handled above)
+    // If right >= n, we're at the end (already handled above)
+    if (right <= 0 || right >= n)
+    {
+        // Fallback: should not happen due to edge cases above, but handle it
+        if (right >= n)
+            return points.last().y();
+        return points.first().y();
+    }
+    
+    // left is the point before right
+    int left = right - 1;
+
+    // Linear interpolation between points[left] and points[right]
+    qint64 t1 = static_cast<qint64>(points[left].x());
+    qint64 t2 = static_cast<qint64>(points[right].x());
+
+    if (t2 == t1)
+        return points[left].y();
+
+    double ratio = static_cast<double>(timeMsec - t1) / static_cast<double>(t2 - t1);
+    return points[left].y() + ratio * (points[right].y() - points[left].y());
 }
 
 QPointF QtPlotterFbImpl::constrainLabelPosition(const QPointF& pos, const QRectF& labelRect, const QRectF& plotArea)
@@ -819,7 +855,6 @@ void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
     QPalette palette = QApplication::palette();
     QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
     verticalLine->setPen(pen);
-    // verticalLine->setName("");  // Don't show in legend
     
     chart->addSeries(verticalLine);
     verticalLine->attachAxis(axisX);
@@ -835,7 +870,6 @@ void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
     valuePoints->setMarkerSize(8);
     valuePoints->setColor(palette.color(QPalette::Highlight));
     valuePoints->setBorderColor(palette.color(QPalette::Base));
-    // valuePoints->setName("");  // Don't show in legend
     
     // Find intersections with all signal series
     QStringList valueLabels;
@@ -1022,163 +1056,107 @@ void QtPlotterFbImpl::hideDeleteButtons()
 
 void QtPlotterFbImpl::moveMarker(int index, qint64 newTimeMsec)
 {
-    if (index < 0 || index >= markers.size())
+    if (index < 0 || index >= markers.size() || !axisY)
         return;
-    
+
     Marker& marker = markers[index];
     marker.timeMsec = newTimeMsec;
-    
-    // Remove old series
-    if (marker.verticalLine)
-    {
-        chart->removeSeries(marker.verticalLine);
-        marker.verticalLine->deleteLater();
-    }
-    
-    if (marker.valuePoints)
-    {
-        chart->removeSeries(marker.valuePoints);
-        marker.valuePoints->deleteLater();
-    }
-    
-    // Remove old labels
-    if (marker.timeLabel && chartView && chartView->scene())
-    {
-        chartView->scene()->removeItem(marker.timeLabel);
-        marker.timeLabel->deleteLater();
-    }
-    
-    for (auto& valueLabel : marker.valueLabelsItems)
-    {
-        if (valueLabel && chartView && chartView->scene())
-        {
-            chartView->scene()->removeItem(valueLabel);
-            valueLabel->deleteLater();
-        }
-    }
-    marker.valueLabelsItems.clear();
-    
-    // Recreate marker at new position
+
     qreal minY = axisY->min();
     qreal maxY = axisY->max();
-    
-    // Create new vertical line
-    auto* verticalLine = new QLineSeries();
-    verticalLine->append(newTimeMsec, minY);
-    verticalLine->append(newTimeMsec, maxY);
-    
-    QPalette palette = QApplication::palette();
-    QPen pen(palette.color(QPalette::Highlight), 2, Qt::DashLine);
-    verticalLine->setPen(pen);
-    // verticalLine->setName("");
-    
-    chart->addSeries(verticalLine);
-    verticalLine->attachAxis(axisX);
-    verticalLine->attachAxis(axisY);
-    
-    // Explicitly hide marker from legend
-    auto legendMarkers = chart->legend()->markers(verticalLine);
-    for (auto* marker : legendMarkers)
-        marker->setVisible(false);
-    
-    marker.verticalLine = verticalLine;
-    
-    // Create scatter series for value points
-    auto* valuePoints = new QScatterSeries();
-    valuePoints->setMarkerSize(8);
-    valuePoints->setColor(palette.color(QPalette::Highlight));
-    valuePoints->setBorderColor(palette.color(QPalette::Base));
-    // valuePoints->setName("");  // Don't show in legend
-    
-    // Find intersections with all signal series
-    QStringList valueLabels;
-    QList<QPointF> valuePositions;
-    for (auto* series : chart->series())
+
+    // Update vertical line position (reuse existing series - no allocation)
+    if (marker.verticalLine)
     {
-        auto* lineSeries = qobject_cast<QLineSeries*>(series);
-        if (lineSeries && lineSeries->count() > 0 && !lineSeries->name().isEmpty() && lineSeries != verticalLine)
+        marker.verticalLine->clear();
+        marker.verticalLine->append(newTimeMsec, minY);
+        marker.verticalLine->append(newTimeMsec, maxY);
+    }
+
+    // Update value points positions
+    if (marker.valuePoints)
+    {
+        marker.valuePoints->clear();
+        marker.valuePositions.clear();
+        marker.valueLabels.clear();
+
+        // Find new intersections with signal series using signalContexts (O(signals) not O(all series))
+        for (const auto& [port, sigCtx] : signalContexts)
         {
-            double value = getSignalValueAtTime(lineSeries, newTimeMsec);
+            if (!sigCtx.isSignalConnected || !sigCtx.series)
+                continue;
+
+            double value = getSignalValueAtTime(sigCtx.series, newTimeMsec);
             if (!std::isnan(value))
             {
-                valuePoints->append(newTimeMsec, value);
-                valueLabels.append(QString("%1: %2").arg(lineSeries->name()).arg(value, 0, 'g', 6));
-                valuePositions.append(QPointF(newTimeMsec, value));
+                marker.valuePoints->append(newTimeMsec, value);
+                marker.valueLabels.append(QString("%1: %2").arg(sigCtx.series->name()).arg(value, 0, 'g', 6));
+                marker.valuePositions.append(QPointF(newTimeMsec, value));
             }
         }
     }
-    
-    if (valuePoints->count() > 0)
-    {
-        chart->addSeries(valuePoints);
-        valuePoints->attachAxis(axisX);
-        valuePoints->attachAxis(axisY);
-        
-        // Explicitly hide marker from legend
-        auto legendMarkers = chart->legend()->markers(valuePoints);
-        for (auto* marker : legendMarkers)
-            marker->setVisible(false);
-    }
-    else
-    {
-        delete valuePoints;
-        valuePoints = nullptr;
-    }
-    
-    marker.valuePoints = valuePoints;
-    marker.valueLabels = valueLabels;
-    marker.valuePositions = valuePositions;  // Store positions for updating labels
-    
-    // Create time label
-    if (chartView && chartView->scene())
+
+    // Update time label text and position (reuse existing item)
+    if (marker.timeLabel)
     {
         QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(newTimeMsec);
-        QString timeText = dateTime.toString("HH:mm:ss.zzz");
-        
-        marker.timeLabel = new QGraphicsTextItem(timeText);
-        marker.timeLabel->setDefaultTextColor(palette.color(QPalette::Text));
-        QFont font = marker.timeLabel->font();
-        font.setBold(true);
-        marker.timeLabel->setFont(font);
-        
-        // Position below axis X labels
-        QAbstractSeries* seriesForMapping = valuePoints ? static_cast<QAbstractSeries*>(valuePoints) : static_cast<QAbstractSeries*>(verticalLine);
-        QPointF scenePos = chart->mapToPosition(QPointF(newTimeMsec, minY), seriesForMapping);
-        QPointF labelPos(scenePos.x() - marker.timeLabel->boundingRect().width() / 2, 
-                         scenePos.y());  // Below axis X labels
-        
-        // Constrain label position to plot area
-        QRectF plotArea = chart->plotArea();
-        labelPos = constrainLabelPosition(labelPos, marker.timeLabel->boundingRect(), plotArea);
-        marker.timeLabel->setPos(labelPos);
-        
-        chartView->scene()->addItem(marker.timeLabel);
-    }
-    
-    // Create value labels
-    if (chartView && chartView->scene() && valuePoints)
-    {
-        for (int i = 0; i < valueLabels.size() && i < valuePositions.size(); ++i)
+        marker.timeLabel->setPlainText(dateTime.toString("HH:mm:ss.zzz"));
+
+        QAbstractSeries* seriesForMapping = marker.valuePoints ? static_cast<QAbstractSeries*>(marker.valuePoints) : static_cast<QAbstractSeries*>(marker.verticalLine);
+        if (seriesForMapping)
         {
-            auto* valueLabel = new QGraphicsTextItem(valueLabels[i]);
+            QPointF scenePos = chart->mapToPosition(QPointF(newTimeMsec, minY), seriesForMapping);
+            QPointF labelPos(scenePos.x() - marker.timeLabel->boundingRect().width() / 2, scenePos.y());
+
+            QRectF plotArea = chart->plotArea();
+            labelPos = constrainLabelPosition(labelPos, marker.timeLabel->boundingRect(), plotArea);
+            marker.timeLabel->setPos(labelPos);
+        }
+    }
+
+    // Update value labels text and positions (reuse existing items where possible)
+    if (marker.valuePoints && chartView && chartView->scene())
+    {
+        QRectF plotArea = chart->plotArea();
+
+        // Resize labels list to match valuePositions
+        while (marker.valueLabelsItems.size() > marker.valuePositions.size())
+        {
+            auto item = marker.valueLabelsItems.takeLast();
+            if (item)
+            {
+                chartView->scene()->removeItem(item);
+                item->deleteLater();
+            }
+        }
+
+        QPalette palette = QApplication::palette();
+        while (marker.valueLabelsItems.size() < marker.valuePositions.size())
+        {
+            auto* valueLabel = new QGraphicsTextItem();
             valueLabel->setDefaultTextColor(palette.color(QPalette::Text));
             QFont font = valueLabel->font();
             font.setPointSize(font.pointSize() - 1);
             valueLabel->setFont(font);
-            
-            QPointF scenePos = chart->mapToPosition(valuePositions[i], valuePoints);
-            QPointF labelPos(scenePos.x() + 10, scenePos.y() - 15);
-            
-            // Constrain label position to plot area
-            QRectF plotArea = chart->plotArea();
-            labelPos = constrainLabelPosition(labelPos, valueLabel->boundingRect(), plotArea);
-            valueLabel->setPos(labelPos);
-            
             chartView->scene()->addItem(valueLabel);
             marker.valueLabelsItems.append(valueLabel);
         }
+
+        // Update existing labels
+        for (int i = 0; i < marker.valueLabelsItems.size() && i < marker.valueLabels.size(); ++i)
+        {
+            if (marker.valueLabelsItems[i])
+            {
+                marker.valueLabelsItems[i]->setPlainText(marker.valueLabels[i]);
+
+                QPointF scenePos = chart->mapToPosition(marker.valuePositions[i], marker.valuePoints);
+                QPointF labelPos(scenePos.x() + 10, scenePos.y() - 15);
+                labelPos = constrainLabelPosition(labelPos, marker.valueLabelsItems[i]->boundingRect(), plotArea);
+                marker.valueLabelsItems[i]->setPos(labelPos);
+            }
+        }
     }
-    
+
     // Update delete button position if it exists
     if (marker.deleteButton)
         showDeleteButton(index);
@@ -1333,17 +1311,19 @@ void QtPlotterFbImpl::createChart()
     chart->legend()->setLabelColor(palette.color(QPalette::Text));
     chart->legend()->setVisible(showLegend);
     
-    // Reduce chart margins
-    chart->setMargins(QMargins(5, 5, 5, 5));
-    
+    // Reduce chart margins - minimal horizontal margins for tight fit
+    chart->setMargins(QMargins(0, 5, 0, 5));
+    chart->layout()->setContentsMargins(0, 0, 0, 0);
+
     // Create axes
     axisX = new QDateTimeAxis();
     axisX->setTickCount(3);
-    axisX->setFormat("yyyy-MM-dd HH:mm:ss.zzz");
+    axisX->setFormat("HH:mm:ss.zzz");
     axisX->setLabelsVisible(true);
     axisX->setLabelsColor(palette.color(QPalette::Text));
     axisX->setGridLineVisible(showGrid);
     axisX->setTitleBrush(palette.brush(QPalette::Text));
+    axisX->setTruncateLabels(true);
     QDateTime now = QDateTime::currentDateTime();
     axisX->setRange(now.addSecs(-1), now);
     chart->addAxis(axisX, Qt::AlignBottom);
@@ -1400,6 +1380,40 @@ void QtPlotterFbImpl::createWidget()
     layout->addWidget(embeddedChartView);
     
     embeddedWidget = widget;
+    
+    // Create debounce timer for visible series updates during zoom/pan
+    if (!visibleUpdateTimer && axisX)
+    {
+        visibleUpdateTimer = new QTimer(embeddedWidget);
+        visibleUpdateTimer->setSingleShot(true);
+        visibleUpdateTimer->setInterval(50); // 50ms debounce delay
+        
+        QObject::connect(visibleUpdateTimer, &QTimer::timeout, [this]()
+        {
+            if (axisX)
+            {
+                qint64 visibleMin = pendingVisibleMin;
+                qint64 visibleMax = pendingVisibleMax;
+                for (auto& [port, sigCtx] : signalContexts)
+                {
+                    if (sigCtx.isSignalConnected && sigCtx.series)
+                    {
+                        updateVisibleSeries(sigCtx, sigCtx.series, visibleMin, visibleMax);
+                    }
+                }
+            }
+        });
+        
+        // Connect axis range change to update visible series (lazy rendering with debouncing)
+        QObject::connect(axisX, &QDateTimeAxis::rangeChanged, [this](QDateTime min, QDateTime max)
+        {
+            pendingVisibleMin = min.toMSecsSinceEpoch();
+            pendingVisibleMax = max.toMSecsSinceEpoch();
+            // Restart timer - this debounces rapid range changes
+            if (visibleUpdateTimer)
+                visibleUpdateTimer->start();
+        });
+    }
 }
 
 void QtPlotterFbImpl::setupButtons(QWidget* toolbarWidget)
@@ -1519,6 +1533,347 @@ void QtPlotterFbImpl::setupTimer()
         });
         updateTimer->start(40);  // Redraw at ~20 FPS
     }
+}
+
+// Lazy rendering method implementations
+
+int QtPlotterFbImpl::binarySearchFirstGE(const QVector<QPointF>& points, qint64 targetTime) const
+{
+    // Binary search for first index where points[i].x() >= targetTime
+    int left = 0;
+    int right = points.size() - 1;
+    int result = points.size(); // Default: not found, return size (out of bounds)
+    
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+        qint64 midTime = static_cast<qint64>(points[mid].x());
+        
+        if (midTime >= targetTime)
+        {
+            result = mid;
+            right = mid - 1; // Continue searching in left half
+        }
+        else
+        {
+            left = mid + 1; // Search in right half
+        }
+    }
+    
+    return result;
+}
+
+int QtPlotterFbImpl::binarySearchLastLE(const QVector<QPointF>& points, qint64 targetTime, int startIdx) const
+{
+    // Binary search for last index where points[i].x() <= targetTime
+    // Search starts from startIdx (optimization: we know all points before startIdx are < targetTime)
+    int left = startIdx;
+    int right = points.size() - 1;
+    int result = startIdx - 1; // Default: not found
+    
+    while (left <= right)
+    {
+        int mid = left + (right - left) / 2;
+        qint64 midTime = static_cast<qint64>(points[mid].x());
+        
+        if (midTime <= targetTime)
+        {
+            result = mid;
+            left = mid + 1; // Continue searching in right half
+        }
+        else
+        {
+            right = mid - 1; // Search in left half
+        }
+    }
+    
+    return result;
+}
+
+std::pair<int, int> QtPlotterFbImpl::getVisibleRange(const SignalContext& sigCtx, qint64 visibleMin, qint64 visibleMax) const
+{
+    // Return invalid range if buffer is empty
+    if (sigCtx.pointsBuffer.isEmpty())
+        return std::make_pair(-1, -1);
+    
+    // Use binary search to find range of visible points
+    int startIdx = binarySearchFirstGE(sigCtx.pointsBuffer, visibleMin);
+    int lastIdx = binarySearchLastLE(sigCtx.pointsBuffer, visibleMax, startIdx);
+    
+    // Check if we found valid range
+    if (startIdx > lastIdx || startIdx >= sigCtx.pointsBuffer.size())
+        return std::make_pair(-1, -1);
+    
+    // Ensure indices are within bounds
+    if (lastIdx >= sigCtx.pointsBuffer.size())
+        lastIdx = sigCtx.pointsBuffer.size() - 1;
+    
+    return std::make_pair(startIdx, lastIdx);
+}
+
+void QtPlotterFbImpl::updateVisibleSeries(SignalContext& sigCtx, QLineSeries* series, qint64 visibleMin, qint64 visibleMax)
+{
+    if (!series || sigCtx.pointsBuffer.isEmpty())
+        return;
+    
+    // Get visible range indices from history buffer
+    auto [beginIdx, endIdx] = getVisibleRange(sigCtx, visibleMin, visibleMax);
+    
+    if (beginIdx < 0 || endIdx < 0 || beginIdx > endIdx)
+    {
+        series->clear();
+        return;
+    }
+    
+    // Calculate visible count
+    size_t visibleCount = endIdx - beginIdx + 1;
+    QVector<QPointF> pointsToShow;
+    
+    // Reserve space for better performance
+    size_t targetSize = std::min(visibleCount, maxSamplesPerSeries);
+    pointsToShow.reserve(targetSize);
+    
+    if (visibleCount > maxSamplesPerSeries && downsampleMethod != DownsampleMethod::None)
+    {
+        size_t targetPoints = maxSamplesPerSeries;
+        
+        switch (downsampleMethod)
+        {
+            case DownsampleMethod::None:
+                pointsToShow = downsampleVisibleNone(sigCtx.pointsBuffer, beginIdx, endIdx);
+                break;
+            case DownsampleMethod::Simple:
+                pointsToShow = downsampleVisibleSimple(sigCtx.pointsBuffer, beginIdx, endIdx, targetPoints);
+                break;
+            case DownsampleMethod::MinMax:
+                pointsToShow = downsampleVisibleMinMax(sigCtx.pointsBuffer, beginIdx, endIdx, targetPoints);
+                break;
+            case DownsampleMethod::LTTB:
+                pointsToShow = downsampleVisibleLTTB(sigCtx.pointsBuffer, beginIdx, endIdx, targetPoints);
+                break;
+            default:
+                // Copy all visible points
+                pointsToShow.reserve(visibleCount);
+                for (int i = beginIdx; i <= endIdx; ++i)
+                    pointsToShow.append(sigCtx.pointsBuffer[i]);
+                break;
+        }
+    }
+    else
+    {
+        // No downsampling needed or method is None - copy all visible points
+        pointsToShow.reserve(visibleCount);
+        for (int i = beginIdx; i <= endIdx; ++i)
+            pointsToShow.append(sigCtx.pointsBuffer[i]);
+    }
+    
+    // Update series with downsampled visible points
+    series->replace(pointsToShow);
+}
+
+QVector<QPointF> QtPlotterFbImpl::downsampleVisibleNone(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx) const
+{
+    // No downsampling - return all points in range
+    QVector<QPointF> result;
+    result.reserve(endIdx - beginIdx + 1);
+    for (int i = beginIdx; i <= endIdx; ++i)
+        result.append(pointsBuffer[i]);
+    return result;
+}
+
+QVector<QPointF> QtPlotterFbImpl::downsampleVisibleSimple(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const
+{
+    // Simple downsampling - take every Nth point
+    QVector<QPointF> result;
+    result.reserve(targetPoints);
+    
+    if (beginIdx < 0 || endIdx < 0 || beginIdx > endIdx || targetPoints == 0)
+        return result;
+    
+    size_t visibleCount = endIdx - beginIdx + 1;
+    if (visibleCount <= targetPoints)
+    {
+        // Return all points
+        for (int i = beginIdx; i <= endIdx; ++i)
+            result.append(pointsBuffer[i]);
+        return result;
+    }
+    
+    size_t step = visibleCount / targetPoints;
+    if (step < 1) step = 1;
+    
+    for (int i = beginIdx; i <= endIdx && result.size() < targetPoints; i += static_cast<int>(step))
+    {
+        result.append(pointsBuffer[i]);
+    }
+    
+    return result;
+}
+
+QVector<QPointF> QtPlotterFbImpl::downsampleVisibleMinMax(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const
+{
+    // Min-Max downsampling - preserves signal peaks and valleys
+    // Each bucket produces 2 points (min and max)
+    QVector<QPointF> result;
+    
+    if (beginIdx < 0 || endIdx < 0 || beginIdx > endIdx || targetPoints == 0)
+        return result;
+    
+    size_t visibleCount = endIdx - beginIdx + 1;
+    if (visibleCount <= targetPoints)
+    {
+        // Return all points
+        for (int i = beginIdx; i <= endIdx; ++i)
+            result.append(pointsBuffer[i]);
+        return result;
+    }
+    
+    size_t bucketSize = visibleCount / (targetPoints / 2);  // /2 because each bucket adds 2 points
+    if (bucketSize < 2) bucketSize = 2;
+    
+    // Reserve estimated space (each bucket adds up to 2 points)
+    size_t estimatedPoints = (visibleCount / bucketSize) * 2 + 2;
+    result.reserve(std::min(estimatedPoints, targetPoints));
+    
+    for (int bucketStart = beginIdx; bucketStart <= endIdx && result.size() < targetPoints - 1; bucketStart += static_cast<int>(bucketSize))
+    {
+        int bucketEnd = std::min(bucketStart + static_cast<int>(bucketSize) - 1, endIdx);
+        
+        // Find min and max in bucket
+        double minVal = pointsBuffer[bucketStart].y(), maxVal = pointsBuffer[bucketStart].y();
+        int minIdx = bucketStart, maxIdx = bucketStart;
+        
+        for (int i = bucketStart + 1; i <= bucketEnd; ++i)
+        {
+            if (pointsBuffer[i].y() < minVal) { minVal = pointsBuffer[i].y(); minIdx = i; }
+            if (pointsBuffer[i].y() > maxVal) { maxVal = pointsBuffer[i].y(); maxIdx = i; }
+        }
+        
+        // Add points in time order (important for correct line rendering)
+        if (minIdx < maxIdx)
+        {
+            result.append(pointsBuffer[minIdx]);
+            if (minIdx != maxIdx && result.size() < targetPoints)
+                result.append(pointsBuffer[maxIdx]);
+        }
+        else
+        {
+            result.append(pointsBuffer[maxIdx]);
+            if (result.size() < targetPoints)
+                result.append(pointsBuffer[minIdx]);
+        }
+    }
+    
+    return result;
+}
+
+QVector<QPointF> QtPlotterFbImpl::downsampleVisibleLTTB(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const
+{
+    // Largest Triangle Three Buckets (LTTB) - best visual quality downsampling
+    // Algorithm: https://github.com/sveinn-steinarsson/flot-downsample
+    QVector<QPointF> result;
+    
+    if (beginIdx < 0 || endIdx < 0 || beginIdx > endIdx || targetPoints == 0)
+        return result;
+    
+    size_t count = endIdx - beginIdx + 1;
+    if (count <= targetPoints)
+    {
+        // Return all points
+        for (int i = beginIdx; i <= endIdx; ++i)
+            result.append(pointsBuffer[i]);
+        return result;
+    }
+    
+    if (targetPoints < 3)
+    {
+        // Need at least 3 points for LTTB, fall back to simple
+        return downsampleVisibleSimple(pointsBuffer, beginIdx, endIdx, targetPoints);
+    }
+    
+    result.reserve(targetPoints);
+    
+    // Always include first point
+    result.append(pointsBuffer[beginIdx]);
+    
+    // Calculate bucket size
+    size_t bucketSize = (count - 2) / (targetPoints - 2);  // -2 for first and last points
+    if (bucketSize < 1) bucketSize = 1;
+    
+    int a = beginIdx;  // Index of first point in current bucket (absolute index in pointsBuffer)
+    
+    for (size_t i = 0; i < targetPoints - 2; ++i)
+    {
+        // Calculate range for next bucket (relative to beginIdx)
+        size_t rangeStartRel = (i + 1) * bucketSize;
+        size_t rangeEndRel = std::min((i + 2) * bucketSize, count - 1);
+        int rangeStart = beginIdx + static_cast<int>(rangeStartRel);
+        int rangeEnd = beginIdx + static_cast<int>(rangeEndRel);
+        
+        // Calculate average point of next bucket for triangle comparison
+        double avgX = 0.0, avgY = 0.0;
+        size_t avgCount = 0;
+        for (int j = rangeStart; j <= rangeEnd; ++j)
+        {
+            avgX += pointsBuffer[j].x();
+            avgY += pointsBuffer[j].y();
+            avgCount++;
+        }
+        if (avgCount > 0)
+        {
+            avgX /= avgCount;
+            avgY /= avgCount;
+        }
+        
+        // Calculate range for current bucket (from a+1 to rangeStart)
+        int rangeStartCurr = a + 1;
+        int rangeEndCurr = std::min(rangeStart - 1, endIdx);
+        
+        // Find point in current bucket that forms largest triangle with avg point
+        double maxArea = -1.0;
+        int maxAreaIdx = rangeStartCurr;
+        
+        if (rangeStartCurr <= rangeEndCurr)
+        {
+            double timeA = pointsBuffer[a].x();
+            double valA = pointsBuffer[a].y();
+            
+            for (int j = rangeStartCurr; j <= rangeEndCurr; ++j)
+            {
+                double timeJ = pointsBuffer[j].x();
+                double valJ = pointsBuffer[j].y();
+                
+                // Calculate triangle area using cross product
+                // Area = |(avgX - timeA) * (valJ - valA) - (timeJ - timeA) * (avgY - valA)| / 2
+                double area = std::abs((avgX - timeA) * (valJ - valA) - (timeJ - timeA) * (avgY - valA));
+                
+                if (area > maxArea)
+                {
+                    maxArea = area;
+                    maxAreaIdx = j;
+                }
+            }
+        }
+        
+        // Add the point with largest triangle area
+        if (maxAreaIdx < beginIdx || maxAreaIdx > endIdx)
+            maxAreaIdx = rangeStart - 1;
+        
+        if (maxAreaIdx >= beginIdx && maxAreaIdx <= endIdx)
+        {
+            result.append(pointsBuffer[maxAreaIdx]);
+            a = maxAreaIdx;
+        }
+        else
+        {
+            a = rangeStart;
+        }
+    }
+    
+    // Always include last point
+    result.append(pointsBuffer[endIdx]);
+    
+    return result;
 }
 
 }  // namespace QtPlotter

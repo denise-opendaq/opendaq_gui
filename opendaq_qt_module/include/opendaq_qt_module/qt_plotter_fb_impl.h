@@ -11,7 +11,9 @@
 #include <QPointer>
 #include <QPoint>
 #include <QVector>
+#include <QtGlobal>
 #include <unordered_map>
+#include <utility>
 
 QT_BEGIN_NAMESPACE
 class QChartView;
@@ -28,6 +30,15 @@ BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
 
 namespace QtPlotter
 {
+
+// Downsampling methods for high-frequency signals
+enum class DownsampleMethod
+{
+    None = 0,    // No downsampling - show all points (may be slow)
+    Simple = 1,  // Take every Nth point
+    MinMax = 2,  // Keep min and max in each bucket (preserves peaks)
+    LTTB = 3     // Largest Triangle Three Buckets (best visual quality)
+};
 
 // Forward declarations
 class QtPlotterFbImpl;
@@ -61,16 +72,34 @@ struct SignalContext
     daq::TimeReader<daq::StreamReaderPtr> timeReader;
 
     std::string caption;
-    double lastValue;
-    bool hasLastValue;
+    bool isSignalConnected;
+
+    // Value range from descriptor for auto-scale optimization
+    double valueRangeMin;
+    double valueRangeMax;
+
+    // Time range of data in series (for fast visible range check)
+    qint64 dataMinTime;
+    qint64 dataMaxTime;
+
+    // Direct pointer to the series for this signal (avoids O(n*m) lookup)
+    QPointer<QLineSeries> series;
+
+    // Reusable buffer for QPointF to avoid allocations
+    QVector<QPointF> pointsBuffer;
 
     SignalContext(const daq::InputPortPtr& port)
         : inputPort(port)
         , streamReader(daq::StreamReaderFromPort(port, daq::SampleType::Float64, daq::SampleType::Int64))
         , timeReader(streamReader)
-        , lastValue(0.0)
-        , hasLastValue(false)
+        , isSignalConnected(false)
+        , valueRangeMin(0.0)
+        , valueRangeMax(0.0)
+        , dataMinTime(0)
+        , dataMaxTime(0)
+        , series(nullptr)
     {
+        pointsBuffer.reserve(200);
     }
 };
 
@@ -120,12 +149,14 @@ public:
 
 private:
     void initProperties();
-    void propertyChanged();
-    void readProperties();
+    void propertyChanged(const StringPtr& propertyName, const BaseObjectPtr& value);
 
     void updateInputPorts();
 
     void updatePlot();
+    void createSeriesForSignal(SignalContext& sigCtx, size_t seriesIndex);  // Create and configure QLineSeries for a signal
+    void handleEventPacket(SignalContext& sigCtx, const daq::EventPacketPtr& eventPacket);  // Handle event packets (e.g., DATA_DESCRIPTOR_CHANGED)
+    bool handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime);  // Handle data reading, processing, and series update
     
     // Marker methods
     void addMarkerAtTime(qint64 timeMsec);
@@ -139,22 +170,35 @@ private:
     double getSignalValueAtTime(QLineSeries* series, qint64 timeMsec);
     QPointF constrainLabelPosition(const QPointF& pos, const QRectF& labelRect, const QRectF& plotArea);
 
+    // Lazy rendering methods - work with visible points only
+    std::pair<int, int> getVisibleRange(const SignalContext& sigCtx, qint64 visibleMin, qint64 visibleMax) const;
+    void updateVisibleSeries(SignalContext& sigCtx, QLineSeries* series, qint64 visibleMin, qint64 visibleMax);
+    
+    // Binary search helpers for sorted QPointF vectors (sorted by x coordinate)
+    int binarySearchFirstGE(const QVector<QPointF>& points, qint64 targetTime) const;
+    int binarySearchLastLE(const QVector<QPointF>& points, qint64 targetTime, int startIdx = 0) const;
+    
+    // Downsampling methods for visible points (work with indices in pointsBuffer)
+    QVector<QPointF> downsampleVisibleNone(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx) const;
+    QVector<QPointF> downsampleVisibleSimple(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const;
+    QVector<QPointF> downsampleVisibleMinMax(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const;
+    QVector<QPointF> downsampleVisibleLTTB(const QVector<QPointF>& pointsBuffer, int beginIdx, int endIdx, size_t targetPoints) const;
+
 private:
     std::unordered_map<daq::InputPortPtr, SignalContext, InputPortHash, InputPortEqual> signalContexts;
     size_t inputPortCount;
 
     // Properties
     double duration;  // Time window to display in seconds
+    double durationHistory;  // How long to keep history in seconds (for scrollback)
     bool showLegend;
     bool autoScale;
     bool showGrid;
-    bool showLastValue;
     bool autoClear;
-    
-    // Performance limits
-    static constexpr size_t MAX_POINTS_PER_SERIES = 5000;  // Maximum points to keep in each series (reduced for better performance)
-    static constexpr size_t MAX_BATCH_SIZE = 200;  // Maximum points to read per update
-    static constexpr size_t DOWNSAMPLE_THRESHOLD = 1000;  // Start downsampling if more points than this
+    double defaultMinY;  // Default Y-axis minimum when no value range from descriptor
+    double defaultMaxY;  // Default Y-axis maximum when no value range from descriptor
+    DownsampleMethod downsampleMethod;  // Downsampling algorithm to use
+    size_t maxSamplesPerSeries;  // Maximum number of points to keep per series
 
     // Qt Widget
     QPointer<QChart> chart;
@@ -168,12 +212,14 @@ private:
     
     // Update timer for plot
     QPointer<QTimer> updateTimer;
+    
+    // Timer for debouncing visible series updates during zoom/pan
+    QPointer<QTimer> visibleUpdateTimer;
+    qint64 pendingVisibleMin = 0;
+    qint64 pendingVisibleMax = 0;
 
     std::vector<double> samples;
     std::vector<std::chrono::system_clock::time_point> timeStamps;
-    
-    // Reusable buffer for QPointF to avoid allocations
-    QVector<QPointF> pointsBuffer;
     
     // Markers (vertical lines with value annotations)
     struct Marker
