@@ -1394,6 +1394,16 @@ void QtPlotterFbImpl::createWidget()
             {
                 qint64 visibleMin = pendingVisibleMin;
                 qint64 visibleMax = pendingVisibleMax;
+                
+                // When zooming stops: restore original values
+                if (isZooming)
+                {
+                    downsampleMethod = static_cast<QtPlotter::DownsampleMethod>(this->objPtr.getPropertyValue("DownsampleMethod").asPtr<IInteger>());
+                    maxSamplesPerSeries = this->objPtr.getPropertyValue("MaxSamplesPerSeries");
+                    isZooming = false;
+                }
+                
+                // Update visible series with restored settings
                 for (auto& [port, sigCtx] : signalContexts)
                 {
                     if (sigCtx.isSignalConnected && sigCtx.series)
@@ -1409,6 +1419,27 @@ void QtPlotterFbImpl::createWidget()
         {
             pendingVisibleMin = min.toMSecsSinceEpoch();
             pendingVisibleMax = max.toMSecsSinceEpoch();
+            
+            // During zooming: save original values and set simple downsampling with 100 max samples
+            if (!isZooming)
+            {
+                downsampleMethod = static_cast<QtPlotter::DownsampleMethod>(this->objPtr.getPropertyValue("DownsampleMethod").asPtr<IInteger>());
+                maxSamplesPerSeries = this->objPtr.getPropertyValue("MaxSamplesPerSeries");
+                isZooming = true;
+            }
+            
+            downsampleMethod = DownsampleMethod::Simple;
+            maxSamplesPerSeries = 100;
+            
+            // Update visible series with zoom settings
+            for (auto& [port, sigCtx] : signalContexts)
+            {
+                if (sigCtx.isSignalConnected && sigCtx.series)
+                {
+                    updateVisibleSeries(sigCtx, sigCtx.series, pendingVisibleMin, pendingVisibleMax);
+                }
+            }
+            
             // Restart timer - this debounces rapid range changes
             if (visibleUpdateTimer)
                 visibleUpdateTimer->start();

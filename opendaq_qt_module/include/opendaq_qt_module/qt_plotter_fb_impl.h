@@ -217,6 +217,9 @@ private:
     QPointer<QTimer> visibleUpdateTimer;
     qint64 pendingVisibleMin = 0;
     qint64 pendingVisibleMax = 0;
+    
+    // Temporary storage for original values during zoom
+    bool isZooming = false;
 
     std::vector<double> samples;
     std::vector<std::chrono::system_clock::time_point> timeStamps;
