@@ -2,6 +2,7 @@
 #include "context/UpdateScheduler.h"
 #include "context/QueuedEventHandler.h"
 #include "logger/qt_text_edit_sink.h"
+#include <QTableWidget>
 
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
@@ -25,7 +26,7 @@ AppContext::AppContext(QObject* parent)
     , d(std::make_unique<Private>())
 {
     d->scheduler = new UpdateScheduler(this);
-    d->loggerSink = createQTextEditLoggerSink();
+    d->loggerSink = createQTableWidgetLoggerSink();
 }
 
 AppContext::~AppContext() = default;
@@ -68,15 +69,26 @@ daq::LoggerSinkPtr AppContext::getLoggerSink() const
     return d->loggerSink;
 }
 
-QTextEdit* AppContext::getLogTextEdit() const
+QTableWidget* AppContext::getLogTableWidget() const
 {
     if (!d->loggerSink.assigned())
         return nullptr;
 
-    auto qtSink = d->loggerSink.asPtr<IQTextEditLoggerSink>(true);
-    QTextEdit* textEdit = nullptr;
-    qtSink->getTextEdit(&textEdit);
-    return textEdit;
+    auto qtSink = d->loggerSink.asPtr<IQTableWidgetLoggerSink>(true);
+    QTableWidget* tableWidget = nullptr;
+    qtSink->getTableWidget(&tableWidget);
+    return tableWidget;
+}
+
+QWidget* AppContext::getLogContainerWidget() const
+{
+    if (!d->loggerSink.assigned())
+        return nullptr;
+
+    auto qtSink = d->loggerSink.asPtr<IQTableWidgetLoggerSink>(true);
+    QWidget* containerWidget = nullptr;
+    qtSink->getContainerWidget(&containerWidget);
+    return containerWidget;
 }
 
 daq::InstancePtr AppContext::Daq()

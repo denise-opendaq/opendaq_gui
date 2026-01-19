@@ -2,8 +2,12 @@
 
 #include <memory>
 #include <QMutex>
+#include <QString>
+#include <QColor>
 
-class QTextEdit;
+class QTableWidget;
+class QWidget;
+class QLineEdit;
 
 #include <spdlog/sinks/base_sink.h>
 #include <coretypes/baseobject.h>
@@ -12,36 +16,48 @@ class QTextEdit;
 #include <opendaq/logger_sink_base_private.h>
 #include <opendaq/logger_sink_ptr.h>
 
-// spdlog sink that writes to QTextEdit
-class QTextEditSpdlogSink : public spdlog::sinks::base_sink<std::mutex>
+// spdlog sink that writes to QTableWidget
+class QTableWidgetSpdlogSink : public spdlog::sinks::base_sink<std::mutex>
 {
 public:
-    explicit QTextEditSpdlogSink(QTextEdit* textEdit);
+    explicit QTableWidgetSpdlogSink(QTableWidget* tableWidget);
 
-    QTextEdit* getTextEdit() const { return textEdit; }
+    QTableWidget* getTableWidget() const { return tableWidget; }
+    QWidget* getContainerWidget() const { return containerWidget; }
 
 protected:
     void sink_it_(const spdlog::details::log_msg& msg) override;
     void flush_() override;
 
 private:
-    QTextEdit* textEdit;
+    QTableWidget* tableWidget;
+    QWidget* containerWidget;
+    QLineEdit* searchEdit;
+    QString currentFilterText;
+    void setupTableWidget();
+    void setupSearchWidget();
+    void filterTable(const QString& searchText);
+    bool rowMatchesFilter(int row, const QString& searchText) const;
+    QString formatTime(const spdlog::log_clock::time_point& time) const;
+    QString levelToString(spdlog::level::level_enum level) const;
+    QColor getColorForLevel(spdlog::level::level_enum level) const;
 };
 
-// Custom interface for QTextEdit logger sink
-DECLARE_OPENDAQ_INTERFACE(IQTextEditLoggerSink, daq::ILoggerSink)
+// Custom interface for QTableWidget logger sink
+DECLARE_OPENDAQ_INTERFACE(IQTableWidgetLoggerSink, daq::ILoggerSink)
 {
-    virtual daq::ErrCode INTERFACE_FUNC getTextEdit(QTextEdit** textEdit) = 0;
+    virtual daq::ErrCode INTERFACE_FUNC getTableWidget(QTableWidget** tableWidget) = 0;
+    virtual daq::ErrCode INTERFACE_FUNC getContainerWidget(QWidget** containerWidget) = 0;
 };
 
 // openDAQ logger sink wrapper with custom interface
-class QTextEditLoggerSink : public daq::ImplementationOf<IQTextEditLoggerSink, daq::ILoggerSinkBasePrivate>
+class QTableWidgetLoggerSink : public daq::ImplementationOf<IQTableWidgetLoggerSink, daq::ILoggerSinkBasePrivate>
 {
 public:
     using Sink = spdlog::sinks::sink;
     using SinkPtr = std::shared_ptr<Sink>;
 
-    QTextEditLoggerSink();
+    QTableWidgetLoggerSink();
 
     // ILoggerSink interface
     daq::ErrCode INTERFACE_FUNC setLevel(daq::LogLevel level) override;
@@ -53,13 +69,14 @@ public:
     // ILoggerSinkBasePrivate interface
     daq::ErrCode INTERFACE_FUNC getSinkImpl(SinkPtr* sinkImp) override;
 
-    // IQTextEditLoggerSink interface
-    daq::ErrCode INTERFACE_FUNC getTextEdit(QTextEdit** textEdit) override;
+    // IQTableWidgetLoggerSink interface
+    daq::ErrCode INTERFACE_FUNC getTableWidget(QTableWidget** tableWidget) override;
+    daq::ErrCode INTERFACE_FUNC getContainerWidget(QWidget** containerWidget) override;
 
 private:
-    std::shared_ptr<QTextEditSpdlogSink> qtSink;
+    std::shared_ptr<QTableWidgetSpdlogSink> qtSink;
     SinkPtr sink;
 };
 
-// Factory function to create QTextEdit logger sink
-daq::LoggerSinkPtr createQTextEditLoggerSink();
+// Factory function to create QTableWidget logger sink
+daq::LoggerSinkPtr createQTableWidgetLoggerSink();

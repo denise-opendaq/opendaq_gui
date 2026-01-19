@@ -1,105 +1,400 @@
 #include "logger/qt_text_edit_sink.h"
-#include <QTextEdit>
-#include <QMetaObject>
+#include <QTableWidget>
+#include <QHeaderView>
+#include <QMenu>
+#include <QTimer>
 #include <QString>
 #include <QColor>
+#include <QDateTime>
+#include <QTimeZone>
+#include <QLineEdit>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QStyledItemDelegate>
+#include <QTextDocument>
+#include <QPainter>
 #include <spdlog/details/log_msg.h>
+#include <spdlog/fmt/chrono.h>
 #include <coretypes/ctutils.h>
+#include <chrono>
+#include <memory>
 
 using namespace daq;
 
-// QTextEditSpdlogSink implementation
-QTextEditSpdlogSink::QTextEditSpdlogSink(QTextEdit* textEdit)
-    : textEdit(textEdit)
+// Column indices - order: [tid] [time] [loggername] [level] [message]
+enum class LogColumn {
+    ThreadId = 0,
+    Time = 1,
+    LoggerName = 2,
+    Level = 3,
+    Message = 4
+};
+
+// Delegate for Message column to enable word wrap
+class MessageColumnDelegate : public QStyledItemDelegate
 {
+public:
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        if (index.column() == static_cast<int>(LogColumn::Message))
+        {
+            QStyleOptionViewItem opt = option;
+            initStyleOption(&opt, index);
+            
+            // Use plain text with word wrap
+            QTextDocument doc;
+            doc.setPlainText(opt.text);
+            doc.setTextWidth(opt.rect.width());
+            
+            painter->save();
+            painter->translate(opt.rect.topLeft());
+            doc.drawContents(painter);
+            painter->restore();
+        }
+        else
+        {
+            QStyledItemDelegate::paint(painter, option, index);
+        }
+    }
+    
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        if (index.column() == static_cast<int>(LogColumn::Message))
+        {
+            QTextDocument doc;
+            doc.setPlainText(index.data().toString());
+            int width = option.rect.width() > 0 ? option.rect.width() : 200; // Default width if not set
+            doc.setTextWidth(width);
+            int height = static_cast<int>(doc.size().height());
+            return QSize(width, qMax(height, option.fontMetrics.height() + 4)); // Minimum height
+        }
+        return QStyledItemDelegate::sizeHint(option, index);
+    }
+};
+
+// QTableWidgetSpdlogSink implementation
+QTableWidgetSpdlogSink::QTableWidgetSpdlogSink(QTableWidget* tableWidget)
+    : tableWidget(tableWidget)
+    , containerWidget(nullptr)
+    , searchEdit(nullptr)
+    , currentFilterText()
+{
+    setupTableWidget();
+    setupSearchWidget();
 }
 
-QString getColorForLevel(spdlog::level::level_enum level)
+void QTableWidgetSpdlogSink::setupTableWidget()
+{
+    if (!tableWidget)
+        return;
+
+    // Set up columns - order: [tid] [time] [loggername] [level] [message]
+    tableWidget->setColumnCount(5);
+    tableWidget->setHorizontalHeaderLabels({
+        "Thread ID",
+        "Time",
+        "Logger Name",
+        "Level",
+        "Message"
+    });
+    
+    // Hide Thread ID column by default
+    tableWidget->horizontalHeader()->setSectionHidden(static_cast<int>(LogColumn::ThreadId), true);
+
+    // Make header context menu enabled
+    tableWidget->horizontalHeader()->setContextMenuPolicy(Qt::CustomContextMenu);
+    
+    // Connect context menu signal
+    QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::customContextMenuRequested,
+                     [this](const QPoint& pos) {
+                         QMenu menu;
+                         
+                         // Add menu items for each column
+                         for (int i = 0; i < tableWidget->columnCount(); ++i) {
+                             QString headerText = tableWidget->horizontalHeaderItem(i)->text();
+                             QAction* action = menu.addAction(headerText);
+                             action->setCheckable(true);
+                             action->setChecked(!tableWidget->horizontalHeader()->isSectionHidden(i));
+                             
+                             QObject::connect(action, &QAction::triggered, [this, i](bool checked) {
+                                 tableWidget->horizontalHeader()->setSectionHidden(i, !checked);
+                             });
+                         }
+                         
+                         menu.exec(tableWidget->horizontalHeader()->mapToGlobal(pos));
+                     });
+
+    // Set table properties
+    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    tableWidget->setAlternatingRowColors(true);
+    tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tableWidget->setSortingEnabled(true);
+    
+    // Allow manual column resizing
+    tableWidget->horizontalHeader()->setStretchLastSection(true);
+    tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    // Message column can stretch to fill remaining space
+    tableWidget->horizontalHeader()->setSectionResizeMode(static_cast<int>(LogColumn::Message), QHeaderView::Stretch);
+    
+    // Set delegate for Message column to enable word wrap
+    tableWidget->setItemDelegateForColumn(static_cast<int>(LogColumn::Message), new MessageColumnDelegate());
+    
+    // Auto-resize rows to fit content (for word wrap in Message column)
+    tableWidget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    
+    // Recalculate row heights when Message column is resized
+    QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::sectionResized,
+                     [this](int logicalIndex, int, int) {
+                         if (logicalIndex == static_cast<int>(LogColumn::Message)) {
+                             // Resize all rows to fit content
+                             for (int row = 0; row < tableWidget->rowCount(); ++row) {
+                                 tableWidget->resizeRowToContents(row);
+                             }
+                         }
+                     });
+}
+
+void QTableWidgetSpdlogSink::setupSearchWidget()
+{
+    if (!tableWidget)
+        return;
+
+    // Create container widget
+    containerWidget = new QWidget();
+    QVBoxLayout* layout = new QVBoxLayout(containerWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(5);
+
+    // Create search line edit
+    QHBoxLayout* searchLayout = new QHBoxLayout();
+    searchLayout->setContentsMargins(5, 5, 5, 0);
+    
+    QLabel* searchLabel = new QLabel("Search:");
+    searchEdit = new QLineEdit();
+    searchEdit->setPlaceholderText("Search in logs...");
+    searchEdit->setClearButtonEnabled(true);
+    
+    searchLayout->addWidget(searchLabel);
+    searchLayout->addWidget(searchEdit);
+    
+    layout->addLayout(searchLayout);
+    layout->addWidget(tableWidget);
+
+    // Connect search signal
+    QObject::connect(searchEdit, &QLineEdit::textChanged, 
+                     [this](const QString& text) {
+                         currentFilterText = text;
+                         filterTable(text);
+                     });
+}
+
+void QTableWidgetSpdlogSink::filterTable(const QString& searchText)
+{
+    if (!tableWidget)
+        return;
+
+    QString searchLower = searchText.toLower();
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        bool match = rowMatchesFilter(row, searchText);
+        
+        // Show or hide row based on match
+        tableWidget->setRowHidden(row, !match && !searchText.isEmpty());
+    }
+}
+
+bool QTableWidgetSpdlogSink::rowMatchesFilter(int row, const QString& searchText) const
+{
+    if (!tableWidget || searchText.isEmpty())
+        return true;
+
+    QString searchLower = searchText.toLower();
+    
+    // Search in all columns
+    for (int col = 0; col < tableWidget->columnCount(); ++col) {
+        QTableWidgetItem* item = tableWidget->item(row, col);
+        if (item && item->text().toLower().contains(searchLower)) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+QString QTableWidgetSpdlogSink::formatTime(const spdlog::log_clock::time_point& time) const
+{
+    // spdlog::log_clock is typically an alias for std::chrono::system_clock
+    // Try to convert directly assuming it's system_clock
+    try {
+        // Cast the duration to system_clock duration
+        auto duration = time.time_since_epoch();
+        auto system_duration = std::chrono::duration_cast<std::chrono::system_clock::duration>(duration);
+        auto system_time = std::chrono::system_clock::time_point(system_duration);
+        
+        auto time_t = std::chrono::system_clock::to_time_t(system_time);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            system_time.time_since_epoch()
+        ) % 1000;
+        
+        QDateTime dateTime = QDateTime::fromSecsSinceEpoch(time_t, QTimeZone::systemTimeZone());
+        QString timeStr = dateTime.toString("yyyy-MM-dd HH:mm:ss");
+        timeStr += QString(".%1").arg(ms.count(), 3, 10, QChar('0'));
+        return timeStr;
+    } catch (...) {
+        // Fallback: use current time if conversion fails
+        QDateTime dateTime = QDateTime::currentDateTime();
+        return dateTime.toString("yyyy-MM-dd HH:mm:ss.zzz");
+    }
+}
+
+QString QTableWidgetSpdlogSink::levelToString(spdlog::level::level_enum level) const
 {
     switch (level)
     {
         case spdlog::level::trace:
-            return "#808080"; // gray
+            return "TRACE";
         case spdlog::level::debug:
-            return "#0066CC"; // light blue
-        case spdlog::level::info: 
-            return "#009900"; // green
+            return "DEBUG";
+        case spdlog::level::info:
+            return "INFO";
         case spdlog::level::warn:
-            return "#CCCC00"; // dark yellow
+            return "WARN";
         case spdlog::level::err:
-            return "#FF0000"; // red
+            return "ERROR";
         case spdlog::level::critical:
-            return "#CC0000"; // dark red
+            return "CRITICAL";
+        case spdlog::level::off:
+            return "OFF";
         default:
-            return ""; // default system color
+            return "UNKNOWN";
     }
 }
 
-void QTextEditSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
+QColor QTableWidgetSpdlogSink::getColorForLevel(spdlog::level::level_enum level) const
 {
-    if (!textEdit)
+    switch (level)
+    {
+        case spdlog::level::trace:
+            return QColor(128, 128, 128); // gray
+        case spdlog::level::debug:
+            return QColor(0, 102, 204); // light blue
+        case spdlog::level::info:
+            return QColor(0, 153, 0); // green
+        case spdlog::level::warn:
+            return QColor(204, 204, 0); // dark yellow
+        case spdlog::level::err:
+            return QColor(255, 0, 0); // red
+        case spdlog::level::critical:
+            return QColor(204, 0, 0); // dark red
+        default:
+            return QColor(); // default system color
+    }
+}
+
+void QTableWidgetSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
+{
+    if (!tableWidget)
         return;
 
-    // Format the message
-    spdlog::memory_buf_t formatted;
-    formatter_->format(msg, formatted);
-    QString message = QString::fromUtf8(formatted.data(), static_cast<int>(formatted.size()));
+    // Extract data from log message
+    QString loggerName = QString::fromUtf8(msg.logger_name.data(), static_cast<int>(msg.logger_name.size()));
+    QString level = levelToString(msg.level);
+    QString time = formatTime(msg.time);
+    QString threadId = QString::number(msg.thread_id);
+    QString message = QString::fromUtf8(msg.payload.data(), static_cast<int>(msg.payload.size()));
 
-    QString coloredMessage;
-    
-    // Check if color_range_start and color_range_end are set by the formatter
-    if (msg.color_range_start < msg.color_range_end && 
-        msg.color_range_end <= static_cast<size_t>(message.length()))
-    {
-        QString color = getColorForLevel(msg.level);
-        if (!color.isEmpty())
-        {
-            // Apply color only to the specified range
-            QString beforeColor = message.left(static_cast<int>(msg.color_range_start));
-            QString colorRange = message.mid(static_cast<int>(msg.color_range_start), 
-                                            static_cast<int>(msg.color_range_end - msg.color_range_start));
-            QString afterColor = message.mid(static_cast<int>(msg.color_range_end));
-
-            coloredMessage = beforeColor + 
-                               QString("<span style=\"color:%1;\">%2</span>").arg(color, colorRange) + 
-                               afterColor;
-        }
-    }
-
-    if (coloredMessage.isEmpty())
-        coloredMessage = message;
+    QColor levelColor = getColorForLevel(msg.level);
 
     // Use QMetaObject::invokeMethod to ensure thread-safe GUI updates
-    QMetaObject::invokeMethod(textEdit, [this, coloredMessage]() {
-        textEdit->append(coloredMessage);
-    }, Qt::QueuedConnection);
+    // Store data in a struct to pass to the slot
+    struct LogData {
+        QString loggerName;
+        QString level;
+        QString time;
+        QString threadId;
+        QString message;
+        QColor levelColor;
+    };
+    
+    auto logData = std::make_shared<LogData>();
+    logData->loggerName = loggerName;
+    logData->level = level;
+    logData->time = time;
+    logData->threadId = threadId;
+    logData->message = message;
+    logData->levelColor = levelColor;
+    
+    // Use QTimer::singleShot for thread-safe GUI updates (more compatible than QMetaObject::invokeMethod with lambda)
+    QTimer::singleShot(0, tableWidget, [this, logData]() {
+        // Insert new row
+        int row = tableWidget->rowCount();
+        tableWidget->insertRow(row);
+
+        // Set items in order: [tid] [time] [loggername] [level] [message]
+        QTableWidgetItem* threadItem = new QTableWidgetItem(logData->threadId);
+        threadItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+        tableWidget->setItem(row, static_cast<int>(LogColumn::ThreadId), threadItem);
+
+        QTableWidgetItem* timeItem = new QTableWidgetItem(logData->time);
+        timeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+        tableWidget->setItem(row, static_cast<int>(LogColumn::Time), timeItem);
+
+        QTableWidgetItem* loggerItem = new QTableWidgetItem(logData->loggerName);
+        loggerItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+        tableWidget->setItem(row, static_cast<int>(LogColumn::LoggerName), loggerItem);
+
+        QTableWidgetItem* levelItem = new QTableWidgetItem(logData->level);
+        levelItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+        if (logData->levelColor.isValid()) {
+            levelItem->setForeground(logData->levelColor);
+        }
+        tableWidget->setItem(row, static_cast<int>(LogColumn::Level), levelItem);
+
+        // Message column with word wrap enabled (via delegate)
+        QTableWidgetItem* messageItem = new QTableWidgetItem(logData->message);
+        messageItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+        tableWidget->setItem(row, static_cast<int>(LogColumn::Message), messageItem);
+        
+        // Check if new row matches current filter and hide if it doesn't
+        if (!currentFilterText.isEmpty()) {
+            bool matches = rowMatchesFilter(row, currentFilterText);
+            tableWidget->setRowHidden(row, !matches);
+        }
+        
+        // Resize row to fit content
+        tableWidget->resizeRowToContents(row);
+
+        // Scroll to bottom
+        tableWidget->scrollToBottom();
+    });
 }
 
-void QTextEditSpdlogSink::flush_()
+void QTableWidgetSpdlogSink::flush_()
 {
-    // QTextEdit doesn't need explicit flushing
+    // QTableWidget doesn't need explicit flushing
 }
 
-// QTextEditLoggerSink implementation
-QTextEditLoggerSink::QTextEditLoggerSink()
+// QTableWidgetLoggerSink implementation
+QTableWidgetLoggerSink::QTableWidgetLoggerSink()
 {
-    auto* textEdit = new QTextEdit();
-    textEdit->setReadOnly(true);
-
-    qtSink = std::make_shared<QTextEditSpdlogSink>(textEdit);
+    auto* tableWidget = new QTableWidget();
+    
+    qtSink = std::make_shared<QTableWidgetSpdlogSink>(tableWidget);
     sink = qtSink;
 
-    // Set default pattern
-    sink->set_pattern("[tid: %t]%+");
+    // Pattern is not used for table view, but keep for compatibility
+    sink->set_pattern("%+");
 }
 
-ErrCode QTextEditLoggerSink::setLevel(LogLevel level)
+ErrCode QTableWidgetLoggerSink::setLevel(LogLevel level)
 {
     sink->set_level(static_cast<spdlog::level::level_enum>(level));
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTextEditLoggerSink::getLevel(LogLevel* level)
+ErrCode QTableWidgetLoggerSink::getLevel(LogLevel* level)
 {
     if (level == nullptr)
     {
@@ -110,7 +405,7 @@ ErrCode QTextEditLoggerSink::getLevel(LogLevel* level)
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTextEditLoggerSink::shouldLog(LogLevel level, Bool* willLog)
+ErrCode QTableWidgetLoggerSink::shouldLog(LogLevel level, Bool* willLog)
 {
     if (willLog == nullptr)
     {
@@ -121,7 +416,7 @@ ErrCode QTextEditLoggerSink::shouldLog(LogLevel level, Bool* willLog)
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTextEditLoggerSink::setPattern(IString* pattern)
+ErrCode QTableWidgetLoggerSink::setPattern(IString* pattern)
 {
     OPENDAQ_PARAM_NOT_NULL(pattern);
     const ErrCode errCode = daqTry([&]()
@@ -132,7 +427,7 @@ ErrCode QTextEditLoggerSink::setPattern(IString* pattern)
     return errCode;
 }
 
-ErrCode QTextEditLoggerSink::flush()
+ErrCode QTableWidgetLoggerSink::flush()
 {
     const ErrCode errCode = daqTry([&]()
     {
@@ -142,7 +437,7 @@ ErrCode QTextEditLoggerSink::flush()
     return errCode;
 }
 
-ErrCode QTextEditLoggerSink::getSinkImpl(SinkPtr* sinkImp)
+ErrCode QTableWidgetLoggerSink::getSinkImpl(SinkPtr* sinkImp)
 {
     if (sinkImp == nullptr)
        return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "SinkImp out-parameter must not be null");
@@ -150,16 +445,25 @@ ErrCode QTextEditLoggerSink::getSinkImpl(SinkPtr* sinkImp)
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTextEditLoggerSink::getTextEdit(QTextEdit** textEdit)
+ErrCode QTableWidgetLoggerSink::getTableWidget(QTableWidget** tableWidget)
 {
-    if (textEdit == nullptr)
-        return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "TextEdit out-parameter must not be null");
+    if (tableWidget == nullptr)
+        return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "TableWidget out-parameter must not be null");
 
-    *textEdit = qtSink ? qtSink->getTextEdit() : nullptr;
+    *tableWidget = qtSink ? qtSink->getTableWidget() : nullptr;
     return OPENDAQ_SUCCESS;
 }
 
-LoggerSinkPtr createQTextEditLoggerSink()
+ErrCode QTableWidgetLoggerSink::getContainerWidget(QWidget** containerWidget)
 {
-    return daq::createWithImplementation<ILoggerSink, QTextEditLoggerSink>();
+    if (containerWidget == nullptr)
+        return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "ContainerWidget out-parameter must not be null");
+
+    *containerWidget = qtSink ? qtSink->getContainerWidget() : nullptr;
+    return OPENDAQ_SUCCESS;
+}
+
+LoggerSinkPtr createQTableWidgetLoggerSink()
+{
+    return daq::createWithImplementation<ILoggerSink, QTableWidgetLoggerSink>();
 }

@@ -148,9 +148,9 @@ void MainWindow::setupUI()
     }
 
     // Log panel
-    auto logTextEdit = AppContext::Instance()->getLogTextEdit();
-    if(logTextEdit)
-        verticalSplitter->addWidget(logTextEdit);
+    auto logContainerWidget = AppContext::Instance()->getLogContainerWidget();
+    if(logContainerWidget)
+        verticalSplitter->addWidget(logContainerWidget);
 
     const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Application started...");
