@@ -317,6 +317,7 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     , defaultMaxY(10.0)
     , downsampleMethod(QtPlotter::DownsampleMethod::LTTB)
     , maxSamplesPerSeries(10000)
+    , lineStyle(QtPlotter::LineStyle::Solid)
     , chart(nullptr)
     , axisX(nullptr)
     , axisY(nullptr)
@@ -398,6 +399,10 @@ void QtPlotterFbImpl::initProperties()
     const auto maxSamplesPerSeriesProp = daq::IntProperty("MaxSamplesPerSeries", static_cast<Int>(maxSamplesPerSeries));
     objPtr.addProperty(maxSamplesPerSeriesProp);
     objPtr.getOnPropertyValueWrite("MaxSamplesPerSeries") += onPropertyValueWrite;
+
+    const auto lineStyleProp = daq::SelectionProperty("LineStyle", List<IString>("Solid", "Dashed", "Dotted"), static_cast<Int>(lineStyle));
+    objPtr.addProperty(lineStyleProp);
+    objPtr.getOnPropertyValueWrite("LineStyle") += onPropertyValueWrite;
 }
 
 void QtPlotterFbImpl::propertyChanged(const StringPtr& propertyName, const BaseObjectPtr& value)
@@ -434,6 +439,11 @@ void QtPlotterFbImpl::propertyChanged(const StringPtr& propertyName, const BaseO
         downsampleMethod = static_cast<QtPlotter::DownsampleMethod>(value.asPtr<IInteger>(true));
     else if (propertyName == "MaxSamplesPerSeries")
         maxSamplesPerSeries = value;
+    else if (propertyName == "LineStyle")
+    {
+        lineStyle = static_cast<QtPlotter::LineStyle>(value.asPtr<IInteger>(true));
+        updateSeriesLineStyle();
+    }
 
     LOG_W("Property {} changed to {}", propertyName, value.toString());
 }
@@ -486,7 +496,36 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
     LOG_W("Disconnected from port {}", inputPort.getLocalId());
 }
 
-void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx, size_t seriesIndex)
+Qt::PenStyle QtPlotterFbImpl::getQtPenStyle() const
+{
+    switch (lineStyle)
+    {
+        case LineStyle::Dashed:
+            return Qt::DashLine;
+        case LineStyle::Dotted:
+            return Qt::DotLine;
+        case LineStyle::Solid:
+        default:
+            return Qt::SolidLine;
+    }
+}
+
+void QtPlotterFbImpl::updateSeriesLineStyle()
+{
+    Qt::PenStyle penStyle = getQtPenStyle();
+
+    for (auto& [port, sigCtx] : signalContexts)
+    {
+        if (sigCtx.series)
+        {
+            QPen pen = sigCtx.series->pen();
+            pen.setStyle(penStyle);
+            sigCtx.series->setPen(pen);
+        }
+    }
+}
+
+void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx)
 {
     if (!chart || !axisX || !axisY)
         return;
@@ -503,7 +542,7 @@ void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx, size_t series
         QColor(0, 255, 255),    // Cyan
         QColor(0, 0, 255)       // Blue
     };
-    QPen pen(colors[seriesIndex % 6], 2);
+    QPen pen(colors[(seriesIndex++) % 6], 2, getQtPenStyle());
     sigCtx.series->setPen(pen);
 
     chart->addSeries(sigCtx.series);
@@ -604,9 +643,6 @@ void QtPlotterFbImpl::updatePlot()
     qint64 globalLatestTime = 0;
     bool hasData = false;
 
-    // For each valid signal, create or update series
-    size_t seriesIndex = 0;
-
     for (auto& [port, sigCtx] : signalContexts)
     {
         if (!sigCtx.isSignalConnected)
@@ -614,7 +650,7 @@ void QtPlotterFbImpl::updatePlot()
 
         // Get or create series for this signal (direct pointer access - O(1))
         if (!sigCtx.series)
-            createSeriesForSignal(sigCtx, seriesIndex);
+            createSeriesForSignal(sigCtx);
 
         QLineSeries* series = sigCtx.series;
 
@@ -672,8 +708,6 @@ void QtPlotterFbImpl::updatePlot()
             if (series->name() != QString::fromStdString(seriesName))
                 series->setName(QString::fromStdString(seriesName));
         }
-
-        seriesIndex++;
     }
 
     // Update axis labels and range
