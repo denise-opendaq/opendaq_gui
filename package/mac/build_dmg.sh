@@ -23,12 +23,8 @@ PROJECT_ROOT="$(dirname "$PACKAGE_DIR")"
 
 cd "$PROJECT_ROOT"
 
-if [ ! -d "build" ]; then
-    cmake -B build -DBUILD_BUNDLE=ON -DEXTRA_MODULE_PATH="../Frameworks" -DUSE_SYSTEM_QT=ON -DCMAKE_BUILD_TYPE=Release
-else
-    cmake -B build -DBUILD_BUNDLE=ON -DEXTRA_MODULE_PATH="../Frameworks" -DUSE_SYSTEM_QT=ON
-fi
-cmake --build build --config Release
+cmake --preset opendaq-qt-gui -DEXTRA_MODULE_PATH="../Frameworks" -DUSE_SYSTEM_QT=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build --preset opendaq-qt-gui --config Release
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to build application!${NC}"

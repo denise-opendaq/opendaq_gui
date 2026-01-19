@@ -40,8 +40,8 @@ if(NOT EXISTS "${SOURCE_BUNDLE}")
     message(FATAL_ERROR
         "Application bundle not found at: ${SOURCE_BUNDLE}\n"
         "Please build the main project first with:\n"
-        "  cmake -B build -DBUILD_BUNDLE=ON\n"
-        "  cmake --build build"
+        "  cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release\n"
+        "  cmake --build --preset opendaq-qt-gui --config Release"
     )
 endif()
 

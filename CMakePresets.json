@@ -1,0 +1,28 @@
+{
+    "version": 4,
+    "configurePresets": 
+    [
+      {
+        "name": "opendaq-qt-gui",
+        "displayName": "OpenDAQ Qt GUI",
+        "description": "Build OpenDAQ Qt GUI",
+        "binaryDir": "${sourceDir}/build",
+        "cacheVariables":
+        {
+          "OPENDAQ_ENABLE_TESTS": "OFF",
+          "CMAKE_BUILD_TYPE": "Debug",
+
+          "DAQMODULES_OPENDAQ_CLIENT_MODULE": "ON",
+          "DAQMODULES_OPENDAQ_SERVER_MODULE": "ON",
+
+          "OPENDAQ_ENABLE_NATIVE_STREAMING": "ON",
+          "OPENDAQ_ENABLE_OPCUA": "ON",
+          "OPENDAQ_ENABLE_WEBSOCKET_STREAMING": "ON",
+
+          "DAQMODULES_REF_DEVICE_MODULE": "ON",
+          "DAQMODULES_REF_FB_MODULE": "ON",
+          "DAQMODULES_REF_FB_MODULE_ENABLE_RENDERER": "ON"
+        }
+      }
+  ]
+}

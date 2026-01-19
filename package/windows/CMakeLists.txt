@@ -50,8 +50,8 @@ else()
         "  ${SOURCE_EXECUTABLE_RELEASE}\n"
         "  ${SOURCE_EXECUTABLE_SINGLE}\n"
         "Please build the main project first with:\n"
-        "  cmake -B build -G \"Visual Studio 17 2022\" -A x64\n"
-        "  cmake --build build --config Release"
+        "  cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release\n"
+        "  cmake --build --preset opendaq-qt-gui --config Release"
     )
 endif()
 

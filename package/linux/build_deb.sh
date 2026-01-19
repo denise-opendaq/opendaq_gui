@@ -23,8 +23,8 @@ PROJECT_ROOT="$(dirname "$PACKAGE_DIR")"
 
 cd "$PROJECT_ROOT"
 
-cmake -B build -DBUILD_BUNDLE=ON -DCMAKE_BUILD_TYPE=Release -DEXTRA_MODULE_PATH="../lib/opendaq-qt-gui"
-cmake --build build --config Release
+cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DEXTRA_MODULE_PATH="../lib/opendaq-qt-gui"
+cmake --build --preset opendaq-qt-gui --config Release
 
 if [ $? -ne 0 ]; then
     echo -e "${RED}Failed to build application!${NC}"

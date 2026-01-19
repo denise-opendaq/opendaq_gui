@@ -7,7 +7,7 @@ set(APP_NAME "opendaq-qt-gui")
 set(DISPLAY_NAME "OpenDAQ Qt GUI")
 set(VERSION "1.0")
 set(PROJECT_BINARY_NAME "opendaq_qt_gui")
-set(MAINTAINER "OpenDAQ <support@opendaq.io>")
+set(MAINTAINER "OpenDAQ <denis.erokhin@opendaq.com>")
 set(DESCRIPTION "OpenDAQ Qt GUI Application")
 
 # Detect architecture
