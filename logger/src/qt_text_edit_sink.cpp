@@ -14,11 +14,12 @@
 #include <QStyledItemDelegate>
 #include <QTextDocument>
 #include <QPainter>
+#include <QApplication>
+#include <QEventLoop>
+#include <QMetaObject>
 #include <spdlog/details/log_msg.h>
 #include <spdlog/fmt/chrono.h>
 #include <coretypes/ctutils.h>
-#include <chrono>
-#include <memory>
 
 using namespace daq;
 
@@ -148,10 +149,16 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::sectionResized,
                      [this](int logicalIndex, int, int) {
                          if (logicalIndex == static_cast<int>(LogColumn::Message)) {
-                             // Resize all rows to fit content
-                             for (int row = 0; row < tableWidget->rowCount(); ++row) {
+                             // Resize rows in batches to avoid blocking UI
+                             tableWidget->setUpdatesEnabled(false);
+                             int rowCount = tableWidget->rowCount();
+                             for (int row = 0; row < rowCount; ++row) {
                                  tableWidget->resizeRowToContents(row);
+                                 if (row % 100 == 0) {
+                                     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+                                 }
                              }
+                             tableWidget->setUpdatesEnabled(true);
                          }
                      });
 }
@@ -298,77 +305,76 @@ void QTableWidgetSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
     if (!tableWidget)
         return;
 
-    // Extract data from log message
-    QString loggerName = QString::fromUtf8(msg.logger_name.data(), static_cast<int>(msg.logger_name.size()));
+    // Copy message data (string_view may become invalid)
+    // Store in shared_ptr to pass to GUI thread safely
+    auto msgData = std::make_shared<LogMsgData>();
+    msgData->time = msg.time;
+    msgData->level = msg.level;
+    msgData->logger_name = std::string(msg.logger_name.data(), msg.logger_name.size());
+    msgData->payload = std::string(msg.payload.data(), msg.payload.size());
+    msgData->thread_id = msg.thread_id;
+
+    // Use QTimer::singleShot to safely add log from any thread to GUI thread
+    QTimer::singleShot(0, tableWidget, [this, msgData]() {
+        addLogRow(*msgData);
+    });
+}
+
+void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
+{
+    if (!tableWidget)
+        return;
+
+    // Remove old rows if we exceed MAX_ROWS
+    int currentRowCount = tableWidget->rowCount();
+    if (currentRowCount >= MAX_ROWS) {
+        tableWidget->removeRow(0);  // Remove oldest row
+    }
+
+    // Convert message to display format
+    QString loggerName = QString::fromStdString(msg.logger_name);
     QString level = levelToString(msg.level);
     QString time = formatTime(msg.time);
     QString threadId = QString::number(msg.thread_id);
-    QString message = QString::fromUtf8(msg.payload.data(), static_cast<int>(msg.payload.size()));
-
+    QString message = QString::fromStdString(msg.payload);
     QColor levelColor = getColorForLevel(msg.level);
 
-    // Use QMetaObject::invokeMethod to ensure thread-safe GUI updates
-    // Store data in a struct to pass to the slot
-    struct LogData {
-        QString loggerName;
-        QString level;
-        QString time;
-        QString threadId;
-        QString message;
-        QColor levelColor;
-    };
+    // Insert new row
+    int row = tableWidget->rowCount();
+    tableWidget->insertRow(row);
+
+    // Set items in order: [tid] [time] [loggername] [level] [message]
+    QTableWidgetItem* threadItem = new QTableWidgetItem(threadId);
+    threadItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+    tableWidget->setItem(row, static_cast<int>(LogColumn::ThreadId), threadItem);
+
+    QTableWidgetItem* timeItem = new QTableWidgetItem(time);
+    timeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+    tableWidget->setItem(row, static_cast<int>(LogColumn::Time), timeItem);
+
+    QTableWidgetItem* loggerItem = new QTableWidgetItem(loggerName);
+    loggerItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+    tableWidget->setItem(row, static_cast<int>(LogColumn::LoggerName), loggerItem);
+
+    QTableWidgetItem* levelItem = new QTableWidgetItem(level);
+    levelItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+    if (levelColor.isValid()) {
+        levelItem->setForeground(levelColor);
+    }
+    tableWidget->setItem(row, static_cast<int>(LogColumn::Level), levelItem);
+
+    // Message column with word wrap enabled (via delegate)
+    QTableWidgetItem* messageItem = new QTableWidgetItem(message);
+    messageItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
+    tableWidget->setItem(row, static_cast<int>(LogColumn::Message), messageItem);
     
-    auto logData = std::make_shared<LogData>();
-    logData->loggerName = loggerName;
-    logData->level = level;
-    logData->time = time;
-    logData->threadId = threadId;
-    logData->message = message;
-    logData->levelColor = levelColor;
+    // Check if new row matches current filter and hide if it doesn't
+    if (!currentFilterText.isEmpty()) {
+        bool matches = rowMatchesFilter(row, currentFilterText);
+        tableWidget->setRowHidden(row, !matches);
+    }
     
-    // Use QTimer::singleShot for thread-safe GUI updates (more compatible than QMetaObject::invokeMethod with lambda)
-    QTimer::singleShot(0, tableWidget, [this, logData]() {
-        // Insert new row
-        int row = tableWidget->rowCount();
-        tableWidget->insertRow(row);
-
-        // Set items in order: [tid] [time] [loggername] [level] [message]
-        QTableWidgetItem* threadItem = new QTableWidgetItem(logData->threadId);
-        threadItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-        tableWidget->setItem(row, static_cast<int>(LogColumn::ThreadId), threadItem);
-
-        QTableWidgetItem* timeItem = new QTableWidgetItem(logData->time);
-        timeItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-        tableWidget->setItem(row, static_cast<int>(LogColumn::Time), timeItem);
-
-        QTableWidgetItem* loggerItem = new QTableWidgetItem(logData->loggerName);
-        loggerItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-        tableWidget->setItem(row, static_cast<int>(LogColumn::LoggerName), loggerItem);
-
-        QTableWidgetItem* levelItem = new QTableWidgetItem(logData->level);
-        levelItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-        if (logData->levelColor.isValid()) {
-            levelItem->setForeground(logData->levelColor);
-        }
-        tableWidget->setItem(row, static_cast<int>(LogColumn::Level), levelItem);
-
-        // Message column with word wrap enabled (via delegate)
-        QTableWidgetItem* messageItem = new QTableWidgetItem(logData->message);
-        messageItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-        tableWidget->setItem(row, static_cast<int>(LogColumn::Message), messageItem);
-        
-        // Check if new row matches current filter and hide if it doesn't
-        if (!currentFilterText.isEmpty()) {
-            bool matches = rowMatchesFilter(row, currentFilterText);
-            tableWidget->setRowHidden(row, !matches);
-        }
-        
-        // Resize row to fit content
-        tableWidget->resizeRowToContents(row);
-
-        // Scroll to bottom
-        tableWidget->scrollToBottom();
-    });
+    // Don't resize row immediately - do it in batch at the end for better performance
 }
 
 void QTableWidgetSpdlogSink::flush_()

@@ -110,11 +110,19 @@ void MainWindow::setupUI()
     // Create vertical splitter for content area (tabs | log)
     verticalSplitter = new QSplitter(Qt::Vertical);
     
-    // Content area splitter (for tab management)
+    // Content area splitter (for tab management) with margins
+    QWidget* contentWrapper = new QWidget();
+    QVBoxLayout* contentWrapperLayout = new QVBoxLayout(contentWrapper);
+    contentWrapperLayout->setContentsMargins(0, GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                             GUIConstants::DEFAULT_LAYOUT_MARGIN, 0);
+    contentWrapperLayout->setSpacing(0);
+    
     contentSplitter = new QSplitter(Qt::Horizontal);
     contentSplitter->setChildrenCollapsible(false);
     contentSplitter->setAcceptDrops(true);
-    verticalSplitter->addWidget(contentSplitter);
+    contentWrapperLayout->addWidget(contentSplitter);
+    
+    verticalSplitter->addWidget(contentWrapper);
 
     // Create LayoutManager BEFORE ComponentTreeWidget
     layoutManager = new LayoutManager(contentSplitter, this);
@@ -147,10 +155,16 @@ void MainWindow::setupUI()
         layoutManager->setAvailableTabsMenu(availableTabsMenu);
     }
 
-    // Log panel
+    // Log panel with right margin
     auto logContainerWidget = AppContext::Instance()->getLogContainerWidget();
-    if(logContainerWidget)
-        verticalSplitter->addWidget(logContainerWidget);
+    if(logContainerWidget) {
+        QWidget* logWrapper = new QWidget();
+        QVBoxLayout* logWrapperLayout = new QVBoxLayout(logWrapper);
+        logWrapperLayout->setContentsMargins(0, 0, GUIConstants::DEFAULT_LAYOUT_MARGIN, 0);
+        logWrapperLayout->setSpacing(0);
+        logWrapperLayout->addWidget(logContainerWidget);
+        verticalSplitter->addWidget(logWrapper);
+    }
 
     const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Application started...");

@@ -8,6 +8,7 @@
 class QTableWidget;
 class QWidget;
 class QLineEdit;
+class QTimer;
 
 #include <spdlog/sinks/base_sink.h>
 #include <coretypes/baseobject.h>
@@ -34,6 +35,9 @@ private:
     QWidget* containerWidget;
     QLineEdit* searchEdit;
     QString currentFilterText;
+    
+    static constexpr int MAX_ROWS = 10000;  // Maximum number of rows to keep
+    
     void setupTableWidget();
     void setupSearchWidget();
     void filterTable(const QString& searchText);
@@ -41,6 +45,14 @@ private:
     QString formatTime(const spdlog::log_clock::time_point& time) const;
     QString levelToString(spdlog::level::level_enum level) const;
     QColor getColorForLevel(spdlog::level::level_enum level) const;
+    struct LogMsgData {
+        spdlog::log_clock::time_point time;
+        spdlog::level::level_enum level;
+        std::string logger_name;
+        std::string payload;
+        size_t thread_id;
+    };
+    void addLogRow(const LogMsgData& msg);
 };
 
 // Custom interface for QTableWidget logger sink
