@@ -24,5 +24,14 @@
           "DAQMODULES_REF_FB_MODULE_ENABLE_RENDERER": "ON"
         }
       }
-  ]
+    ],
+    "buildPresets": 
+    [
+      {
+        "name": "opendaq-qt-gui",
+        "displayName": "OpenDAQ Qt GUI",
+        "description": "Build OpenDAQ Qt GUI",
+        "configurePreset": "opendaq-qt-gui"
+      }
+    ]
 }
