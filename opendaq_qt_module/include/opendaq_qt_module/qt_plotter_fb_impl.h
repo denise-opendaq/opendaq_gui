@@ -14,6 +14,8 @@
 #include <QtGlobal>
 #include <unordered_map>
 #include <utility>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
 
 QT_BEGIN_NAMESPACE
 class QChartView;
@@ -21,8 +23,6 @@ class QChart;
 class QValueAxis;
 class QDateTimeAxis;
 class QTimer;
-class QLineSeries;
-class QScatterSeries;
 class QGraphicsTextItem;
 QT_END_NAMESPACE
 
@@ -232,6 +232,11 @@ private:
     
     // Temporary storage for original values during zoom
     bool isZooming = false;
+    
+    // Screen aspect ratio for proportional zooming
+    // Stores the ratio: (plotArea.width / timeRange) / (plotArea.height / yRange)
+    // This maintains the visual aspect ratio when zooming
+    qreal screenAspectRatio = 1.0;  // Initialized to 1.0, will be calculated on first zoom
 
     std::vector<double> samples;
     std::vector<std::chrono::system_clock::time_point> timeStamps;
