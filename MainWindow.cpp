@@ -29,6 +29,7 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("OpenDAQ GUI");
     resize(GUIConstants::DEFAULT_WINDOW_WIDTH, GUIConstants::DEFAULT_WINDOW_HEIGHT);
     setMinimumSize(GUIConstants::MIN_WINDOW_WIDTH, GUIConstants::MIN_WINDOW_HEIGHT);
+    setDockOptions(QMainWindow::DockOption(0));
 
     setupMenuBar();
     setupUI();
