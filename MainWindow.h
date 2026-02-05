@@ -27,10 +27,12 @@ protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void setGeometry(const QRect& rect);
 
 private:
     void setupUI();
     void setupMenuBar();
+    void stopAllAnimations();
 
 private Q_SLOTS:
     void onViewSelectionChanged(int index);

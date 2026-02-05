@@ -19,6 +19,7 @@
 #include <QAbstractAnimation>
 #include <QApplication>
 #include <QWindowStateChangeEvent>
+#include <QWidget>
 
 #include "context/gui_constants.h"
 #include "component/base_tree_element.h"
@@ -36,6 +37,13 @@ MainWindow::MainWindow(QWidget* parent)
     // Disable all dock animations to prevent crashes during resize/zoom
     // This prevents Qt's internal QWidgetAnimator from running during layout changes
     setDockOptions(QMainWindow::DockOption(0));
+    
+    // Install event filter on application to catch all resize events before they reach widgets
+    // This allows us to stop animations before Qt's layout system processes them
+    if (QApplication::instance())
+    {
+        QApplication::instance()->installEventFilter(this);
+    }
 
     setupMenuBar();
     setupUI();
@@ -54,8 +62,25 @@ MainWindow::~MainWindow()
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
+    // Intercept resize events at application level to stop animations before layout processes them
+    // This is critical for preventing crashes in Qt's internal QWidgetAnimator
+    if (event->type() == QEvent::Resize && obj != this)
+    {
+        // Stop animations before any widget resize to prevent Qt's internal animations from crashing
+        stopAllAnimations();
+    }
+    
     // Drag & drop events are now handled by LayoutManager
     return QMainWindow::eventFilter(obj, event);
+}
+
+void MainWindow::setGeometry(const QRect& rect)
+{
+    // Stop animations BEFORE geometry change to prevent crashes
+    // This is called before resizeEvent, so we can prevent Qt's internal animations from starting
+    stopAllAnimations();
+    
+    QMainWindow::setGeometry(rect);
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -64,6 +89,13 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     // This is a workaround for Qt bug where animations can access invalid memory during resize
     // Qt's internal QWidgetAnimator can still run even with dock options disabled
     
+    stopAllAnimations();
+    
+    QMainWindow::resizeEvent(event);
+}
+
+void MainWindow::stopAllAnimations()
+{
     // Stop our custom animations
     if (layoutManager && layoutManager->getDropOverlay())
     {
@@ -94,7 +126,23 @@ void MainWindow::resizeEvent(QResizeEvent* event)
         }
     }
     
-    QMainWindow::resizeEvent(event);
+    // Also check all widgets in the application for animations
+    // This is more aggressive but may catch Qt's internal animations
+    QWidgetList allWidgets = QApplication::allWidgets();
+    for (QWidget* widget : allWidgets)
+    {
+        if (widget)
+        {
+            QList<QAbstractAnimation*> widgetAnimations = widget->findChildren<QAbstractAnimation*>();
+            for (QAbstractAnimation* anim : widgetAnimations)
+            {
+                if (anim && anim->state() == QAbstractAnimation::Running)
+                {
+                    anim->stop();
+                }
+            }
+        }
+    }
 }
 
 void MainWindow::changeEvent(QEvent* event)
@@ -103,34 +151,7 @@ void MainWindow::changeEvent(QEvent* event)
     // These state changes can trigger layout animations that cause crashes
     if (event->type() == QEvent::WindowStateChange)
     {
-        // Stop our custom animations
-        if (layoutManager && layoutManager->getDropOverlay())
-        {
-            layoutManager->getDropOverlay()->stopAnimations();
-        }
-        
-        // Try to find and stop any animations that are children of this window or the application
-        QList<QAbstractAnimation*> windowAnimations = findChildren<QAbstractAnimation*>();
-        for (QAbstractAnimation* anim : windowAnimations)
-        {
-            if (anim && anim->state() == QAbstractAnimation::Running)
-            {
-                anim->stop();
-            }
-        }
-        
-        // Also check application-level animations
-        if (QApplication::instance())
-        {
-            QList<QAbstractAnimation*> appAnimations = QApplication::instance()->findChildren<QAbstractAnimation*>();
-            for (QAbstractAnimation* anim : appAnimations)
-            {
-                if (anim && anim->state() == QAbstractAnimation::Running)
-                {
-                    anim->stop();
-                }
-            }
-        }
+        stopAllAnimations();
     }
     
     QMainWindow::changeEvent(event);
