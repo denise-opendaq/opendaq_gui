@@ -9,8 +9,6 @@
 #include <QMap>
 #include <QEvent>
 
-#include "DetachableTabWidget.h"
-#include "DropOverlay.h"
 #include "LayoutManager.h"
 
 class DetachedWindow;
@@ -27,6 +25,8 @@ public:
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
+    void changeEvent(QEvent* event) override;
 
 private:
     void setupUI();

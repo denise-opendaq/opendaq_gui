@@ -19,6 +19,13 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    
+    // Disable all UI animations globally to prevent crashes during resize/zoom on macOS
+    // This is a workaround for Qt bug where animations can access invalid memory
+    app.setEffectEnabled(Qt::UI_AnimateMenu, false);
+    app.setEffectEnabled(Qt::UI_AnimateCombo, false);
+    app.setEffectEnabled(Qt::UI_AnimateTooltip, false);
+    app.setEffectEnabled(Qt::UI_AnimateToolBox, false);
 
     // Generate unique device info
     QString manufacturer = QString("openDAQ-GUI-%1").arg(QSysInfo::machineHostName());

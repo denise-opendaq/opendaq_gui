@@ -4,6 +4,7 @@
 #include <QPen>
 #include <QColor>
 #include <QFont>
+#include <QEvent>
 
 DropOverlay::DropOverlay(QWidget* parent)
     : QWidget(parent)
@@ -22,6 +23,23 @@ DropOverlay::DropOverlay(QWidget* parent)
     fadeAnimation = new QPropertyAnimation(this, "highlightOpacity");
     fadeAnimation->setDuration(150);
     fadeAnimation->setEasingCurve(QEasingCurve::InOutQuad);
+    
+    // Install event filter to track target widget resize events
+    if (parent)
+    {
+        parent->installEventFilter(this);
+    }
+}
+
+DropOverlay::~DropOverlay()
+{
+    // Stop and clean up animation to prevent crashes during widget destruction
+    stopAnimations();
+    if (fadeAnimation)
+    {
+        fadeAnimation->deleteLater();
+        fadeAnimation = nullptr;
+    }
 }
 
 void DropOverlay::setTargetWidget(QWidget* target)
@@ -81,15 +99,25 @@ void DropOverlay::updateHighlight(const QPoint& pos)
         previousZone = currentZone;
         currentZone = newZone;
 
-        if (fadeAnimation->state() == QAbstractAnimation::Running)
-            fadeAnimation->stop();
+        stopAnimations();
 
-        fadeAnimation->setStartValue(0.5);
-        fadeAnimation->setEndValue(1.0);
-        fadeAnimation->start();
+        if (fadeAnimation)
+        {
+            fadeAnimation->setStartValue(0.5);
+            fadeAnimation->setEndValue(1.0);
+            fadeAnimation->start();
+        }
 
         update();
         Q_EMIT dropZoneChanged(newZone);
+    }
+}
+
+void DropOverlay::stopAnimations()
+{
+    if (fadeAnimation && fadeAnimation->state() == QAbstractAnimation::Running)
+    {
+        fadeAnimation->stop();
     }
 }
 
@@ -158,4 +186,15 @@ QRect DropOverlay::getZoneRect(DropZone zone) const
         default:
             return QRect();
     }
+}
+
+bool DropOverlay::eventFilter(QObject* obj, QEvent* event)
+{
+    // Update overlay geometry when target widget is resized
+    if (obj == targetWidget && event->type() == QEvent::Resize)
+    {
+        stopAnimations();
+        setTargetWidget(targetWidget); // Update geometry
+    }
+    return QWidget::eventFilter(obj, event);
 }

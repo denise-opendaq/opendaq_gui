@@ -527,6 +527,10 @@ void QtPlotterFbImpl::updateInputPorts()
 
 void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 {
+    auto signal = inputPort.getSignal();
+    if (!signal.getDomainSignal().assigned())
+        DAQ_THROW_EXCEPTION(InvalidParametersException, "Connecting the signal without domain signal is forbiden");
+
     auto lock = this->getRecursiveConfigLock();
 
     auto it = signalContexts.find(inputPort);
@@ -534,7 +538,16 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
     if (it != signalContexts.end())
     {
         if (it->second.isSignalConnected)
+        {
             createNewPort = false;
+
+            if (autoClear)
+            {
+                if (it->second.series)
+                    it->second.series->clear();
+                it->second.pointsBuffer.clear();
+            }
+        }
         it->second.isSignalConnected = true;
     }
 
@@ -644,7 +657,6 @@ void QtPlotterFbImpl::handleEventPacket(SignalContext& sigCtx, const daq::EventP
             sigCtx.valueRangeMax = valueRange.getHighValue();
         }
     }
-
 }
 
 bool QtPlotterFbImpl::handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime)
