@@ -3,6 +3,8 @@
 #include <QApplication>
 #include <QCursor>
 #include <QPointer>
+
+#include <memory>
 #include <QToolButton>
 #include <QStyle>
 #include <QStyleOption>
@@ -115,14 +117,22 @@ void DetachableTabBar::mouseMoveEvent(QMouseEvent* event)
         encodeTabDragPayload(reinterpret_cast<quintptr>(sourceTabWidget), dragIndex)
     );
 
-    QDrag* drag = new QDrag(qApp);
+    // Use qApp as parent so Qt doesn't tie the drag to this window; reduces handleDragMoveEvent
+    // null-target crashes on macOS when the drag is delivered to the window.
+    std::unique_ptr<QDrag> drag(new QDrag(qApp));
     drag->setMimeData(mime);
 
     // Nice "ghost" like VSCode: the grabbed tab pixmap
     const QRect tr = tabRect(dragIndex);
-    QPixmap pm = grab(tr);
-    drag->setPixmap(pm);
-    drag->setHotSpot(event->pos() - tr.topLeft());
+    if (tr.isValid())
+    {
+        QPixmap pm = grab(tr);
+        if (!pm.isNull())
+        {
+            drag->setPixmap(pm);
+            drag->setHotSpot(event->pos() - tr.topLeft());
+        }
+    }
 
     // Guard against the source tab bar being deleted while the drag runs
     // (e.g. when the last tab is moved out and the container is destroyed).
@@ -131,7 +141,6 @@ void DetachableTabBar::mouseMoveEvent(QMouseEvent* event)
     const int idx = dragIndex;
 
     const Qt::DropAction result = drag->exec(Qt::MoveAction);
-    drag->deleteLater();
 
     if (!self)
         return;
@@ -265,9 +274,16 @@ int DetachableTabWidget::dropInsertIndexFromPos(const QPoint& widgetPos) const
 
 void DetachableTabWidget::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (!event || !event->mimeData()) 
+    if (!event)
+        return;
+    if (!event->mimeData())
     {
         QTabWidget::dragEnterEvent(event);
+        return;
+    }
+    if (!tabBar())
+    {
+        event->ignore();
         return;
     }
 
@@ -285,9 +301,18 @@ void DetachableTabWidget::dragEnterEvent(QDragEnterEvent* event)
 
 void DetachableTabWidget::dragMoveEvent(QDragMoveEvent* event)
 {
-    if (!event || !event->mimeData()) 
+    if (!event)
+        return;
+
+    if (!event->mimeData())
     {
         QTabWidget::dragMoveEvent(event);
+        return;
+    }
+
+    if (!tabBar())
+    {
+        event->ignore();
         return;
     }
 
@@ -304,9 +329,18 @@ void DetachableTabWidget::dragMoveEvent(QDragMoveEvent* event)
 
 void DetachableTabWidget::dropEvent(QDropEvent* event)
 {
-    if (!event || !event->mimeData()) 
+    if (!event)
+        return;
+
+    if (!event->mimeData())
     {
         QTabWidget::dropEvent(event);
+        return;
+    }
+
+    if (!tabBar())
+    {
+        event->ignore();
         return;
     }
 

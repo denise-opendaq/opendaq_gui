@@ -1,6 +1,6 @@
 #include "coretypes/base_core_type_handler.h"
 #include "widgets/property_object_view.h"
-#include <QComboBox>
+#include <QMenu>
 #include <QTreeWidget>
 #include <QMessageBox>
 
@@ -16,54 +16,45 @@ bool BaseCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
     if (selectionValues.isEmpty())
         return false;
 
-    // Create and show combobox as a popup
-    auto* combo = new QComboBox(view);
-    combo->addItems(selectionValues);
-
-    // Set current value as selected
     QString currentValueStr = valueToString(currentValue);
-    int currentIndex = selectionValues.indexOf(currentValueStr);
-    if (currentIndex >= 0)
-        combo->setCurrentIndex(currentIndex);
 
-    // Position combobox at the item's value column, below the current item
+    QMenu menu(view);
+    for (const QString& val : selectionValues)
+    {
+        QAction* action = menu.addAction(val);
+        if (val == currentValueStr)
+        {
+            action->setCheckable(true);
+            action->setChecked(true);
+        }
+    }
+
+    // Position at the item's value column
     QRect itemRect = view->visualItemRect(item);
     int valueColumnX = view->columnViewportPosition(1);
-    int valueColumnWidth = view->columnWidth(1);
-    combo->setGeometry(valueColumnX, itemRect.y() + itemRect.height(), valueColumnWidth, itemRect.height());
+    QPoint pos = view->viewport()->mapToGlobal(QPoint(valueColumnX, itemRect.y() + itemRect.height()));
 
-    // Connect to handle selection
-    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, setValue](int index) {
+    QAction* selected = menu.exec(pos);
+    if (selected)
+    {
         try
         {
-            QString selectedValue = combo->itemText(index);
-            daq::BaseObjectPtr newValue = stringToValue(selectedValue);
+            daq::BaseObjectPtr newValue = stringToValue(selected->text());
             setValue(newValue);
-            // Note: Display will be updated automatically via componentCoreEventCallback
         }
         catch (const std::exception& e)
         {
-            QMessageBox::warning(combo->parentWidget(),
+            QMessageBox::warning(view,
                                  "Value Update Error",
                                  QString("Failed to update value: %1").arg(e.what()));
         }
         catch (...)
         {
-            QMessageBox::warning(combo->parentWidget(),
+            QMessageBox::warning(view,
                                  "Value Update Error",
                                  "Failed to update value: unknown error");
         }
-        combo->deleteLater();
-    });
-
-    // Delete combobox when focus is lost
-    QObject::connect(combo, &QComboBox::destroyed, combo, &QComboBox::deleteLater);
-
-    combo->show();
-    combo->setFocus();
-    combo->showPopup();
+    }
 
     return true;
 }
-
-

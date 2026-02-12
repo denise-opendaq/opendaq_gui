@@ -15,7 +15,6 @@
 #include <QTextDocument>
 #include <QPainter>
 #include <QApplication>
-#include <QEventLoop>
 #include <QMetaObject>
 #include <spdlog/details/log_msg.h>
 #include <spdlog/fmt/chrono.h>
@@ -145,19 +144,16 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     // Auto-resize rows to fit content (for word wrap in Message column)
     tableWidget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     
-    // Recalculate row heights when Message column is resized
+    // Recalculate row heights when Message column is resized.
+    // Do NOT call processEvents() here: it can cause reentrant paint on macOS and trigger
+    // QIOSurfaceGraphicsBuffer "!isLocked()" assert in Qt Cocoa plugin.
     QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::sectionResized,
                      [this](int logicalIndex, int, int) {
                          if (logicalIndex == static_cast<int>(LogColumn::Message)) {
-                             // Resize rows in batches to avoid blocking UI
                              tableWidget->setUpdatesEnabled(false);
-                             int rowCount = tableWidget->rowCount();
-                             for (int row = 0; row < rowCount; ++row) {
+                             const int rowCount = tableWidget->rowCount();
+                             for (int row = 0; row < rowCount; ++row)
                                  tableWidget->resizeRowToContents(row);
-                                 if (row % 100 == 0) {
-                                     QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-                                 }
-                             }
                              tableWidget->setUpdatesEnabled(true);
                          }
                      });

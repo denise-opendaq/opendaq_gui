@@ -5,15 +5,11 @@
 #include <QColor>
 #include <QFont>
 #include <QEvent>
+#include <QMetaObject>
 
 DropOverlay::DropOverlay(QWidget* parent)
     : QWidget(parent)
 {
-    // Make this overlay NOT steal drag/drop or mouse input.
-    // We'll position it as a transparent tool window over the content area.
-    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    setWindowFlag(Qt::WindowTransparentForInput, true);
-
     setAttribute(Qt::WA_TransparentForMouseEvents, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAttribute(Qt::WA_ShowWithoutActivating, true);
@@ -45,13 +41,14 @@ DropOverlay::~DropOverlay()
 void DropOverlay::setTargetWidget(QWidget* target)
 {
     targetWidget = target;
-    if (!targetWidget)
+    if (!targetWidget || !parentWidget())
         return;
 
-    const QPoint topLeft = targetWidget->mapToGlobal(QPoint(0, 0));
-    const QRect globalRect(topLeft, targetWidget->size());
+    // Convert target geometry to the overlay's parent coordinate system.
+    const QPoint topLeft = parentWidget()->mapFromGlobal(
+        targetWidget->mapToGlobal(QPoint(0, 0)));
 
-    setGeometry(globalRect);
+    setGeometry(QRect(topLeft, targetWidget->size()));
     raise();
 }
 
@@ -108,7 +105,8 @@ void DropOverlay::updateHighlight(const QPoint& pos)
             fadeAnimation->start();
         }
 
-        update();
+        // Defer update to avoid reentrant paint (can trigger Qt Cocoa IOSurface assert on macOS)
+        QMetaObject::invokeMethod(this, [this] { update(); }, Qt::QueuedConnection);
         Q_EMIT dropZoneChanged(newZone);
     }
 }
@@ -132,14 +130,20 @@ void DropOverlay::paintEvent(QPaintEvent* event)
         return;
 
     const QRect zoneRect = getZoneRect(currentZone);
+    if (!zoneRect.isValid())
+        return;
 
     const int alphaFill = static_cast<int>(120 * m_highlightOpacity);
     const int alphaBorder = static_cast<int>(255 * m_highlightOpacity);
 
     painter.fillRect(zoneRect, QColor(37, 99, 235, alphaFill));
 
-    painter.setPen(QPen(QColor(37, 99, 235, alphaBorder), 3));
-    painter.drawRoundedRect(zoneRect.adjusted(2, 2, -2, -2), 4, 4);
+    const QRect borderRect = zoneRect.adjusted(2, 2, -2, -2);
+    if (borderRect.isValid())
+    {
+        painter.setPen(QPen(QColor(37, 99, 235, alphaBorder), 3));
+        painter.drawRoundedRect(borderRect, 4, 4);
+    }
 
     painter.setPen(QColor(255, 255, 255, alphaBorder));
     QFont font = painter.font();
