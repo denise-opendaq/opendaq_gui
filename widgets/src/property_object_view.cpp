@@ -1,13 +1,59 @@
 #include "widgets/property_object_view.h"
 #include "property/property_factory.h"
+#include "property/base_property_item.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
+#include <QCheckBox>
 #include <QHeaderView>
+#include <QMenu>
 #include <QSignalBlocker>
+#include <QVBoxLayout>
+#include <QWidgetAction>
 #include <QTreeWidgetItemIterator>
 #include <QMessageBox>
 #include <QKeyEvent>
 #include <coreobjects/property_object_internal_ptr.h>
+
+struct Column
+{
+    Column(const QString& name, bool visible, bool readOnly = false)
+        : name(name)
+        , visible(visible)
+        , readOnly(readOnly)
+    {}
+
+    const QString& getName() const { return name; }
+    bool getVisible() const { return visible; }
+    bool isReadOnly() const { return readOnly; }
+
+    bool setVisible(bool v)
+    {
+        if (readOnly)
+            return false;
+        visible = v;
+        return true;
+    }
+
+private:
+    QString name;
+    bool visible;
+    bool readOnly;
+};
+
+// Single source of truth: columns with name, default visibility, and readOnly (can't toggle)
+static QList<Column>& getColumns()
+{
+    static QList<Column> list = []() 
+    {
+        QList<Column> l;
+        l.append(Column(QStringLiteral("Property name"), true, true));
+        l.append(Column(QStringLiteral("Value"), true, true));
+        for (const QString& name : BasePropertyItem::getAvailableMetadata())
+            l.append(Column(name, false, false));
+        return l;
+    }();
+    return list;
+}
 
 // ============================================================================
 // PropertyObjectView implementation
@@ -26,12 +72,25 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
             rootPath = path.toStdString();
     }
 
-    setColumnCount(2);
-    setHeaderLabels({ "Property name", "Value" });
-    header()->setStretchLastSection(false);
-    header()->setSectionResizeMode(QHeaderView::Stretch);
-    setColumnWidth(0, width() / 2);
-    setColumnWidth(1, width() / 2);
+    const QList<Column>& columns = getColumns();
+    QStringList columnLabels;
+    for (const Column& c : columns)
+        columnLabels.append(c.getName());
+    const int colCount = columnLabels.size();
+    setColumnCount(colCount);
+    setHeaderLabels(columnLabels);
+    setHeaderHidden(false);
+    header()->setStretchLastSection(true);
+
+    for (int i = 0; i < colCount; ++i)
+    {
+        header()->setSectionHidden(i, !columns.at(i).getVisible());
+        header()->setSectionResizeMode(i, (i == colCount - 1) ? QHeaderView::Stretch : QHeaderView::Interactive);
+    }
+
+    // Header context menu to toggle visible columns (like QTableWidgetSpdlogSink)
+    header()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(header(), &QHeaderView::customContextMenuRequested, this, &PropertyObjectView::onHeaderContextMenu);
 
     setRootIsDecorated(true);
     setUniformRowHeights(true);
@@ -87,14 +146,12 @@ bool PropertyObjectView::edit(const QModelIndex& index, EditTrigger trigger, QEv
         if (!logic)
             return false;
     }
-
-    // Check editability based on column
+        
     if (index.column() == 0)
         return logic->isKeyEditable() && QTreeWidget::edit(index, trigger, event);
-    else if (index.column() == 1)
+    if (index.column() == 1)
         return logic->isValueEditable() && QTreeWidget::edit(index, trigger, event);
-
-    return false;
+    return false; // Metadata columns
 }
 
 void PropertyObjectView::keyPressEvent(QKeyEvent* event)
@@ -297,6 +354,65 @@ void PropertyObjectView::onContextMenu(const QPoint& pos)
 
     if (logic)
         logic->handle_right_click(this, item, viewport()->mapToGlobal(pos));
+}
+
+void PropertyObjectView::onHeaderContextMenu(const QPoint& pos)
+{
+    QMenu menu;
+    const QList<Column>& columns = getColumns();
+    QTreeWidgetItem* h = headerItem();
+
+    QWidget* widget = new QWidget(&menu);
+    QVBoxLayout* layout = new QVBoxLayout(widget);
+    layout->setContentsMargins(8, 4, 8, 4);
+
+    for (int i = 0; i < columnCount() && i < columns.size(); ++i)
+    {
+        const Column& col = columns.at(i);
+        if (col.isReadOnly())
+            continue;
+
+        QString headerText = h ? h->text(i) : col.getName();
+        if (headerText.isEmpty())
+            headerText = tr("Column %1").arg(i + 1);
+        QCheckBox* cb = new QCheckBox(headerText, widget);
+        cb->setChecked(col.getVisible());
+        const int colIndex = i;
+        connect(cb, &QCheckBox::toggled, this, [this, colIndex](bool checked) {
+            QList<Column>& cols = getColumns();
+            if (colIndex >= cols.size())
+                return;
+            if (cols[colIndex].setVisible(checked))
+            {
+                header()->setSectionHidden(colIndex, !checked);
+                fitColumnsToViewport();
+            }
+        });
+        layout->addWidget(cb);
+    }
+
+    QWidgetAction* action = new QWidgetAction(&menu);
+    action->setDefaultWidget(widget);
+    menu.addAction(action);
+    menu.exec(header()->mapToGlobal(pos));
+}
+
+void PropertyObjectView::fitColumnsToViewport()
+{
+    int visibleCount = 0;
+    for (int i = 0; i < columnCount(); ++i)
+    {
+        if (!header()->isSectionHidden(i))
+            ++visibleCount;
+    }
+    if (visibleCount <= 0)
+        return;
+    const int w = viewport()->width() / visibleCount;
+    for (int i = 0; i < columnCount(); ++i)
+    {
+        if (!header()->isSectionHidden(i))
+            header()->resizeSection(i, w);
+    }
 }
 
 void PropertyObjectView::removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName)

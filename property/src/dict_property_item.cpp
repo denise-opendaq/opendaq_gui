@@ -47,8 +47,12 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         auto valueHandler = CoreTypeFactory::createHandler(value, prop.getItemType());
 
         // Use handlers to display key and value
-        treeChild->setText(0, keyHandler->valueToString(key));
-        treeChild->setText(1, valueHandler->valueToString(value));
+        const QString keyStr = keyHandler->valueToString(key);
+        const QString valueStr = valueHandler->valueToString(value);
+        treeChild->setText(0, keyStr);
+        treeChild->setToolTip(0, keyStr);
+        treeChild->setText(1, valueStr);
+        treeChild->setToolTip(1, valueStr);
 
         if (dictEditable)
         {

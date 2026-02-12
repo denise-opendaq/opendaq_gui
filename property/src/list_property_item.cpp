@@ -46,11 +46,14 @@ void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
         auto* treeChild = new QTreeWidgetItem();
         const QString key = QStringLiteral("[%1]").arg(i);
         treeChild->setText(0, key);
+        treeChild->setToolTip(0, key);
 
         // Use handler to display value
         auto value = list[i];
         auto valueHandler = CoreTypeFactory::createHandler(value, prop.getItemType());
-        treeChild->setText(1, valueHandler->valueToString(value));
+        const QString valueStr = valueHandler->valueToString(value);
+        treeChild->setText(1, valueStr);
+        treeChild->setToolTip(1, valueStr);
 
         if (listEditable)
         {

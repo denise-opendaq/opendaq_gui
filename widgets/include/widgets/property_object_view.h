@@ -108,13 +108,14 @@ private Q_SLOTS:
     void onItemChanged(QTreeWidgetItem* item, int column);
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
+    void onHeaderContextMenu(const QPoint& pos);
 
 private:
     void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
     daq::PropertyObjectPtr getChildObject(std::string path);
     void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
+    void fitColumnsToViewport();
 
-private:
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::string rootPath;
