@@ -1,4 +1,3 @@
-#include "logger/qt_text_edit_sink.h"
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QMenu>
@@ -16,6 +15,8 @@
 #include <QPainter>
 #include <QApplication>
 #include <QMetaObject>
+
+#include "logger/qt_text_edit_sink.h"
 #include <spdlog/details/log_msg.h>
 #include <spdlog/fmt/chrono.h>
 #include <coretypes/ctutils.h>
