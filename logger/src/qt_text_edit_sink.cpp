@@ -19,12 +19,10 @@
 #include "logger/qt_text_edit_sink.h"
 #include <spdlog/details/log_msg.h>
 #include <spdlog/fmt/chrono.h>
-#include <coretypes/ctutils.h>
-
-using namespace daq;
 
 // Column indices - order: [tid] [time] [loggername] [level] [message]
-enum class LogColumn {
+enum class LogColumn 
+{
     ThreadId = 0,
     Time = 1,
     LoggerName = 2,
@@ -92,7 +90,8 @@ void QTableWidgetSpdlogSink::setupTableWidget()
 
     // Set up columns - order: [tid] [time] [loggername] [level] [message]
     tableWidget->setColumnCount(5);
-    tableWidget->setHorizontalHeaderLabels({
+    tableWidget->setHorizontalHeaderLabels(
+    {
         "Thread ID",
         "Time",
         "Logger Name",
@@ -108,23 +107,26 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     
     // Connect context menu signal
     QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::customContextMenuRequested,
-                     [this](const QPoint& pos) {
-                         QMenu menu;
-                         
-                         // Add menu items for each column
-                         for (int i = 0; i < tableWidget->columnCount(); ++i) {
-                             QString headerText = tableWidget->horizontalHeaderItem(i)->text();
-                             QAction* action = menu.addAction(headerText);
-                             action->setCheckable(true);
-                             action->setChecked(!tableWidget->horizontalHeader()->isSectionHidden(i));
-                             
-                             QObject::connect(action, &QAction::triggered, [this, i](bool checked) {
-                                 tableWidget->horizontalHeader()->setSectionHidden(i, !checked);
-                             });
-                         }
-                         
-                         menu.exec(tableWidget->horizontalHeader()->mapToGlobal(pos));
-                     });
+        [this](const QPoint& pos) 
+        {
+            QMenu menu;
+            
+            // Add menu items for each column
+            for (int i = 0; i < tableWidget->columnCount(); ++i) 
+            {
+                QString headerText = tableWidget->horizontalHeaderItem(i)->text();
+                QAction* action = menu.addAction(headerText);
+                action->setCheckable(true);
+                action->setChecked(!tableWidget->horizontalHeader()->isSectionHidden(i));
+                
+                QObject::connect(action, &QAction::triggered, [this, i](bool checked)
+                {
+                    tableWidget->horizontalHeader()->setSectionHidden(i, !checked);
+                });
+            }
+            
+            menu.exec(tableWidget->horizontalHeader()->mapToGlobal(pos));
+        });
 
     // Set table properties
     tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -148,16 +150,18 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     // Recalculate row heights when Message column is resized.
     // Do NOT call processEvents() here: it can cause reentrant paint on macOS and trigger
     // QIOSurfaceGraphicsBuffer "!isLocked()" assert in Qt Cocoa plugin.
-    QObject::connect(tableWidget->horizontalHeader(), &QHeaderView::sectionResized,
-                     [this](int logicalIndex, int, int) {
-                         if (logicalIndex == static_cast<int>(LogColumn::Message)) {
-                             tableWidget->setUpdatesEnabled(false);
-                             const int rowCount = tableWidget->rowCount();
-                             for (int row = 0; row < rowCount; ++row)
-                                 tableWidget->resizeRowToContents(row);
-                             tableWidget->setUpdatesEnabled(true);
-                         }
-                     });
+    QObject::connect(tableWidget->horizontalHeader(), 
+        &QHeaderView::sectionResized, [this](int logicalIndex, int, int) 
+        {
+            if (logicalIndex == static_cast<int>(LogColumn::Message)) 
+            {
+                tableWidget->setUpdatesEnabled(false);
+                const int rowCount = tableWidget->rowCount();
+                for (int row = 0; row < rowCount; ++row)
+                    tableWidget->resizeRowToContents(row);
+                tableWidget->setUpdatesEnabled(true);
+            }
+        });
 }
 
 void QTableWidgetSpdlogSink::setupSearchWidget()
@@ -188,10 +192,11 @@ void QTableWidgetSpdlogSink::setupSearchWidget()
 
     // Connect search signal
     QObject::connect(searchEdit, &QLineEdit::textChanged, 
-                     [this](const QString& text) {
-                         currentFilterText = text;
-                         filterTable(text);
-                     });
+        [this](const QString& text)
+        {
+            currentFilterText = text;
+            filterTable(text);
+        });
 }
 
 void QTableWidgetSpdlogSink::filterTable(const QString& searchText)
@@ -201,7 +206,8 @@ void QTableWidgetSpdlogSink::filterTable(const QString& searchText)
 
     QString searchLower = searchText.toLower();
     
-    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+    for (int row = 0; row < tableWidget->rowCount(); ++row) 
+    {
         bool match = rowMatchesFilter(row, searchText);
         
         // Show or hide row based on match
@@ -217,11 +223,11 @@ bool QTableWidgetSpdlogSink::rowMatchesFilter(int row, const QString& searchText
     QString searchLower = searchText.toLower();
     
     // Search in all columns
-    for (int col = 0; col < tableWidget->columnCount(); ++col) {
+    for (int col = 0; col < tableWidget->columnCount(); ++col)
+    {
         QTableWidgetItem* item = tableWidget->item(row, col);
-        if (item && item->text().toLower().contains(searchLower)) {
+        if (item && item->text().toLower().contains(searchLower))
             return true;
-        }
     }
     
     return false;
@@ -231,7 +237,8 @@ QString QTableWidgetSpdlogSink::formatTime(const spdlog::log_clock::time_point& 
 {
     // spdlog::log_clock is typically an alias for std::chrono::system_clock
     // Try to convert directly assuming it's system_clock
-    try {
+    try 
+    {
         // Cast the duration to system_clock duration
         auto duration = time.time_since_epoch();
         auto system_duration = std::chrono::duration_cast<std::chrono::system_clock::duration>(duration);
@@ -246,7 +253,9 @@ QString QTableWidgetSpdlogSink::formatTime(const spdlog::log_clock::time_point& 
         QString timeStr = dateTime.toString("yyyy-MM-dd HH:mm:ss");
         timeStr += QString(".%1").arg(ms.count(), 3, 10, QChar('0'));
         return timeStr;
-    } catch (...) {
+    } 
+    catch (...) 
+    {
         // Fallback: use current time if conversion fails
         QDateTime dateTime = QDateTime::currentDateTime();
         return dateTime.toString("yyyy-MM-dd HH:mm:ss.zzz");
@@ -312,7 +321,8 @@ void QTableWidgetSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
     msgData->thread_id = msg.thread_id;
 
     // Use QTimer::singleShot to safely add log from any thread to GUI thread
-    QTimer::singleShot(0, tableWidget, [this, msgData]() {
+    QTimer::singleShot(0, tableWidget, [this, msgData]() 
+    {
         addLogRow(*msgData);
     });
 }
@@ -324,9 +334,8 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
 
     // Remove old rows if we exceed MAX_ROWS
     int currentRowCount = tableWidget->rowCount();
-    if (currentRowCount >= MAX_ROWS) {
+    if (currentRowCount >= MAX_ROWS)
         tableWidget->removeRow(0);  // Remove oldest row
-    }
 
     // Convert message to display format
     QString loggerName = QString::fromStdString(msg.logger_name);
@@ -355,9 +364,9 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
 
     QTableWidgetItem* levelItem = new QTableWidgetItem(level);
     levelItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-    if (levelColor.isValid()) {
+    if (levelColor.isValid()) 
         levelItem->setForeground(levelColor);
-    }
+
     tableWidget->setItem(row, static_cast<int>(LogColumn::Level), levelItem);
 
     // Message column with word wrap enabled (via delegate)
@@ -366,7 +375,8 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
     tableWidget->setItem(row, static_cast<int>(LogColumn::Message), messageItem);
     
     // Check if new row matches current filter and hide if it doesn't
-    if (!currentFilterText.isEmpty()) {
+    if (!currentFilterText.isEmpty()) 
+    {
         bool matches = rowMatchesFilter(row, currentFilterText);
         tableWidget->setRowHidden(row, !matches);
     }
@@ -391,56 +401,55 @@ QTableWidgetLoggerSink::QTableWidgetLoggerSink()
     sink->set_pattern("%+");
 }
 
-ErrCode QTableWidgetLoggerSink::setLevel(LogLevel level)
+daq::ErrCode QTableWidgetLoggerSink::setLevel(daq::LogLevel level)
 {
     sink->set_level(static_cast<spdlog::level::level_enum>(level));
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTableWidgetLoggerSink::getLevel(LogLevel* level)
+daq::ErrCode QTableWidgetLoggerSink::getLevel(daq::LogLevel* level)
 {
     if (level == nullptr)
-    {
         return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "Cannot save return value to a null pointer.");
-    }
 
-    *level = static_cast<LogLevel>(sink->level());
+    *level = static_cast<daq::LogLevel>(sink->level());
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTableWidgetLoggerSink::shouldLog(LogLevel level, Bool* willLog)
+daq::ErrCode QTableWidgetLoggerSink::shouldLog(daq::LogLevel level, daq::Bool* willLog)
 {
     if (willLog == nullptr)
-    {
         return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "Cannot save return value to a null pointer.");
-    }
 
     *willLog = sink->should_log(static_cast<spdlog::level::level_enum>(level));
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTableWidgetLoggerSink::setPattern(IString* pattern)
+daq::ErrCode QTableWidgetLoggerSink::setPattern(daq::IString* pattern)
 {
     OPENDAQ_PARAM_NOT_NULL(pattern);
-    const ErrCode errCode = daqTry([&]()
+    const auto errCode = daq::daqTry([&]()
     {
         sink->set_pattern(toStdString(pattern));
     });
-    OPENDAQ_RETURN_IF_FAILED(errCode, "Failed to set pattern for logger sink");
+
+    if (OPENDAQ_FAILED(errCode))
+        return DAQ_EXTEND_ERROR_INFO(errCode, "Cannot save return value to a null pointer.");
     return errCode;
 }
 
-ErrCode QTableWidgetLoggerSink::flush()
+daq::ErrCode QTableWidgetLoggerSink::flush()
 {
-    const ErrCode errCode = daqTry([&]()
+    const auto errCode = daq::daqTry([&]()
     {
         sink->flush();
     });
-    OPENDAQ_RETURN_IF_FAILED(errCode, "Failed to flush logger sink");
+    if (OPENDAQ_FAILED(errCode))
+        return DAQ_EXTEND_ERROR_INFO(errCode, "Failed to flush logger sink");
     return errCode;
 }
 
-ErrCode QTableWidgetLoggerSink::getSinkImpl(SinkPtr* sinkImp)
+daq::ErrCode QTableWidgetLoggerSink::getSinkImpl(SinkPtr* sinkImp)
 {
     if (sinkImp == nullptr)
        return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "SinkImp out-parameter must not be null");
@@ -448,7 +457,7 @@ ErrCode QTableWidgetLoggerSink::getSinkImpl(SinkPtr* sinkImp)
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTableWidgetLoggerSink::getTableWidget(QTableWidget** tableWidget)
+daq::ErrCode QTableWidgetLoggerSink::getTableWidget(QTableWidget** tableWidget)
 {
     if (tableWidget == nullptr)
         return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "TableWidget out-parameter must not be null");
@@ -457,7 +466,7 @@ ErrCode QTableWidgetLoggerSink::getTableWidget(QTableWidget** tableWidget)
     return OPENDAQ_SUCCESS;
 }
 
-ErrCode QTableWidgetLoggerSink::getContainerWidget(QWidget** containerWidget)
+daq::ErrCode QTableWidgetLoggerSink::getContainerWidget(QWidget** containerWidget)
 {
     if (containerWidget == nullptr)
         return DAQ_MAKE_ERROR_INFO(OPENDAQ_ERR_ARGUMENT_NULL, "ContainerWidget out-parameter must not be null");
@@ -466,7 +475,7 @@ ErrCode QTableWidgetLoggerSink::getContainerWidget(QWidget** containerWidget)
     return OPENDAQ_SUCCESS;
 }
 
-LoggerSinkPtr createQTableWidgetLoggerSink()
+daq::LoggerSinkPtr createQTableWidgetLoggerSink()
 {
-    return daq::createWithImplementation<ILoggerSink, QTableWidgetLoggerSink>();
+    return daq::createWithImplementation<daq::ILoggerSink, QTableWidgetLoggerSink>();
 }
