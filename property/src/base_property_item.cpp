@@ -1,5 +1,24 @@
 #include "property/base_property_item.h"
 
+static QString CoreTypeToString(daq::CoreType coretype)
+{
+    switch (coretype)
+    {
+        case daq::CoreType::ctBool: return QStringLiteral("Bool");
+        case daq::CoreType::ctInt: return QStringLiteral("Int");
+        case daq::CoreType::ctFloat: return QStringLiteral("Float");
+        case daq::CoreType::ctString: return QStringLiteral("String");
+        case daq::CoreType::ctList: return QStringLiteral("List");
+        case daq::CoreType::ctDict: return QStringLiteral("Dict");
+        case daq::CoreType::ctObject: return QStringLiteral("Object");
+        case daq::CoreType::ctStruct: return QStringLiteral("Struct");
+        case daq::CoreType::ctEnumeration: return QStringLiteral("Enumeration");
+        case daq::CoreType::ctFunc: return QStringLiteral("Function");
+        case daq::CoreType::ctProc: return QStringLiteral("Procedure");
+        default: return QString();
+    }
+}
+
 BasePropertyItem::BasePropertyItem(const daq::PropertyObjectPtr& owner, const daq::PropertyPtr& prop)
     : owner(owner)
     , prop(prop)
@@ -68,6 +87,123 @@ bool BasePropertyItem::isVisible() const
     return prop.getVisible();
 }
 
+const QStringList& BasePropertyItem::getAvailableMetadata()
+{
+    static QStringList list = 
+    {
+        QStringLiteral("Value type"),
+        QStringLiteral("Key type"),
+        QStringLiteral("Item type"),
+        QStringLiteral("Description"),
+        QStringLiteral("Unit"),
+        QStringLiteral("Min value"),
+        QStringLiteral("Max value"),
+        QStringLiteral("Default value"),
+        QStringLiteral("Suggested values"),
+        QStringLiteral("Visible"),
+        QStringLiteral("Selection values"),
+        QStringLiteral("Referenced"),
+        QStringLiteral("Validator"),
+        QStringLiteral("Coercer"),
+        QStringLiteral("Callable info"),
+        QStringLiteral("Struct type"),
+    };
+    return list;
+}
+
+QString BasePropertyItem::getMetadataValue(const QString& key) const
+{
+    try
+    {
+        if (key == QStringLiteral("Value type"))
+        {
+            return CoreTypeToString(prop.getValueType());
+        }
+        if (key == QStringLiteral("Key type"))
+        {
+            return CoreTypeToString(prop.getKeyType());
+        }
+        if (key == QStringLiteral("Item type"))
+        {
+            return CoreTypeToString(prop.getItemType());
+        }
+        if (key == QStringLiteral("Description"))
+        {
+            const auto description = prop.getDescription();
+            return description.assigned() ? QString::fromStdString(description) : QString();
+        }
+        if (key == QStringLiteral("Unit"))
+        {
+            const auto unit = prop.getUnit();
+            return unit.assigned() ? QString::fromStdString(unit) : QString();
+        }
+        if (key == QStringLiteral("Min value"))
+        {
+            const auto min = prop.getMinValue();
+            return min.assigned() ? QString::fromStdString(min) : QString();
+        }
+        if (key == QStringLiteral("Max value"))
+        {
+            const auto max = prop.getMaxValue();
+            return max.assigned() ? QString::fromStdString(max) : QString();
+        }
+        if (key == QStringLiteral("Default value"))
+        {
+            const auto defaultValue = prop.getDefaultValue();
+            return defaultValue.assigned() ? QString::fromStdString(defaultValue) : QString();
+        }
+        if (key == QStringLiteral("Suggested values"))
+        {
+            const auto suggestedValues = prop.getSuggestedValues();
+            return suggestedValues.assigned() ? QString::fromStdString(suggestedValues) : QString();
+        }
+        if (key == QStringLiteral("Visible"))
+        {
+            return prop.getVisible() ? QStringLiteral("Yes") : QStringLiteral("No");
+        }
+        if (key == QStringLiteral("Selection values"))
+        {
+            const auto selectionValues = prop.getSelectionValues();
+            if (const auto dict = selectionValues.asPtrOrNull<daq::IDict>(true); dict.assigned())
+                return QString::fromStdString(dict.getValueList());
+            return selectionValues.assigned() ? QString::fromStdString(selectionValues) : QString();
+        }
+        if (key == QStringLiteral("Referenced"))
+        {
+            return prop.getIsReferenced() ? QStringLiteral("Yes") : QStringLiteral("No");
+        }
+        if (key == QStringLiteral("Validator"))
+        {
+            const auto validator = prop.getValidator();
+            return validator.assigned() ? QString::fromStdString(validator) : QString();
+        }
+        if (key == QStringLiteral("Coercer"))
+        {
+            const auto coercer = prop.getCoercer();
+            return coercer.assigned() ? QString::fromStdString(coercer) : QString();
+        }
+        if (key == QStringLiteral("Callable info"))
+        {
+            const auto callableInfo = prop.getCallableInfo();
+            return callableInfo.assigned() ? QString::fromStdString(callableInfo) : QString();
+        }
+        if (key == QStringLiteral("Struct type") && prop.getValueType() == daq::CoreType::ctStruct)
+        {
+            const auto structType = prop.getStructType();
+            return structType.assigned() ? QString::fromStdString(structType) : QString();
+        }
+    }
+    catch (const std::exception& e)
+    {
+        qWarning() << "Error getting metadata value for property" << QString::fromStdString(getName()) << "with key" << key << ":" << QString::fromStdString(e.what());
+    }
+    catch (...)
+    {
+        qWarning() << "Unknown error getting metadata value for property" << QString::fromStdString(getName()) << "with key" << key;
+    }
+    return QString();
+}
+
 void BasePropertyItem::setWidgetItem(QTreeWidgetItem* item)
 {
     if (widgetItem && widgetItem != item)
@@ -87,10 +223,20 @@ void BasePropertyItem::setWidgetItem(QTreeWidgetItem* item)
 
 void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
 {
-    if (widgetItem)
+    if (!widgetItem)
+        return;
+    const QString nameStr = QString::fromStdString(getName());
+    const QString valueStr = showValue();
+    widgetItem->setText(0, nameStr);
+    widgetItem->setToolTip(0, nameStr);
+    widgetItem->setText(1, valueStr);
+    widgetItem->setToolTip(1, valueStr);
+    const QStringList meta = getAvailableMetadata();
+    for (int i = 0; i < meta.size(); ++i)
     {
-        widgetItem->setText(0, QString::fromStdString(getName()));
-        widgetItem->setText(1, showValue());
+        const QString text = getMetadataValue(meta[i]);
+        widgetItem->setText(2 + i, text);
+        widgetItem->setToolTip(2 + i, text);
     }
 }
 

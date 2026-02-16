@@ -1,6 +1,6 @@
 #include "property/int_property_item.h"
 #include "widgets/property_object_view.h"
-#include <QComboBox>
+#include <QMenu>
 #include <QTreeWidget>
 #include <QMessageBox>
 
@@ -52,29 +52,30 @@ void IntPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetI
     if (selectionValues.isEmpty())
         return;
 
-    // Create and show combobox as a popup
-    auto* combo = new QComboBox(view);
-    combo->addItems(selectionValues);
-
-    // Set current value as selected
     QString currentValue = showValue();
-    int currentIndex = selectionValues.indexOf(currentValue);
-    if (currentIndex >= 0)
-        combo->setCurrentIndex(currentIndex);
 
-    // Position combobox at the item's value column, below the current item
+    QMenu menu(view);
+    for (const QString& val : selectionValues)
+    {
+        QAction* action = menu.addAction(val);
+        if (val == currentValue)
+        {
+            action->setCheckable(true);
+            action->setChecked(true);
+        }
+    }
+
+    // Position at the item's value column
     QRect itemRect = view->visualItemRect(item);
     int valueColumnX = view->columnViewportPosition(1);
-    int valueColumnWidth = view->columnWidth(1);
-    combo->setGeometry(valueColumnX, itemRect.y(), valueColumnWidth, itemRect.height());
+    QPoint pos = view->viewport()->mapToGlobal(QPoint(valueColumnX, itemRect.y() + itemRect.height()));
 
-    // Connect to handle selection
-    QObject::connect(combo, QOverload<int>::of(&QComboBox::activated), view, [this, combo, view](int index) {
+    QAction* selected = menu.exec(pos);
+    if (selected)
+    {
         try
         {
-            QString selectedValue = combo->itemText(index);
-            setBySelectionValue(selectedValue);
-            // Trigger UI update (will be handled by componentCoreEventCallback if owner is set)
+            setBySelectionValue(selected->text());
             view->onPropertyValueChanged(owner);
         }
         catch (const std::exception& e)
@@ -89,15 +90,7 @@ void IntPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetI
                                  "Property Update Error",
                                  "Failed to update property: unknown error");
         }
-        combo->deleteLater();
-    });
-
-    // Delete combobox when focus is lost
-    QObject::connect(combo, &QComboBox::destroyed, combo, &QComboBox::deleteLater);
-
-    combo->show();
-    combo->setFocus();
-    combo->showPopup();
+    }
 }
 
 QStringList IntPropertyItem::getSelectionValues() const

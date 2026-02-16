@@ -44,6 +44,12 @@ public:
     // Check if property is visible
     virtual bool isVisible() const;
 
+    // List of metadata keys that can be shown as columns (used by PropertyObjectView for header menu)
+    static const QStringList& getAvailableMetadata();
+
+    // Read-only metadata value by key (key must be from getAvailableMetadata())
+    virtual QString getMetadataValue(const QString& key) const;
+
     // Refresh property value (update internal state if needed)
     virtual void refresh(PropertySubtreeBuilder&);
 

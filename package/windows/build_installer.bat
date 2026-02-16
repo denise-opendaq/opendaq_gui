@@ -13,8 +13,8 @@ set "PROJECT_ROOT=%CD%"
 
 REM Step 1: Build main application
 echo Step 1: Building application...
-cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
+cmake --preset opendaq-qt-gui -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+cmake --build --preset opendaq-qt-gui --config Release
 
 if errorlevel 1 (
     echo Failed to build application!

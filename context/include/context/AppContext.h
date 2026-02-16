@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QObject>
-#include <QTextEdit>
+#include <QTableWidget>
 #include <QSet>
 #include <QString>
 #include <memory>
@@ -34,7 +34,8 @@ public:
 
     // Logger sink access
     daq::LoggerSinkPtr getLoggerSink() const;
-    QTextEdit* getLogTextEdit() const;
+    QTableWidget* getLogTableWidget() const;
+    QWidget* getLogContainerWidget() const;
 
     // Convenience method to get instance from anywhere
     static daq::InstancePtr Daq();

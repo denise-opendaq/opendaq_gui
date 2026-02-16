@@ -911,7 +911,7 @@ void LayoutManager::updateDropOverlay(const QPoint& globalPos)
     if (!dropOverlay->isVisible())
         showDropOverlay();
 
-    dropOverlay->updateHighlight(globalPos - dropOverlay->geometry().topLeft());
+    dropOverlay->updateHighlight(dropOverlay->mapFromGlobal(globalPos));
 }
 
 bool LayoutManager::handleDragEnter(QDragEnterEvent* event)
@@ -978,7 +978,7 @@ bool LayoutManager::handleDrop(QDropEvent* event)
         overlayTarget = contentSplitter;
     setDropOverlayTarget(overlayTarget);
 
-    const QPoint localPos = globalPos - dropOverlay->geometry().topLeft();
+    const QPoint localPos = dropOverlay->mapFromGlobal(globalPos);
     const DropZone zone = dropOverlay->getDropZone(localPos);
 
     DetachableTabWidget* source = nullptr;
@@ -1079,11 +1079,24 @@ bool LayoutManager::eventFilter(QObject* obj, QEvent* event)
             return QObject::eventFilter(obj, event);
         }
 
-        case QEvent::Drop: 
+        case QEvent::Drop:
         {
             auto* e = static_cast<QDropEvent*>(event);
             if (handleDrop(e))
+            {
+                // When we consume the Drop event, QWidgetWindow::handleDropEvent
+                // never runs and its m_dragTarget is never cleared. Send a
+                // synthetic DragLeave so handleDragLeaveEvent resets it;
+                // otherwise the next drag session hits
+                // Q_ASSERT(m_dragTarget == nullptr) in handleDragEnterEvent.
+                QWidget* mainWin = qobject_cast<QWidget*>(parent());
+                if (mainWin && mainWin->windowHandle())
+                {
+                    QDragLeaveEvent leaveEvent;
+                    QCoreApplication::sendEvent(mainWin->windowHandle(), &leaveEvent);
+                }
                 return true;
+            }
             return QObject::eventFilter(obj, event);
         }
 

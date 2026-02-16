@@ -14,6 +14,8 @@
 #include <QtGlobal>
 #include <unordered_map>
 #include <utility>
+#include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
 
 QT_BEGIN_NAMESPACE
 class QChartView;
@@ -21,8 +23,6 @@ class QChart;
 class QValueAxis;
 class QDateTimeAxis;
 class QTimer;
-class QLineSeries;
-class QScatterSeries;
 class QGraphicsTextItem;
 QT_END_NAMESPACE
 
@@ -38,6 +38,14 @@ enum class DownsampleMethod
     Simple = 1,  // Take every Nth point
     MinMax = 2,  // Keep min and max in each bucket (preserves peaks)
     LTTB = 3     // Largest Triangle Three Buckets (best visual quality)
+};
+
+// Line style for signal rendering
+enum class LineStyle
+{
+    Solid = 0,   // Solid line (default)
+    Dashed = 1,  // Dashed line
+    Dotted = 2   // Dotted line
 };
 
 // Forward declarations
@@ -154,7 +162,9 @@ private:
     void updateInputPorts();
 
     void updatePlot();
-    void createSeriesForSignal(SignalContext& sigCtx, size_t seriesIndex);  // Create and configure QLineSeries for a signal
+    void createSeriesForSignal(SignalContext& sigCtx);  // Create and configure QLineSeries for a signal
+    void updateSeriesLineStyle();  // Update line style for all series
+    Qt::PenStyle getQtPenStyle() const;  // Convert LineStyle enum to Qt::PenStyle
     void handleEventPacket(SignalContext& sigCtx, const daq::EventPacketPtr& eventPacket);  // Handle event packets (e.g., DATA_DESCRIPTOR_CHANGED)
     bool handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime);  // Handle data reading, processing, and series update
     
@@ -199,6 +209,8 @@ private:
     double defaultMaxY;  // Default Y-axis maximum when no value range from descriptor
     DownsampleMethod downsampleMethod;  // Downsampling algorithm to use
     size_t maxSamplesPerSeries;  // Maximum number of points to keep per series
+    LineStyle lineStyle;  // Line style for signal rendering (solid, dashed, dotted)
+    size_t seriesIndex{0};  // Series index for new signals
 
     // Qt Widget
     QPointer<QChart> chart;
@@ -220,6 +232,11 @@ private:
     
     // Temporary storage for original values during zoom
     bool isZooming = false;
+    
+    // Screen aspect ratio for proportional zooming
+    // Stores the ratio: (plotArea.width / timeRange) / (plotArea.height / yRange)
+    // This maintains the visual aspect ratio when zooming
+    qreal screenAspectRatio = 1.0;  // Initialized to 1.0, will be calculated on first zoom
 
     std::vector<double> samples;
     std::vector<std::chrono::system_clock::time_point> timeStamps;

@@ -39,11 +39,15 @@ void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWid
     for (const auto& [key, value] : structObj.getAsDictionary())
     {
         auto* treeChild = new QTreeWidgetItem();
-        treeChild->setText(0, QString::fromStdString(key.toString()));
+        const QString keyStr = QString::fromStdString(key.toString());
+        treeChild->setText(0, keyStr);
+        treeChild->setToolTip(0, keyStr);
 
         // Use handler to display value
         auto valueHandler = CoreTypeFactory::createHandler(value, value.getCoreType());
-        treeChild->setText(1, valueHandler->valueToString(value));
+        const QString valueStr = valueHandler->valueToString(value);
+        treeChild->setText(1, valueStr);
+        treeChild->setToolTip(1, valueStr);
 
         // Set editable flag only if struct is editable AND field handler is editable
         if (structEditable && valueHandler->isEditable())

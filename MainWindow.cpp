@@ -15,6 +15,11 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QCursor>
+#include <QResizeEvent>
+#include <QAbstractAnimation>
+#include <QApplication>
+#include <QWindowStateChangeEvent>
+#include <QWidget>
 
 #include "context/gui_constants.h"
 #include "component/base_tree_element.h"
@@ -29,6 +34,16 @@ MainWindow::MainWindow(QWidget* parent)
     setWindowTitle("OpenDAQ GUI");
     resize(GUIConstants::DEFAULT_WINDOW_WIDTH, GUIConstants::DEFAULT_WINDOW_HEIGHT);
     setMinimumSize(GUIConstants::MIN_WINDOW_WIDTH, GUIConstants::MIN_WINDOW_HEIGHT);
+    // Disable all dock animations to prevent crashes during resize/zoom
+    // This prevents Qt's internal QWidgetAnimator from running during layout changes
+    setDockOptions(QMainWindow::DockOption(0));
+    
+    // Install event filter on application to catch all resize events before they reach widgets
+    // This allows us to stop animations before Qt's layout system processes them
+    if (QApplication::instance())
+    {
+        QApplication::instance()->installEventFilter(this);
+    }
 
     setupMenuBar();
     setupUI();
@@ -47,8 +62,99 @@ MainWindow::~MainWindow()
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
 {
+    // Intercept resize events at application level to stop animations before layout processes them
+    // This is critical for preventing crashes in Qt's internal QWidgetAnimator
+    if (event->type() == QEvent::Resize && obj != this)
+    {
+        // Stop animations before any widget resize to prevent Qt's internal animations from crashing
+        stopAllAnimations();
+    }
+    
     // Drag & drop events are now handled by LayoutManager
     return QMainWindow::eventFilter(obj, event);
+}
+
+void MainWindow::setGeometry(const QRect& rect)
+{
+    // Stop animations BEFORE geometry change to prevent crashes
+    // This is called before resizeEvent, so we can prevent Qt's internal animations from starting
+    stopAllAnimations();
+    
+    QMainWindow::setGeometry(rect);
+}
+
+void MainWindow::resizeEvent(QResizeEvent* event)
+{
+    // Stop animations before resize to prevent crashes
+    // This is a workaround for Qt bug where animations can access invalid memory during resize
+    // Qt's internal QWidgetAnimator can still run even with dock options disabled
+    
+    stopAllAnimations();
+    
+    QMainWindow::resizeEvent(event);
+}
+
+void MainWindow::stopAllAnimations()
+{
+    // Stop our custom animations
+    if (layoutManager && layoutManager->getDropOverlay())
+    {
+        layoutManager->getDropOverlay()->stopAnimations();
+    }
+    
+    // Try to find and stop any animations that are children of this window or the application
+    // This may catch some Qt internal animations
+    QList<QAbstractAnimation*> windowAnimations = findChildren<QAbstractAnimation*>();
+    for (QAbstractAnimation* anim : windowAnimations)
+    {
+        if (anim && anim->state() == QAbstractAnimation::Running)
+        {
+            anim->stop();
+        }
+    }
+    
+    // Also check application-level animations
+    if (QApplication::instance())
+    {
+        QList<QAbstractAnimation*> appAnimations = QApplication::instance()->findChildren<QAbstractAnimation*>();
+        for (QAbstractAnimation* anim : appAnimations)
+        {
+            if (anim && anim->state() == QAbstractAnimation::Running)
+            {
+                anim->stop();
+            }
+        }
+    }
+    
+    // Also check all widgets in the application for animations
+    // This is more aggressive but may catch Qt's internal animations
+    QWidgetList allWidgets = QApplication::allWidgets();
+    for (QWidget* widget : allWidgets)
+    {
+        if (widget)
+        {
+            QList<QAbstractAnimation*> widgetAnimations = widget->findChildren<QAbstractAnimation*>();
+            for (QAbstractAnimation* anim : widgetAnimations)
+            {
+                if (anim && anim->state() == QAbstractAnimation::Running)
+                {
+                    anim->stop();
+                }
+            }
+        }
+    }
+}
+
+void MainWindow::changeEvent(QEvent* event)
+{
+    // Stop animations when window state changes (minimize, maximize, fullscreen, etc.)
+    // These state changes can trigger layout animations that cause crashes
+    if (event->type() == QEvent::WindowStateChange)
+    {
+        stopAllAnimations();
+    }
+    
+    QMainWindow::changeEvent(event);
 }
 
 void MainWindow::setupMenuBar()
@@ -110,11 +216,19 @@ void MainWindow::setupUI()
     // Create vertical splitter for content area (tabs | log)
     verticalSplitter = new QSplitter(Qt::Vertical);
     
-    // Content area splitter (for tab management)
+    // Content area splitter (for tab management) with margins
+    QWidget* contentWrapper = new QWidget();
+    QVBoxLayout* contentWrapperLayout = new QVBoxLayout(contentWrapper);
+    contentWrapperLayout->setContentsMargins(0, GUIConstants::DEFAULT_LAYOUT_MARGIN, 
+                                             GUIConstants::DEFAULT_LAYOUT_MARGIN, 0);
+    contentWrapperLayout->setSpacing(0);
+    
     contentSplitter = new QSplitter(Qt::Horizontal);
     contentSplitter->setChildrenCollapsible(false);
     contentSplitter->setAcceptDrops(true);
-    verticalSplitter->addWidget(contentSplitter);
+    contentWrapperLayout->addWidget(contentSplitter);
+    
+    verticalSplitter->addWidget(contentWrapper);
 
     // Create LayoutManager BEFORE ComponentTreeWidget
     layoutManager = new LayoutManager(contentSplitter, this);
@@ -147,10 +261,16 @@ void MainWindow::setupUI()
         layoutManager->setAvailableTabsMenu(availableTabsMenu);
     }
 
-    // Log panel
-    auto logTextEdit = AppContext::Instance()->getLogTextEdit();
-    if(logTextEdit)
-        verticalSplitter->addWidget(logTextEdit);
+    // Log panel with right margin
+    auto logContainerWidget = AppContext::Instance()->getLogContainerWidget();
+    if(logContainerWidget) {
+        QWidget* logWrapper = new QWidget();
+        QVBoxLayout* logWrapperLayout = new QVBoxLayout(logWrapper);
+        logWrapperLayout->setContentsMargins(0, 0, GUIConstants::DEFAULT_LAYOUT_MARGIN, 0);
+        logWrapperLayout->setSpacing(0);
+        logWrapperLayout->addWidget(logContainerWidget);
+        verticalSplitter->addWidget(logWrapper);
+    }
 
     const auto loggerComponent = AppContext::LoggerComponent();
     LOG_I("Application started...");

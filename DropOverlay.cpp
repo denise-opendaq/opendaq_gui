@@ -4,15 +4,12 @@
 #include <QPen>
 #include <QColor>
 #include <QFont>
+#include <QEvent>
+#include <QMetaObject>
 
 DropOverlay::DropOverlay(QWidget* parent)
     : QWidget(parent)
 {
-    // Make this overlay NOT steal drag/drop or mouse input.
-    // We'll position it as a transparent tool window over the content area.
-    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    setWindowFlag(Qt::WindowTransparentForInput, true);
-
     setAttribute(Qt::WA_TransparentForMouseEvents, true);
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAttribute(Qt::WA_ShowWithoutActivating, true);
@@ -22,18 +19,36 @@ DropOverlay::DropOverlay(QWidget* parent)
     fadeAnimation = new QPropertyAnimation(this, "highlightOpacity");
     fadeAnimation->setDuration(150);
     fadeAnimation->setEasingCurve(QEasingCurve::InOutQuad);
+    
+    // Install event filter to track target widget resize events
+    if (parent)
+    {
+        parent->installEventFilter(this);
+    }
+}
+
+DropOverlay::~DropOverlay()
+{
+    // Stop and clean up animation to prevent crashes during widget destruction
+    stopAnimations();
+    if (fadeAnimation)
+    {
+        fadeAnimation->deleteLater();
+        fadeAnimation = nullptr;
+    }
 }
 
 void DropOverlay::setTargetWidget(QWidget* target)
 {
     targetWidget = target;
-    if (!targetWidget)
+    if (!targetWidget || !parentWidget())
         return;
 
-    const QPoint topLeft = targetWidget->mapToGlobal(QPoint(0, 0));
-    const QRect globalRect(topLeft, targetWidget->size());
+    // Convert target geometry to the overlay's parent coordinate system.
+    const QPoint topLeft = parentWidget()->mapFromGlobal(
+        targetWidget->mapToGlobal(QPoint(0, 0)));
 
-    setGeometry(globalRect);
+    setGeometry(QRect(topLeft, targetWidget->size()));
     raise();
 }
 
@@ -81,15 +96,26 @@ void DropOverlay::updateHighlight(const QPoint& pos)
         previousZone = currentZone;
         currentZone = newZone;
 
-        if (fadeAnimation->state() == QAbstractAnimation::Running)
-            fadeAnimation->stop();
+        stopAnimations();
 
-        fadeAnimation->setStartValue(0.5);
-        fadeAnimation->setEndValue(1.0);
-        fadeAnimation->start();
+        if (fadeAnimation)
+        {
+            fadeAnimation->setStartValue(0.5);
+            fadeAnimation->setEndValue(1.0);
+            fadeAnimation->start();
+        }
 
-        update();
+        // Defer update to avoid reentrant paint (can trigger Qt Cocoa IOSurface assert on macOS)
+        QMetaObject::invokeMethod(this, [this] { update(); }, Qt::QueuedConnection);
         Q_EMIT dropZoneChanged(newZone);
+    }
+}
+
+void DropOverlay::stopAnimations()
+{
+    if (fadeAnimation && fadeAnimation->state() == QAbstractAnimation::Running)
+    {
+        fadeAnimation->stop();
     }
 }
 
@@ -104,14 +130,20 @@ void DropOverlay::paintEvent(QPaintEvent* event)
         return;
 
     const QRect zoneRect = getZoneRect(currentZone);
+    if (!zoneRect.isValid())
+        return;
 
     const int alphaFill = static_cast<int>(120 * m_highlightOpacity);
     const int alphaBorder = static_cast<int>(255 * m_highlightOpacity);
 
     painter.fillRect(zoneRect, QColor(37, 99, 235, alphaFill));
 
-    painter.setPen(QPen(QColor(37, 99, 235, alphaBorder), 3));
-    painter.drawRoundedRect(zoneRect.adjusted(2, 2, -2, -2), 4, 4);
+    const QRect borderRect = zoneRect.adjusted(2, 2, -2, -2);
+    if (borderRect.isValid())
+    {
+        painter.setPen(QPen(QColor(37, 99, 235, alphaBorder), 3));
+        painter.drawRoundedRect(borderRect, 4, 4);
+    }
 
     painter.setPen(QColor(255, 255, 255, alphaBorder));
     QFont font = painter.font();
@@ -158,4 +190,15 @@ QRect DropOverlay::getZoneRect(DropZone zone) const
         default:
             return QRect();
     }
+}
+
+bool DropOverlay::eventFilter(QObject* obj, QEvent* event)
+{
+    // Update overlay geometry when target widget is resized
+    if (obj == targetWidget && event->type() == QEvent::Resize)
+    {
+        stopAnimations();
+        setTargetWidget(targetWidget); // Update geometry
+    }
+    return QWidget::eventFilter(obj, event);
 }

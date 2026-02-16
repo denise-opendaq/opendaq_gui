@@ -34,7 +34,6 @@
 #include <QGraphicsTextItem>
 #include <QGraphicsScene>
 #include <QGraphicsLayout>
-#include <limits>
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
 
@@ -97,23 +96,92 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
                     qreal mouseY = valuePos.y();
                     
                     // Calculate relative position of mouse in current range (0.0 to 1.0)
-                    qint64 currentTimeRange = maxTime.toMSecsSinceEpoch() - minTime.toMSecsSinceEpoch();
-                    qreal timeRatio = currentTimeRange > 0 ? 
-                        static_cast<qreal>(mouseTime - minTime.toMSecsSinceEpoch()) / static_cast<qreal>(currentTimeRange) : 0.5;
+                    qint64 minTimeMsec = minTime.toMSecsSinceEpoch();
+                    qint64 maxTimeMsec = maxTime.toMSecsSinceEpoch();
+                    qint64 currentTimeRange = maxTimeMsec - minTimeMsec;
+                    
+                    // Prevent zoom if range is zero or invalid
+                    if (currentTimeRange <= 0)
+                        return true;
+                    
+                    qreal timeRatio = static_cast<qreal>(mouseTime - minTimeMsec) / static_cast<qreal>(currentTimeRange);
                     
                     qreal currentYRange = maxY - minY;
                     qreal yRatio = currentYRange > 0 ? (mouseY - minY) / currentYRange : 0.5;
                     
-                    // Calculate new ranges
-                    qint64 newTimeRange = static_cast<qint64>(currentTimeRange / zoomFactor);
-                    qreal newYRange = currentYRange / zoomFactor;
+                    // Get plot area size for aspect ratio calculation
+                    QRectF plotArea = m_chartView->chart()->plotArea();
+                    qreal plotWidth = plotArea.width();
+                    qreal plotHeight = plotArea.height();
                     
-                    // Keep mouse position fixed - adjust min/max based on mouse position ratio
-                    qint64 newMinTime = mouseTime - static_cast<qint64>(newTimeRange * timeRatio);
-                    qint64 newMaxTime = mouseTime + static_cast<qint64>(newTimeRange * (1.0 - timeRatio));
+                    // Calculate or update screen aspect ratio
+                    if (plotWidth > 0 && plotHeight > 0 && currentTimeRange > 0 && currentYRange > 0)
+                        m_plotter->screenAspectRatio = (plotWidth / static_cast<qreal>(currentTimeRange)) / 
+                                                       (plotHeight / currentYRange);
                     
+                    // Calculate new time range
+                    qreal newTimeRangeReal = static_cast<qreal>(currentTimeRange) / zoomFactor;
+                    
+                    // Prevent zoom in if range becomes too small
+                    if (zoomFactor > 1.0 && newTimeRangeReal < 1.0)
+                        return true;
+                    
+                    // Ensure zoom out increases range
+                    if (zoomFactor < 1.0 && currentTimeRange <= 1)
+                        newTimeRangeReal = qMax(newTimeRangeReal, 2.0);
+                    
+                    qint64 newTimeRange = static_cast<qint64>(newTimeRangeReal + 0.5);
+                    if (newTimeRange < 1)
+                        newTimeRange = 1;
+                    
+                    // Ensure zoom out actually increases range
+                    if (zoomFactor < 1.0 && newTimeRange <= currentTimeRange)
+                    {
+                        qint64 minIncrease = qMax(static_cast<qint64>(2), currentTimeRange / 10);
+                        newTimeRange = currentTimeRange + minIncrease;
+                    }
+                    
+                    newTimeRangeReal = static_cast<qreal>(newTimeRange);
+                    
+                    // Calculate new Y range maintaining screen aspect ratio
+                    qreal newYRange;
+                    if (plotWidth > 0 && plotHeight > 0 && m_plotter->screenAspectRatio > 0)
+                        newYRange = (m_plotter->screenAspectRatio * plotHeight * newTimeRangeReal) / plotWidth;
+                    else
+                        newYRange = currentYRange / zoomFactor;
+                    
+                    // Calculate new time bounds keeping mouse position fixed
+                    qreal mouseTimeReal = static_cast<qreal>(mouseTime);
+                    qreal newMinTimeReal = mouseTimeReal - newTimeRangeReal * timeRatio;
+                    qreal newMaxTimeReal = mouseTimeReal + newTimeRangeReal * (1.0 - timeRatio);
+                    
+                    // Ensure valid range
+                    if (newMinTimeReal >= newMaxTimeReal)
+                        return true;
+                    
+                    qint64 newMinTime = static_cast<qint64>(newMinTimeReal);
+                    qint64 newMaxTime = static_cast<qint64>(newMaxTimeReal);
+                    
+                    // Ensure valid range
+                    if (newMinTime >= newMaxTime)
+                    {
+                        qint64 centerTime = (newMinTime + newMaxTime) / 2;
+                        newMinTime = centerTime - newTimeRange / 2;
+                        newMaxTime = centerTime + newTimeRange / 2;
+                        if (newMaxTime <= newMinTime)
+                            newMaxTime = newMinTime + 1;
+                    }
+                    
+                    // Calculate new Y bounds
                     qreal newMinY = mouseY - newYRange * yRatio;
                     qreal newMaxY = mouseY + newYRange * (1.0 - yRatio);
+                    
+                    // Ensure valid Y range
+                    if (newMinY >= newMaxY)
+                    {
+                        qreal minYRange = qMax(std::abs(newMinY) * 1e-10, 1e-10);
+                        newMaxY = newMinY + minYRange;
+                    }
                         
                     // Apply zoom
                     axisX->setRange(QDateTime::fromMSecsSinceEpoch(newMinTime), QDateTime::fromMSecsSinceEpoch(newMaxTime));
@@ -317,6 +385,7 @@ QtPlotterFbImpl::QtPlotterFbImpl(const daq::ContextPtr& ctx,
     , defaultMaxY(10.0)
     , downsampleMethod(QtPlotter::DownsampleMethod::LTTB)
     , maxSamplesPerSeries(10000)
+    , lineStyle(QtPlotter::LineStyle::Solid)
     , chart(nullptr)
     , axisX(nullptr)
     , axisY(nullptr)
@@ -398,6 +467,10 @@ void QtPlotterFbImpl::initProperties()
     const auto maxSamplesPerSeriesProp = daq::IntProperty("MaxSamplesPerSeries", static_cast<Int>(maxSamplesPerSeries));
     objPtr.addProperty(maxSamplesPerSeriesProp);
     objPtr.getOnPropertyValueWrite("MaxSamplesPerSeries") += onPropertyValueWrite;
+
+    const auto lineStyleProp = daq::SelectionProperty("LineStyle", List<IString>("Solid", "Dashed", "Dotted"), static_cast<Int>(lineStyle));
+    objPtr.addProperty(lineStyleProp);
+    objPtr.getOnPropertyValueWrite("LineStyle") += onPropertyValueWrite;
 }
 
 void QtPlotterFbImpl::propertyChanged(const StringPtr& propertyName, const BaseObjectPtr& value)
@@ -434,6 +507,11 @@ void QtPlotterFbImpl::propertyChanged(const StringPtr& propertyName, const BaseO
         downsampleMethod = static_cast<QtPlotter::DownsampleMethod>(value.asPtr<IInteger>(true));
     else if (propertyName == "MaxSamplesPerSeries")
         maxSamplesPerSeries = value;
+    else if (propertyName == "LineStyle")
+    {
+        lineStyle = static_cast<QtPlotter::LineStyle>(value.asPtr<IInteger>(true));
+        updateSeriesLineStyle();
+    }
 
     LOG_W("Property {} changed to {}", propertyName, value.toString());
 }
@@ -449,6 +527,10 @@ void QtPlotterFbImpl::updateInputPorts()
 
 void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
 {
+    auto signal = inputPort.getSignal();
+    if (!signal.getDomainSignal().assigned())
+        DAQ_THROW_EXCEPTION(InvalidParametersException, "Connecting the signal without domain signal is forbiden");
+
     auto lock = this->getRecursiveConfigLock();
 
     auto it = signalContexts.find(inputPort);
@@ -456,7 +538,16 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
     if (it != signalContexts.end())
     {
         if (it->second.isSignalConnected)
+        {
             createNewPort = false;
+
+            if (autoClear)
+            {
+                if (it->second.series)
+                    it->second.series->clear();
+                it->second.pointsBuffer.clear();
+            }
+        }
         it->second.isSignalConnected = true;
     }
 
@@ -486,7 +577,36 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
     LOG_W("Disconnected from port {}", inputPort.getLocalId());
 }
 
-void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx, size_t seriesIndex)
+Qt::PenStyle QtPlotterFbImpl::getQtPenStyle() const
+{
+    switch (lineStyle)
+    {
+        case LineStyle::Dashed:
+            return Qt::DashLine;
+        case LineStyle::Dotted:
+            return Qt::DotLine;
+        case LineStyle::Solid:
+        default:
+            return Qt::SolidLine;
+    }
+}
+
+void QtPlotterFbImpl::updateSeriesLineStyle()
+{
+    Qt::PenStyle penStyle = getQtPenStyle();
+
+    for (auto& [port, sigCtx] : signalContexts)
+    {
+        if (sigCtx.series)
+        {
+            QPen pen = sigCtx.series->pen();
+            pen.setStyle(penStyle);
+            sigCtx.series->setPen(pen);
+        }
+    }
+}
+
+void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx)
 {
     if (!chart || !axisX || !axisY)
         return;
@@ -503,7 +623,7 @@ void QtPlotterFbImpl::createSeriesForSignal(SignalContext& sigCtx, size_t series
         QColor(0, 255, 255),    // Cyan
         QColor(0, 0, 255)       // Blue
     };
-    QPen pen(colors[seriesIndex % 6], 2);
+    QPen pen(colors[(seriesIndex++) % 6], 2, getQtPenStyle());
     sigCtx.series->setPen(pen);
 
     chart->addSeries(sigCtx.series);
@@ -537,7 +657,6 @@ void QtPlotterFbImpl::handleEventPacket(SignalContext& sigCtx, const daq::EventP
             sigCtx.valueRangeMax = valueRange.getHighValue();
         }
     }
-
 }
 
 bool QtPlotterFbImpl::handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime)
@@ -604,9 +723,6 @@ void QtPlotterFbImpl::updatePlot()
     qint64 globalLatestTime = 0;
     bool hasData = false;
 
-    // For each valid signal, create or update series
-    size_t seriesIndex = 0;
-
     for (auto& [port, sigCtx] : signalContexts)
     {
         if (!sigCtx.isSignalConnected)
@@ -614,7 +730,7 @@ void QtPlotterFbImpl::updatePlot()
 
         // Get or create series for this signal (direct pointer access - O(1))
         if (!sigCtx.series)
-            createSeriesForSignal(sigCtx, seriesIndex);
+            createSeriesForSignal(sigCtx);
 
         QLineSeries* series = sigCtx.series;
 
@@ -672,8 +788,6 @@ void QtPlotterFbImpl::updatePlot()
             if (series->name() != QString::fromStdString(seriesName))
                 series->setName(QString::fromStdString(seriesName));
         }
-
-        seriesIndex++;
     }
 
     // Update axis labels and range
@@ -1626,16 +1740,25 @@ std::pair<int, int> QtPlotterFbImpl::getVisibleRange(const SignalContext& sigCtx
     // Return invalid range if buffer is empty
     if (sigCtx.pointsBuffer.isEmpty())
         return std::make_pair(-1, -1);
-    
-    // Use binary search to find range of visible points
+
     int startIdx = binarySearchFirstGE(sigCtx.pointsBuffer, visibleMin);
     int lastIdx = binarySearchLastLE(sigCtx.pointsBuffer, visibleMax, startIdx);
+
+    // Include nearest invisible point on the left side (if exists) to not lose left boundary point
+    if (startIdx > 0 && startIdx < sigCtx.pointsBuffer.size())
+        startIdx--; // Include previous point to not lose left boundary
+    
+    // Include nearest invisible point on the right side (if exists) to not lose right boundary point
+    if (lastIdx >= 0 && lastIdx + 1 < sigCtx.pointsBuffer.size())
+        lastIdx++; // Include next point to not lose right boundary
     
     // Check if we found valid range
-    if (startIdx > lastIdx || startIdx >= sigCtx.pointsBuffer.size())
+    if (startIdx > lastIdx || startIdx >= sigCtx.pointsBuffer.size() || lastIdx < 0)
         return std::make_pair(-1, -1);
     
     // Ensure indices are within bounds
+    if (startIdx < 0)
+        startIdx = 0;
     if (lastIdx >= sigCtx.pointsBuffer.size())
         lastIdx = sigCtx.pointsBuffer.size() - 1;
     

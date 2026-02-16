@@ -4,6 +4,7 @@
 #include <QPainter>
 #include <QMouseEvent>
 #include <QPropertyAnimation>
+#include <QEvent>
 
 enum class DropZone {
     None,
@@ -26,10 +27,12 @@ class DropOverlay : public QWidget
 
 public:
     explicit DropOverlay(QWidget *parent = nullptr);
+    ~DropOverlay() override;
 
     void setTargetWidget(QWidget *target);
     DropZone getDropZone(const QPoint &pos) const;
     void updateHighlight(const QPoint &pos);
+    void stopAnimations();
 
     qreal highlightOpacity() const { return m_highlightOpacity; }
     void setHighlightOpacity(qreal opacity) { m_highlightOpacity = opacity; update(); }
@@ -39,6 +42,7 @@ Q_SIGNALS:
 
 protected:
     void paintEvent(QPaintEvent *event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
 
 private:
     QRect getZoneRect(DropZone zone) const;

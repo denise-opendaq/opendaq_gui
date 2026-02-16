@@ -4,7 +4,6 @@ project(opendaq_qt_gui VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -87,11 +86,12 @@ target_link_libraries(${PROJECT_NAME}
         daq::opendaq
 )
 
-# Option to build as bundle (for packaging - macOS .app bundle or Linux with bundled Qt)
-option(BUILD_BUNDLE "Build as platform bundle (macOS .app or Linux with bundled Qt)" OFF)
-
 # Option for extra module path (for bundle packaging)
-set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)")
+if(APPLE)
+    set(EXTRA_MODULE_PATH ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} CACHE STRING "Additional path for openDAQ modules (relative to executable)" FORCE)
+else()
+    set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)" FORCE)
+endif()
 
 # Pass extra module path to the application via compile definition
 if(EXTRA_MODULE_PATH)
@@ -99,28 +99,19 @@ if(EXTRA_MODULE_PATH)
 endif()
 
 # Platform-specific bundle configuration
-if(BUILD_BUNDLE)
-    if(APPLE)
-        # macOS bundle configuration
-        set_target_properties(${PROJECT_NAME} PROPERTIES
-            MACOSX_BUNDLE TRUE
-            MACOSX_BUNDLE_GUI_IDENTIFIER "com.opendaq.qt-gui"
-            MACOSX_BUNDLE_BUNDLE_NAME "OpenDAQ Qt GUI"
-            MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
-            MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
-        )
-    elseif(UNIX)
-        # Linux bundle - set RPATH to find bundled libraries
-        set_target_properties(${PROJECT_NAME} PROPERTIES
-            BUILD_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
-            INSTALL_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
-        )
-    endif()
-else()
-    # Regular executable (default)
-    if(APPLE)
-        set_target_properties(${PROJECT_NAME} PROPERTIES
-            MACOSX_BUNDLE FALSE
-        )
-    endif()
+if(APPLE)
+    # macOS bundle configuration
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.opendaq.qt-gui"
+        MACOSX_BUNDLE_BUNDLE_NAME "OpenDAQ Qt GUI"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+    )
+elseif(UNIX)
+    # Linux bundle - set RPATH to find bundled libraries
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUILD_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
+        INSTALL_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
+    )
 endif()
