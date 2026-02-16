@@ -88,9 +88,9 @@ target_link_libraries(${PROJECT_NAME}
 
 # Option for extra module path (for bundle packaging)
 if(APPLE)
-    set(EXTRA_MODULE_PATH ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} CACHE STRING "Additional path for openDAQ modules (relative to executable)" FORCE)
+    set(EXTRA_MODULE_PATH ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} CACHE STRING "Additional path for openDAQ modules (relative or absolute)")
 else()
-    set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)" FORCE)
+    set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)")
 endif()
 
 # Pass extra module path to the application via compile definition
