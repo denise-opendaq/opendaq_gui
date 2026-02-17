@@ -36,7 +36,7 @@ void InputPortFolderTreeElement::openTab(const QString& tabName)
         containerLayout->setContentsMargins(10, 10, 10, 10);
         containerLayout->addWidget(inputPortFolderSelector);
 
-        addTab(container, tabName, LayoutZone::Right);
+        addTab(container, tabName, LayoutZone::Left);
     }
     else
     {

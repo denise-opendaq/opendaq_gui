@@ -278,13 +278,17 @@ void BaseTreeElement::openTab(const QString& tabName)
     // Base class does nothing
 }
 
-void BaseTreeElement::addTab(QWidget* tab, const QString& tabName, LayoutZone zone)
+void BaseTreeElement::addTab(QWidget* tab, 
+                             const QString& tabName,
+                             LayoutZone zone,
+                             const QString& relativeToTabName)
 {
     if (!layoutManager)
         return;
-    
+
     QString fullTabName = name + " - " + tabName;
-    layoutManager->addTab(tab, fullTabName, zone);
+    QString fullRelativeName = relativeToTabName.isEmpty() ? QString() : (name + " - " + relativeToTabName);
+    layoutManager->addTab(tab, fullTabName, zone, fullRelativeName);
     tab->setProperty("componentGlobalId", globalId);
 }
 

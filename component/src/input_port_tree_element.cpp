@@ -27,7 +27,7 @@ void InputPortTreeElement::openTab(const QString& tabName)
         auto inputPort = getInputPort();
         auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
         auto inputPortWidget = new InputPortWidget(inputPort, componentTree);
-        addTab(inputPortWidget, tabName, LayoutZone::Right);
+        addTab(inputPortWidget, tabName, LayoutZone::Left);
     }
     else
     {

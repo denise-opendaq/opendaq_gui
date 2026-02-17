@@ -60,8 +60,9 @@ public:
     // Open a specific tab by name
     virtual void openTab(const QString& tabName);
 
-    // Helper methods to add tabs
-    void addTab(QWidget* tab, const QString& tabName, LayoutZone zone = LayoutZone::Default);
+    // Helper methods to add tabs (relativeToTabName = short name of tab to place relative to, e.g. "Attributes")
+    void addTab(QWidget* tab, const QString& tabName, LayoutZone zone = LayoutZone::Default,
+                const QString& relativeToTabName = QString());
 
     // Create right-click context menu
     virtual QMenu* onCreateRightClickMenu(QWidget* parent);

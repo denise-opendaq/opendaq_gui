@@ -147,7 +147,7 @@ void ComponentTreeElement::openTab(const QString& tabName)
     else if (tabName == "Properties")
     {
         auto* propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
-        addTab(propertyView, tabName);
+        addTab(propertyView, tabName, LayoutZone::Bottom, "Attributes");
     }
     else if (tabName == "QTWidget")
     {

@@ -31,7 +31,9 @@ public:
     ~LayoutManager() override;
 
     // Tab management
-    DetachableTabWidget* addTab(QWidget* widget, const QString& title, LayoutZone zone = LayoutZone::Default);
+    // relativeToTabName: when non-empty and zone != Default, place new tab relative to the panel that contains this tab title
+    DetachableTabWidget* addTab(QWidget* widget, const QString& title, LayoutZone zone = LayoutZone::Default,
+                                const QString& relativeToTabName = QString());
     void removeTab(QWidget* widget);
     bool isTabOpen(const QString& tabName) const;
     void clear();  // Clear all unpinned tabs (but keep detached windows open)
@@ -56,8 +58,8 @@ public:
     void showDropOverlay();
     void hideDropOverlay();
 
-    // VSCode-like splitting
-    void splitAround(DetachableTabWidget* target, Qt::Orientation orientation, bool before,
+    // VSCode-like splitting (target = panel to split around; can be tab widget or root content widget)
+    void splitAround(QWidget* target, Qt::Orientation orientation, bool before,
                      QWidget* widget, const QString& title);
 
     // Getters
@@ -112,6 +114,7 @@ private:
 
     // Helper methods
     DetachableTabWidget* findTabWidgetContaining(QWidget* widget) const;
+    DetachableTabWidget* findTabWidgetWithTab(const QString& tabTitle) const;
     void removeUnpinnedTabsFromWidget(DetachableTabWidget* tabWidget);
 
     // Drag & drop helper methods

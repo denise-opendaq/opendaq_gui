@@ -70,7 +70,10 @@ void LayoutManager::registerTabGroup(DetachableTabWidget* tw)
             this, &LayoutManager::onTabPinToggled);
 }
 
-DetachableTabWidget* LayoutManager::addTab(QWidget* widget, const QString& title, LayoutZone zone)
+DetachableTabWidget* LayoutManager::addTab(QWidget* widget,
+                                           const QString& title,
+                                           LayoutZone zone,
+                                           const QString& relativeToTabName)
 {
     if (!widget)
         return nullptr;
@@ -80,16 +83,26 @@ DetachableTabWidget* LayoutManager::addTab(QWidget* widget, const QString& title
 
     DetachableTabWidget* targetTabWidget = nullptr;
 
-    // Handle non-default zones with splitAround
+    // Handle non-default zones: split relative to another tab's panel, or to root
     if (zone != LayoutZone::Default)
     {
-        Qt::Orientation orientation = (zone == LayoutZone::Left || zone == LayoutZone::Right) 
-                                     ? Qt::Horizontal 
+        Qt::Orientation orientation = (zone == LayoutZone::Left || zone == LayoutZone::Right)
+                                     ? Qt::Horizontal
                                      : Qt::Vertical;
         bool before = (zone == LayoutZone::Left || zone == LayoutZone::Top);
-        
-        splitAround(mainWidget, orientation, before, widget, title);
-        
+        QWidget* splitTarget = nullptr;
+        if (!relativeToTabName.isEmpty())
+        {
+            DetachableTabWidget* tw = findTabWidgetWithTab(relativeToTabName);
+            if (tw)
+                splitTarget = tw;
+        }
+        if (!splitTarget && contentSplitter && contentSplitter->count() > 0)
+            splitTarget = contentSplitter->widget(0);
+        if (!splitTarget)
+            splitTarget = mainWidget;
+        splitAround(splitTarget, orientation, before, widget, title);
+
         // Find the newly created tab widget
         DetachableTabWidget* result = findTabWidgetContaining(widget);
         return result ? result : mainWidget;
@@ -320,7 +333,22 @@ DetachableTabWidget* LayoutManager::tabGroupAtGlobalPos(const QPoint& globalPos)
     return nullptr;
 }
 
-void LayoutManager::splitAround(DetachableTabWidget* target, Qt::Orientation orientation, bool before,
+DetachableTabWidget* LayoutManager::findTabWidgetWithTab(const QString& tabTitle) const
+{
+    for (DetachableTabWidget* tw : getAllTabWidgets())
+    {
+        if (!tw)
+            continue;
+        for (int i = 0; i < tw->count(); ++i)
+        {
+            if (tw->tabText(i) == tabTitle)
+                return tw;
+        }
+    }
+    return nullptr;
+}
+
+void LayoutManager::splitAround(QWidget* target, Qt::Orientation orientation, bool before,
                                 QWidget* widget, const QString& title)
 {
     if (!target || !widget)
