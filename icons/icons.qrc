@@ -1,32 +1,34 @@
 <RCC>
     <qresource prefix="/icons">
         <file>add.png</file>
-        <file>function_block.png</file>
-        <file>settings.png</file>
-        <file>link.png</file>
-        <file>input_port.png</file>
-        <file>signal.png</file>
-        <file>down.png</file>
-        <file>circle.png</file>
-        <file>folder.png</file>
-        <file>channel.png</file>
-        <file>device.png</file>
-        <file>unlink.png</file>
-        <file>right.png</file>
-        <file>refresh.png</file>
         <file>light_add.png</file>
+        <file>function_block.png</file>
         <file>light_function_block.png</file>
+        <file>settings.png</file>
         <file>light_settings.png</file>
+        <file>link.png</file>
         <file>light_link.png</file>
+        <file>input_port.png</file>
         <file>light_input_port.png</file>
+        <file>signal.png</file>
         <file>light_signal.png</file>
+        <file>down.png</file>
         <file>light_down.png</file>
+        <file>circle.png</file>
         <file>light_circle.png</file>
+        <file>folder.png</file>
         <file>light_folder.png</file>
+        <file>channel.png</file>
         <file>light_channel.png</file>
+        <file>device.png</file>
         <file>light_device.png</file>
+        <file>unlink.png</file>
         <file>light_unlink.png</file>
+        <file>right.png</file>
         <file>light_right.png</file>
+        <file>refresh.png</file>
         <file>light_refresh.png</file>
+        <file>server.png</file>
+        <file>light_server.png</file>
     </qresource>
 </RCC>
