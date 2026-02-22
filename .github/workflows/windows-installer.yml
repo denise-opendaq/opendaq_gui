@@ -3,8 +3,6 @@ name: Windows Installer Build
 on:
   workflow_dispatch:
   workflow_call:
-  release:
-    types: [ created ]
 
 jobs:
   build-windows-installer:

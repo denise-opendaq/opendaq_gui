@@ -3,8 +3,6 @@ name: Linux DEB Build
 on:
   workflow_dispatch:
   workflow_call:
-  release:
-    types: [ created ]
 
 jobs:
   build-linux-deb:
