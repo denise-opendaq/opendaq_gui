@@ -9,7 +9,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${GREEN}======================================${NC}"
-echo -e "${GREEN}OpenDAQ Qt GUI - DMG Builder${NC}"
+echo -e "${GREEN}OpenDAQ Qt GUI - DMG & PKG Builder${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo ""
 
@@ -68,9 +68,22 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo -e "${GREEN}✓ DMG created${NC}"
+echo ""
+
+# Step 5: Create PKG installer
+echo -e "${YELLOW}Step 5: Creating PKG installer...${NC}"
+cmake --build "$PROJECT_ROOT/build/package" --target create_pkg
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Failed to create PKG!${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✓ PKG created${NC}"
 echo ""
 echo -e "${GREEN}======================================${NC}"
-echo -e "${GREEN}✓ DMG created successfully!${NC}"
+echo -e "${GREEN}✓ DMG and PKG created successfully!${NC}"
 echo -e "${GREEN}======================================${NC}"
 echo ""
 
@@ -82,5 +95,8 @@ else
     ARCH_SUFFIX="x86_64"
 fi
 
-echo -e "DMG location: ${GREEN}build/package/OpenDAQ Qt GUI-1.0-${ARCH_SUFFIX}.dmg${NC}"
+# Version from package/version.cmake (OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension])
+VERSION=$(grep 'set(PROJECT_VERSION' "$SCRIPT_DIR/../version.cmake" 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "1.0")
+echo -e "DMG location: ${GREEN}build/package/OpenDAQ.Qt.GUI-${VERSION}-mac-${ARCH_SUFFIX}.dmg${NC}"
+echo -e "PKG location: ${GREEN}build/package/OpenDAQ.Qt.GUI-${VERSION}-mac-${ARCH_SUFFIX}.pkg${NC}"
 echo ""

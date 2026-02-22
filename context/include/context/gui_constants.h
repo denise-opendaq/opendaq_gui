@@ -38,7 +38,12 @@ namespace GUIConstants {
     constexpr int ADD_DEVICE_CONFIG_DIALOG_HEIGHT = 600;
     constexpr int ADD_DEVICE_CONFIG_DIALOG_MIN_WIDTH = 1000;
     constexpr int ADD_DEVICE_CONFIG_DIALOG_MIN_HEIGHT = 500;
-    
+
+    constexpr int NEW_VERSION_DIALOG_WIDTH = 500;
+    constexpr int NEW_VERSION_DIALOG_HEIGHT = 450;
+    constexpr int NEW_VERSION_DIALOG_MIN_WIDTH = 400;
+    constexpr int NEW_VERSION_DIALOG_MIN_HEIGHT = 300;
+
     // Splitter sizes
     constexpr int DEFAULT_VERTICAL_SPLITTER_CONTENT = 600;
     constexpr int DEFAULT_VERTICAL_SPLITTER_LOG = 200;

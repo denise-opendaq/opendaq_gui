@@ -73,6 +73,7 @@ if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
     set ARCH=x64
 )
 
-echo Installer location: build\package\OpenDAQ Qt GUI-1.0-Windows-%ARCH%.exe
+echo Installer location: build\package\OpenDAQ.Qt.GUI-^<version^>-windows-%ARCH%.exe
+echo    (version from package\version.cmake)
 echo.
 

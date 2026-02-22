@@ -2,9 +2,10 @@ cmake_minimum_required(VERSION 3.16)
 
 project(opendaq_qt_gui_package)
 
-# Configuration
+# Configuration (version from main project)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../version.cmake)
 set(APP_NAME "OpenDAQ Qt GUI")
-set(VERSION "1.0")
+set(VERSION "${PROJECT_VERSION}")
 set(PROJECT_BINARY_NAME "opendaq_qt_gui")
 
 # Detect architecture
@@ -31,7 +32,8 @@ else()
     endif()
 endif()
 
-set(INSTALLER_NAME "${APP_NAME}-${VERSION}-Windows-${ARCH}")
+# Output name: OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension]
+set(PACKAGE_FILE_BASE "OpenDAQ.Qt.GUI-${VERSION}-windows-${ARCH}")
 
 # Path to the built executable
 # Try Release first (for multi-config generators like Visual Studio), then single-config path
@@ -68,7 +70,7 @@ endif()
 # Output paths
 set(PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/package")
 set(INSTALL_DIR "${PACKAGE_DIR}/${APP_NAME}")
-set(INSTALLER_FILE "${CMAKE_CURRENT_BINARY_DIR}/${INSTALLER_NAME}.exe")
+set(INSTALLER_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_FILE_BASE}.exe")
 
 # Copy executable and dependencies
 add_custom_target(prepare_package ALL

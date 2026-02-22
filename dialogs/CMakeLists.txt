@@ -13,6 +13,7 @@ set(HEADERS
     include/dialogs/add_server_dialog.h
     include/dialogs/call_function_dialog.h
     include/dialogs/load_configuration_dialog.h
+    include/dialogs/new_version_dialog.h
 )
 
 # Source files
@@ -23,6 +24,7 @@ set(SOURCES
     src/add_server_dialog.cpp
     src/call_function_dialog.cpp
     src/load_configuration_dialog.cpp
+    src/new_version_dialog.cpp
 )
 
 # Create library
@@ -44,6 +46,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
+        Qt6::Network
         context
         widgets
         property

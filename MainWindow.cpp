@@ -1,7 +1,10 @@
 #include "MainWindow.h"
 #include "context/AppContext.h"
+#include "dialogs/new_version_dialog.h"
 
 #include <QApplication>
+#include <QTimer>
+#include <QShowEvent>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QMenuBar>
@@ -32,6 +35,13 @@ MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
 {
     setWindowTitle("OpenDAQ GUI");
+
+#ifndef APP_VERSION
+#define APP_VERSION "0.0"
+#endif
+    m_updateChecker = new UpdateChecker(QString::fromUtf8(APP_VERSION), this);
+    connect(m_updateChecker, &UpdateChecker::updateAvailable,
+            this, &MainWindow::onUpdateAvailable);
     resize(GUIConstants::DEFAULT_WINDOW_WIDTH, GUIConstants::DEFAULT_WINDOW_HEIGHT);
     setMinimumSize(GUIConstants::MIN_WINDOW_WIDTH, GUIConstants::MIN_WINDOW_HEIGHT);
     // Disable all dock animations to prevent crashes during resize/zoom
@@ -330,6 +340,23 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
 
     // Update available tabs menu
     layoutManager->updateAvailableTabsMenu(element);
+}
+
+void MainWindow::showEvent(QShowEvent* event)
+{
+    QMainWindow::showEvent(event);
+    // Defer update check so the window appears first and the request doesn't block startup
+    QTimer::singleShot(1000, this, [this]() {
+        if (m_updateChecker)
+            m_updateChecker->checkForUpdates();
+    });
+}
+
+void MainWindow::onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
+                                    const QList<ReleaseAsset>& assets)
+{
+    NewVersionDialog dlg(version, changelog, releaseUrl, assets, this);
+    dlg.exec();
 }
 
 void MainWindow::onShowHiddenComponentsToggled(bool checked)

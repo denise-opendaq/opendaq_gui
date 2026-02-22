@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(opendaq_qt_gui_package)
 
-# Configuration
+# Configuration (version from main project)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../version.cmake)
 set(APP_NAME "opendaq-qt-gui")
 set(DISPLAY_NAME "OpenDAQ Qt GUI")
-set(VERSION "1.0")
+set(VERSION "${PROJECT_VERSION}")
 set(PROJECT_BINARY_NAME "opendaq_qt_gui")
 set(MAINTAINER "OpenDAQ <denis.erokhin@opendaq.com>")
 set(DESCRIPTION "OpenDAQ Qt GUI Application")
@@ -46,11 +47,12 @@ execute_process(
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# Output paths
+# Output paths (OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension])
+set(PACKAGE_FILE_BASE "OpenDAQ.Qt.GUI-${VERSION}-linux-${ARCH}")
 set(PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/package")
 set(DEB_ROOT "${PACKAGE_DIR}/${APP_NAME}_${VERSION}")
 set(INSTALL_PREFIX "${DEB_ROOT}/usr")
-set(DEB_FILE "${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}_${VERSION}_${ARCH}.deb")
+set(DEB_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_FILE_BASE}.deb")
 
 # Create package structure
 add_custom_target(prepare_structure ALL

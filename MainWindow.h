@@ -8,8 +8,11 @@
 #include <QStringList>
 #include <QMap>
 #include <QEvent>
+#include <QShowEvent>
 
 #include "LayoutManager.h"
+#include "UpdateChecker.h"
+#include "context/release_asset.h"
 
 class DetachedWindow;
 class BaseTreeElement;
@@ -27,6 +30,7 @@ protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
     void changeEvent(QEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     void setGeometry(const QRect& rect);
 
 private:
@@ -38,6 +42,8 @@ private Q_SLOTS:
     void onViewSelectionChanged(int index);
     void onShowHiddenComponentsToggled(bool checked);
     void onComponentSelected(BaseTreeElement* element);
+    void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
+                           const QList<ReleaseAsset>& assets);
 
 private:
     // Main splitters
@@ -56,4 +62,6 @@ private:
     QAction* showHiddenAction = nullptr;
     QAction* resetLayoutAction = nullptr;
     QMenu* availableTabsMenu = nullptr;
+
+    UpdateChecker* m_updateChecker = nullptr;
 };

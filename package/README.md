@@ -27,7 +27,9 @@ To build a DMG installer for macOS:
 ./package/mac/build_dmg.sh
 ```
 
-The DMG file will be created at: `build/package/OpenDAQ Qt GUI-1.0-<arch>.dmg` (where `<arch>` is `arm64` or `x86_64`)
+Output files use the naming: **OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension]** (version from `package/version.cmake`).
+
+The DMG and PKG files will be created at: `build/package/OpenDAQ.Qt.GUI-<version>-mac-<arch>.dmg` and `.pkg` (where `<arch>` is `arm64` or `x86_64`).
 
 For more details, see [mac/](mac/) directory.
 
@@ -54,7 +56,7 @@ cmake --build ..\..\build\package --config Release
 cmake --build ..\..\build\package --target create_installer
 ```
 
-The installer will be created at: `build/package/OpenDAQ Qt GUI-1.0-Windows-<arch>.exe` (where `<arch>` is `x64` or `arm64`)
+The installer will be created at: `build/package/OpenDAQ.Qt.GUI-<version>-windows-<arch>.exe` (where `<arch>` is `x64` or `arm64`).
 
 ## Linux DEB Package
 
@@ -78,5 +80,5 @@ cmake --build ../../build/package
 cmake --build ../../build/package --target create_deb
 ```
 
-The DEB file will be created at: `build/package/opendaq-qt-gui_1.0_<arch>.deb` (where `<arch>` is `amd64`, `arm64`, `armhf`, etc.)
+The DEB file will be created at: `build/package/OpenDAQ.Qt.GUI-<version>-linux-<arch>.deb` (where `<arch>` is `amd64`, `arm64`, `armhf`, etc.)
 

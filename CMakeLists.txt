@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(opendaq_qt_gui VERSION 1.1 LANGUAGES CXX)
+include(${CMAKE_CURRENT_SOURCE_DIR}/package/version.cmake)
+project(opendaq_qt_gui VERSION ${PROJECT_VERSION} LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +33,7 @@ set(CMAKE_AUTOUIC ON)
 add_compile_definitions(QT_NO_KEYWORDS)
 
 # Find Qt6 (fetched or system-installed in external/qt)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
 
 add_subdirectory(context)
 add_subdirectory(logger)
@@ -52,6 +53,7 @@ set(SOURCES
     DetachableTabWidget.cpp
     DetachedWindow.cpp
     DropOverlay.cpp
+    UpdateChecker.cpp
 )
 
 set(HEADERS
@@ -60,6 +62,7 @@ set(HEADERS
     DetachableTabWidget.h
     DetachedWindow.h
     DropOverlay.h
+    UpdateChecker.h
 )
 
 # Create executable
@@ -74,6 +77,7 @@ target_link_libraries(${PROJECT_NAME}
         utils
         Qt6::Core
         Qt6::Widgets
+        Qt6::Network
         context
         logger
         component
@@ -93,10 +97,11 @@ else()
     set(EXTRA_MODULE_PATH "" CACHE STRING "Additional path for openDAQ modules (relative to executable)")
 endif()
 
-# Pass extra module path to the application via compile definition
+# Pass extra module path and app version to the application via compile definition
 if(EXTRA_MODULE_PATH)
     target_compile_definitions(${PROJECT_NAME} PRIVATE EXTRA_MODULE_PATH="${EXTRA_MODULE_PATH}")
 endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE APP_VERSION="${PROJECT_VERSION}")
 
 # Platform-specific bundle configuration
 if(APPLE)

@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(opendaq_qt_gui_package)
 
-# Configuration
+# Configuration (version from main project)
+include(${CMAKE_CURRENT_SOURCE_DIR}/../version.cmake)
 set(APP_NAME "OpenDAQ Qt GUI")
 set(BUNDLE_IDENTIFIER "com.opendaq.qt-gui")
-set(VERSION "1.0")
+set(VERSION "${PROJECT_VERSION}")
 set(PROJECT_BINARY_NAME "opendaq_qt_gui")  # The actual binary name from the main CMake project
 
 # Detect architecture
@@ -55,10 +56,11 @@ if(NOT MACDEPLOYQT_EXECUTABLE)
     message(FATAL_ERROR "macdeployqt not found. Cannot create deployable bundle.")
 endif()
 
-# Output paths
+# Output paths (OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension])
+set(PACKAGE_FILE_BASE "OpenDAQ.Qt.GUI-${VERSION}-mac-${ARCH}")
 set(PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/package")
 set(BUNDLE_DIR "${PACKAGE_DIR}/${APP_NAME}.app")
-set(DMG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${APP_NAME}-${VERSION}-${ARCH}.dmg")
+set(DMG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_FILE_BASE}.dmg")
 
 # Copy and deploy bundle
 add_custom_target(prepare_bundle ALL
@@ -126,6 +128,26 @@ add_custom_target(create_dmg
     BYPRODUCTS "${DMG_FILE}"
 )
 
+# PKG installer: stage dir = Applications/AppName.app, then pkgbuild
+set(PKG_STAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/pkg_stage")
+set(PKG_FILE "${CMAKE_CURRENT_BINARY_DIR}/${PACKAGE_FILE_BASE}.pkg")
+
+add_custom_target(create_pkg
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${PKG_STAGE_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PKG_STAGE_DIR}/Applications"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${BUNDLE_DIR}" "${PKG_STAGE_DIR}/Applications/${APP_NAME}.app"
+    COMMAND pkgbuild
+            --root "${PKG_STAGE_DIR}"
+            --identifier "${BUNDLE_IDENTIFIER}"
+            --version "${VERSION}"
+            --install-location "/"
+            "${PKG_FILE}"
+    COMMAND ${CMAKE_COMMAND} -E remove_directory "${PKG_STAGE_DIR}"
+    DEPENDS codesign_bundle
+    COMMENT "Creating PKG installer: ${PKG_FILE}"
+    BYPRODUCTS "${PKG_FILE}"
+)
+
 message(STATUS "==============================================")
 message(STATUS "DMG Package Configuration")
 message(STATUS "==============================================")
@@ -133,13 +155,15 @@ message(STATUS "Source bundle: ${SOURCE_BUNDLE}")
 message(STATUS "Package dir:   ${PACKAGE_DIR}")
 message(STATUS "Architecture:  ${ARCH}")
 message(STATUS "Output DMG:    ${DMG_FILE}")
+message(STATUS "Output PKG:    ${PKG_FILE}")
 message(STATUS "macdeployqt:   ${MACDEPLOYQT_EXECUTABLE}")
 message(STATUS "")
 message(STATUS "Build steps:")
 message(STATUS "  1. cd package/mac && cmake -B ../../build/package")
 message(STATUS "  2. cmake --build ../../build/package")
-message(STATUS "  3. cmake --build ../../build/package --target create_dmg")
+message(STATUS "  3. cmake --build ../../build/package --target create_dmg   # DMG image")
+message(STATUS "  4. cmake --build ../../build/package --target create_pkg   # PKG installer")
 message(STATUS "")
 message(STATUS "Or use the script:")
-message(STATUS "  ./package/mac/build_dmg.sh")
+message(STATUS "  ./package/mac/build_dmg.sh   # builds DMG and PKG")
 message(STATUS "==============================================")

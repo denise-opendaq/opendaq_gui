@@ -97,6 +97,8 @@ case "$ARCH" in
         ;;
 esac
 
-echo -e "DEB location: ${GREEN}build/package/opendaq-qt-gui_1.0_${ARCH_SUFFIX}.deb${NC}"
+# Version from package/version.cmake (OpenDAQ.Qt.GUI-[version]-[platform]-[architecture].[extension])
+VERSION=$(grep 'set(PROJECT_VERSION' "$SCRIPT_DIR/../version.cmake" 2>/dev/null | sed 's/.*"\([^"]*\)".*/\1/' || echo "1.0")
+echo -e "DEB location: ${GREEN}build/package/OpenDAQ.Qt.GUI-${VERSION}-linux-${ARCH_SUFFIX}.deb${NC}"
 echo ""
 
