@@ -1,11 +1,11 @@
-name: macOS DMG Build
+name: macOS PKG Build
 
 on:
   workflow_dispatch:
   workflow_call:
 
 jobs:
-  build-macos-dmg:
+  build-macos-installer:
     runs-on: macos-latest
 
     steps:
@@ -18,20 +18,20 @@ jobs:
       run: |
         brew install cmake ninja qt@6 mono
 
-    - name: Build DMG package
-      run: ./package/mac/build_dmg.sh
+    - name: Build installer
+      run: ./package/mac/build_installer.sh
 
-    - name: Upload DMG artifact
+    - name: Upload PKG artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenDAQ-Qt-GUI-macOS-DMG
-        path: build/package/OpenDAQ Qt GUI-*.dmg
+        name: OpenDAQ-Qt-GUI-macOS-PKG
+        path: build/package/OpenDAQ.Qt.GUI-*-mac-*.pkg
         retention-days: 30
 
-    - name: Upload DMG to release
+    - name: Upload PKG to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: build/package/OpenDAQ Qt GUI-*.dmg
+        files: build/package/OpenDAQ.Qt.GUI-*-mac-*.pkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

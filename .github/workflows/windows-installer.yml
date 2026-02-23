@@ -35,14 +35,14 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: OpenDAQ-Qt-GUI-Windows-Installer
-        path: build/package/OpenDAQ Qt GUI-*-Windows-*.exe
+        path: build/package/OpenDAQ.Qt.GUI-*-windows-*.exe
         retention-days: 30
 
     - name: Upload installer to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: build/package/OpenDAQ Qt GUI-*-Windows-*.exe
+        files: build/package/OpenDAQ.Qt.GUI-*-windows-*.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

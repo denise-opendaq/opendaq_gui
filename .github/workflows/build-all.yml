@@ -7,11 +7,11 @@ on:
 
 jobs:
   build-linux:
-    uses: ./.github/workflows/linux-deb.yml
+    uses: ./.github/workflows/linux-installer.yml
     secrets: inherit
 
   build-macos:
-    uses: ./.github/workflows/macos-dmg.yml
+    uses: ./.github/workflows/macos-installer.yml
     secrets: inherit
 
   build-windows:
