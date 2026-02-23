@@ -10,6 +10,7 @@
 #include <QMessageBox>
 #include <QMenu>
 #include <QDialogButtonBox>
+#include <QTimer>
 #include <opendaq/opendaq.h>
 
 class AddDeviceDialog : public QDialog
@@ -48,5 +49,6 @@ private:
     QMenu* contextMenu;
     QAction* addAction;
     QAction* addWithConfigAction;
+    QTimer* refreshTimer;
 };
 

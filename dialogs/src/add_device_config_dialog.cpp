@@ -172,6 +172,9 @@ void AddDeviceConfigDialog::initSelectionWidgets()
 
     try
     {
+        // Always offer "None" for streaming (no streaming)
+        streamingProtocolsComboBox->addItem("None", "");
+
         const auto caps = deviceInfo.getServerCapabilities();
         for (const auto& cap : caps)
         {
@@ -224,9 +227,43 @@ void AddDeviceConfigDialog::initSelectionWidgets()
             // Add streaming only option
             configurationProtocolComboBox->addItem("-- Streaming only --", "");
 
+            // Default streaming: first from PrioritizedStreamingProtocols (or "None" if empty)
+            if (config.assigned() && config.hasProperty("General"))
+            {
+                try
+                {
+                    daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
+                    daq::ListPtr<daq::IString> prioritizedList;
+                    if (generalSection.hasProperty("PrioritizedStreamingProtocols"))
+                        prioritizedList = generalSection.getPropertyValue("PrioritizedStreamingProtocols");
+                    if (prioritizedList.assigned() && prioritizedList.getCount() > 0)
+                    {
+                        QString firstId = QString::fromStdString(prioritizedList.getItemAt(0).toStdString());
+                        int idx = streamingProtocolsComboBox->findData(firstId);
+                        if (idx >= 0)
+                            streamingProtocolsComboBox->setCurrentIndex(idx);
+                    }
+                }
+                catch (const std::exception&) { }
+            }
+
             // Set default selection for streaming protocol
             selectedStreamingProtocol = streamingProtocolsComboBox->currentText();
             selectedStreamingProtocolId = streamingProtocolsComboBox->currentData().toString();
+
+            // Apply initial AllowedStreamingProtocols (empty when "None" is selected)
+            if (config.assigned() && config.hasProperty("General"))
+            {
+                try
+                {
+                    daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
+                    if (selectedStreamingProtocolId.isEmpty())
+                        generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>());
+                    else
+                        generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>(selectedStreamingProtocolId.toStdString()));
+                }
+                catch (const std::exception&) { }
+            }
         }
         
         // Set default selection for configuration protocol
@@ -318,18 +355,21 @@ void AddDeviceConfigDialog::onStreamingProtocolSelected(int index)
         selectedStreamingProtocolId = streamingProtocolsComboBox->itemData(index).toString();
     }
     
-    // Update PrioritizedStreamingProtocols in General section
+    // Update AllowedStreamingProtocols in General section
     if (config.assigned() && config.hasProperty("General"))
     {
         try
         {
             daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-            generalSection.setPropertyValue("PrioritizedStreamingProtocols", daq::List<daq::IString>(selectedStreamingProtocolId.toStdString()));
+            if (selectedStreamingProtocolId.isEmpty())
+                generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>());
+            else
+                generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>(selectedStreamingProtocolId.toStdString()));
         }
         catch (const std::exception& e)
         {
             const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_W("Error updating PrioritizedStreamingProtocols: {}", e.what());
+            LOG_W("Error updating AllowedStreamingProtocols: {}", e.what());
         }
     }
     

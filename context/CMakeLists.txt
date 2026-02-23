@@ -20,6 +20,7 @@ set(SOURCES
     src/UpdateScheduler.cpp
     src/QueuedEventHandler.cpp
     src/icon_provider.cpp
+    src/gui_constants.cpp
 )
 
 # Resource files

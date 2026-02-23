@@ -4,17 +4,13 @@
 
 #include "MainWindow.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
 
 #include <opendaq/instance_factory.h>
 #include <opendaq/logger_sink_ptr.h>
 #include <opendaq/log_level.h>
 #include <opendaq/device_info_factory.h>
 
-#ifdef Q_OS_WIN
-#include <windows.h>
-#else
-#include <unistd.h>
-#endif
 
 int main(int argc, char *argv[])
 {
@@ -27,20 +23,9 @@ int main(int argc, char *argv[])
     app.setEffectEnabled(Qt::UI_AnimateTooltip, false);
     app.setEffectEnabled(Qt::UI_AnimateToolBox, false);
 
-    // Generate unique device info
-    QString manufacturer = QString("openDAQ-GUI-%1").arg(QSysInfo::machineHostName());
-
-    // Get process ID for unique serial number
-#ifdef Q_OS_WIN
-    qint64 pid = GetCurrentProcessId();
-#else
-    qint64 pid = getpid();
-#endif
-    QString serialNumber = QString::number(pid);
-
     auto deviceInfo = daq::DeviceInfo("daqmock://client_device", "OpenDAQClient");
-    deviceInfo.setManufacturer(manufacturer.toStdString());
-    deviceInfo.setSerialNumber(serialNumber.toStdString());
+    deviceInfo.setManufacturer(GUIConstants::getClientManufacturer().toStdString());
+    deviceInfo.setSerialNumber(GUIConstants::getClientSerialNumber().toStdString());
 
     // Create openDAQ instance with our custom logger sink from AppContext
     auto builder = daq::InstanceBuilder().setGlobalLogLevel(daq::LogLevel::Info)

@@ -16,6 +16,7 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     , contextMenu(nullptr)
     , addAction(nullptr)
     , addWithConfigAction(nullptr)
+    , refreshTimer(nullptr)
 {
     setWindowTitle("Add Device");
     resize(GUIConstants::ADD_DEVICE_DIALOG_WIDTH, GUIConstants::ADD_DEVICE_DIALOG_HEIGHT);
@@ -23,6 +24,11 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
 
     setupUI();
     updateAvailableDevices();
+
+    refreshTimer = new QTimer(this);
+    refreshTimer->setInterval(1000);
+    connect(refreshTimer, &QTimer::timeout, this, &AddDeviceDialog::updateAvailableDevices);
+    refreshTimer->start();
 }
 
 void AddDeviceDialog::setupUI()
@@ -117,8 +123,19 @@ void AddDeviceDialog::updateAvailableDevices()
             return;
         }
 
+        // Our client device identity (same as main.cpp) to filter ourselves out
+        const QString& ourManufacturer = GUIConstants::getClientManufacturer();
+        const QString& ourSerialNumber = GUIConstants::getClientSerialNumber();
+
+        int addedCount = 0;
         for (const auto & deviceInfo : availableDevices)
         {
+            // Skip our client device (root from main.cpp): match by manufacturer and serial number
+            QString devManufacturer = QString::fromStdString(deviceInfo.getManufacturer().toStdString());
+            QString devSerialNumber = QString::fromStdString(deviceInfo.getSerialNumber().toStdString());
+            if (devManufacturer == ourManufacturer && devSerialNumber == ourSerialNumber)
+                continue;
+
             QString name = QString::fromStdString(deviceInfo.getName().toStdString());
             QString connectionString = QString::fromStdString(deviceInfo.getConnectionString().toStdString());
 
@@ -126,9 +143,10 @@ void AddDeviceDialog::updateAvailableDevices()
             item->setText(0, name);
             item->setText(1, connectionString);
             item->setData(1, Qt::UserRole, connectionString);
+            ++addedCount;
         }
 
-        statusLabel->setText(QString("Found %1 device(s). Select one or enter connection string manually.").arg(availableDevices.getCount()));
+        statusLabel->setText(QString("Found %1 device(s). Select one or enter connection string manually.").arg(addedCount));
     }
     catch (const std::exception& e)
     {

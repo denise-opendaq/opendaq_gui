@@ -1,9 +1,14 @@
 #pragma once
 
 #include <QSize>
+#include <QString>
 
 // GUI Constants for consistent sizing across the application
 namespace GUIConstants {
+    // Lazy-initialized once; use when filtering "our" device in discovery
+    const QString& getClientManufacturer();
+    const QString& getClientSerialNumber();
+
     // Window sizes
     constexpr int DEFAULT_WINDOW_WIDTH = 1200;
     constexpr int DEFAULT_WINDOW_HEIGHT = 800;
