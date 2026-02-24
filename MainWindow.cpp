@@ -23,6 +23,8 @@
 #include <QApplication>
 #include <QWindowStateChangeEvent>
 #include <QWidget>
+#include <QFileDialog>
+#include <QMessageBox>
 
 #include "context/gui_constants.h"
 #include "component/base_tree_element.h"
@@ -192,6 +194,11 @@ void MainWindow::setupMenuBar()
 
     // Reset Layout action (will be connected after LayoutManager is created)
     resetLayoutAction = viewMenu->addAction("Reset Layout");
+
+    // Modules menu
+    QMenu* modulesMenu = menuBar->addMenu("Modules");
+    QAction* loadModuleAction = modulesMenu->addAction("Load Module...");
+    connect(loadModuleAction, &QAction::triggered, this, &MainWindow::onLoadModuleTriggered);
 }
 
 void MainWindow::setupUI()
@@ -367,6 +374,45 @@ void MainWindow::onShowHiddenComponentsToggled(bool checked)
     // Update the component tree to show/hide hidden components
     if (componentTreeWidget)
         componentTreeWidget->setShowHidden(checked);
+}
+
+void MainWindow::onLoadModuleTriggered()
+{
+    const QStringList paths = QFileDialog::getOpenFileNames(
+        this,
+        tr("Select Module(s)"),
+        QString(),
+        tr("Shared Libraries (*.so *.dll *.dylib);;All Files (*)")
+    );
+
+    if (paths.isEmpty())
+        return;
+
+    auto instance = AppContext::Instance()->daqInstance();
+    if (!instance.assigned())
+    {
+        QMessageBox::warning(this, tr("Load Module"), tr("No openDAQ instance available."));
+        return;
+    }
+
+    const auto loggerComponent = AppContext::LoggerComponent();
+    QStringList errors;
+
+    for (const QString& path : paths)
+    {
+        try
+        {
+            instance.getModuleManager().loadModule(path.toStdString());
+            LOG_I("Module loaded: {}", path.toStdString());
+        }
+        catch (const std::exception& e)
+        {
+            errors << tr("%1:\n%2").arg(path, e.what());
+        }
+    }
+
+    if (!errors.isEmpty())
+        QMessageBox::critical(this, tr("Load Module"), tr("Failed to load module(s):\n\n%1").arg(errors.join("\n\n")));
 }
 
 

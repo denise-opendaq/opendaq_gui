@@ -44,6 +44,7 @@ private Q_SLOTS:
     void onComponentSelected(BaseTreeElement* element);
     void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
                            const QList<ReleaseAsset>& assets);
+    void onLoadModuleTriggered();
 
 private:
     // Main splitters
