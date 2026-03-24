@@ -29,10 +29,7 @@ bool ServersFolderTreeElement::isLocalDeviceFolder() const
 
 bool ServersFolderTreeElement::visible() const
 {
-    if (isLocalDeviceFolder())
-        return true;
-
-    if (children.empty())
+    if (!isLocalDeviceFolder() && children.empty())
         return false;
 
     return ComponentTreeElement::visible();

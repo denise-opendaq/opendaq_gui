@@ -15,6 +15,7 @@ class AppContext::Private
 public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
+    bool expandAllProperties = true;
     QSet<QString> componentTypes; // empty means show all
     daq::LoggerSinkPtr loggerSink;
     UpdateScheduler* scheduler = nullptr;
@@ -112,6 +113,20 @@ void AppContext::setShowInvisibleComponents(bool show)
     {
         d->showInvisible = show;
         Q_EMIT showInvisibleChanged(show);
+    }
+}
+
+bool AppContext::expandAllProperties() const
+{
+    return d->expandAllProperties;
+}
+
+void AppContext::setExpandAllProperties(bool expand)
+{
+    if (d->expandAllProperties != expand)
+    {
+        d->expandAllProperties = expand;
+        Q_EMIT expandAllPropertiesChanged(expand);
     }
 }
 

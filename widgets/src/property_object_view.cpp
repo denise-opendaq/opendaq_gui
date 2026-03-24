@@ -109,6 +109,10 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
 
     // Connect to AppContext to refresh when showInvisible changes
     connect(AppContext::Instance(), &AppContext::showInvisibleChanged, this, &PropertyObjectView::refresh);
+    connect(AppContext::Instance(), &AppContext::expandAllPropertiesChanged, this, [this](bool)
+    {
+        applyExpandState();
+    });
 }
 
 PropertyObjectView::~PropertyObjectView()
@@ -126,6 +130,7 @@ void PropertyObjectView::refresh()
 
     PropertySubtreeBuilder builder(*this);
     builder.buildFromPropertyObject(nullptr, root);
+    applyExpandState();
 }
 
 bool PropertyObjectView::edit(const QModelIndex& index, EditTrigger trigger, QEvent* event)
@@ -413,6 +418,14 @@ void PropertyObjectView::fitColumnsToViewport()
         if (!header()->isSectionHidden(i))
             header()->resizeSection(i, w);
     }
+}
+
+void PropertyObjectView::applyExpandState()
+{
+    if (AppContext::Instance()->expandAllProperties())
+        expandAll();
+    else
+        collapseAll();
 }
 
 void PropertyObjectView::removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName)

@@ -46,6 +46,8 @@ public:
     // Visibility settings
     bool showInvisibleComponents() const;
     void setShowInvisibleComponents(bool show);
+    bool expandAllProperties() const;
+    void setExpandAllProperties(bool expand);
 
     QSet<QString> showComponentTypes() const;
     void setShowComponentTypes(const QSet<QString>& types);
@@ -62,6 +64,7 @@ Q_SIGNALS:
 
     // Emitted when showInvisible setting changes
     void showInvisibleChanged(bool show);
+    void expandAllPropertiesChanged(bool expand);
 
 private:
     AppContext(QObject* parent = nullptr);

@@ -61,6 +61,7 @@ private:
 
     // Menu
     QAction* showHiddenAction = nullptr;
+    QAction* expandAllPropertiesAction = nullptr;
     QAction* resetLayoutAction = nullptr;
     QMenu* availableTabsMenu = nullptr;
 

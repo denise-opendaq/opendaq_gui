@@ -115,6 +115,7 @@ private:
     daq::PropertyObjectPtr getChildObject(std::string path);
     void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
     void fitColumnsToViewport();
+    void applyExpandState();
 
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;

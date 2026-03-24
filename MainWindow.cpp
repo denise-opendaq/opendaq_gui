@@ -182,7 +182,16 @@ void MainWindow::setupMenuBar()
     QMenu* viewMenu = menuBar->addMenu("View");
     showHiddenAction = viewMenu->addAction("Show hidden components");
     showHiddenAction->setCheckable(true);
+    showHiddenAction->setChecked(AppContext::Instance()->showInvisibleComponents());
     connect(showHiddenAction, &QAction::toggled, this, &MainWindow::onShowHiddenComponentsToggled);
+
+    expandAllPropertiesAction = viewMenu->addAction("Expand all properties");
+    expandAllPropertiesAction->setCheckable(true);
+    expandAllPropertiesAction->setChecked(AppContext::Instance()->expandAllProperties());
+    connect(expandAllPropertiesAction, &QAction::toggled, this, [](bool checked)
+    {
+        AppContext::Instance()->setExpandAllProperties(checked);
+    });
 
     viewMenu->addSeparator();
 
