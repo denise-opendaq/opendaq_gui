@@ -9,11 +9,17 @@ jobs:
   build-linux:
     uses: ./.github/workflows/linux-installer.yml
     secrets: inherit
+    permissions:
+      contents: write
 
   build-macos:
     uses: ./.github/workflows/macos-installer.yml
     secrets: inherit
+    permissions:
+      contents: write
 
   build-windows:
     uses: ./.github/workflows/windows-installer.yml
     secrets: inherit
+    permissions:
+      contents: write
