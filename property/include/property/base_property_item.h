@@ -27,6 +27,7 @@ public:
 
     // What to show in "Value" column
     virtual QString showValue() const;
+    virtual QString showDisplayValue() const;
 
     // Can user edit key (column 0)?
     virtual bool isKeyEditable() const;

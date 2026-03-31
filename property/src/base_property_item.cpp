@@ -61,6 +61,35 @@ QString BasePropertyItem::showValue() const
     }
 }
 
+QString BasePropertyItem::showDisplayValue() const
+{
+    const QString valueStr = showValue();
+
+    try
+    {
+        const auto unit = prop.getUnit();
+        if (!unit.assigned())
+            return valueStr;
+
+        const auto symbol = unit.getSymbol();
+        if (!symbol.assigned() || !symbol.getLength())
+            return valueStr;
+
+        const QString symbolStr = QString::fromStdString(symbol);
+
+        return valueStr + QStringLiteral(" ") + symbolStr;
+    }
+    catch (const std::exception& e)
+    {
+        qWarning() << "Error showing display value for property" << QString::fromStdString(getName()) << ":" << QString::fromStdString(e.what());
+    }
+    catch (...)
+    {
+        qWarning() << "Unknown error showing display value for property" << QString::fromStdString(getName());
+    }
+    return valueStr;
+}
+
 bool BasePropertyItem::isReadOnly() const
 {
     if (prop.getReadOnly())
@@ -241,7 +270,8 @@ void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
     if (!widgetItem)
         return;
     const QString nameStr = QString::fromStdString(getName());
-    const QString valueStr = showValue();
+    const QString rawValueStr = showValue();
+    const QString displayValueStr = showDisplayValue();
     widgetItem->setText(0, nameStr);
     try
     {
@@ -255,8 +285,10 @@ void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
     {
         widgetItem->setToolTip(0, nameStr);
     }
-    widgetItem->setText(1, valueStr);
-    widgetItem->setToolTip(1, valueStr);
+    // Keep "raw" and "display" values separate so units never leak into edits/saves
+    widgetItem->setData(1, Qt::UserRole, rawValueStr);
+    widgetItem->setText(1, displayValueStr);
+    widgetItem->setToolTip(1, displayValueStr);
     const QStringList meta = getAvailableMetadata();
     for (int i = 0; i < meta.size(); ++i)
     {
@@ -327,8 +359,18 @@ void BasePropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 {
     if (column == 1)
     {
-        const daq::StringPtr newText = item->text(1).toStdString();
+        // Prefer raw value stored in UserRole (set by delegate), fallback to visible text
+        const QString raw = item->data(1, Qt::UserRole).toString();
+        const QString editedText = raw.isEmpty() ? item->text(1) : raw;
+        const daq::StringPtr newText = editedText.toStdString();
         owner.setPropertyValue(getName(), newText.convertTo(prop.getValueType()));
+
+        // Restore display value with unit immediately
+        const QString rawValueStr = showValue();
+        const QString displayValueStr = showDisplayValue();
+        item->setData(1, Qt::UserRole, rawValueStr);
+        item->setText(1, displayValueStr);
+        item->setToolTip(1, displayValueStr);
     }
 }
 
