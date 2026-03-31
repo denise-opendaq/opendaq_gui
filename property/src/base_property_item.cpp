@@ -1,4 +1,8 @@
 #include "property/base_property_item.h"
+#include "widgets/property_object_view.h"
+#include <QMenu>
+#include <QMessageBox>
+#include <QTreeWidget>
 
 static QString CoreTypeToString(daq::CoreType coretype)
 {
@@ -42,8 +46,19 @@ daq::StringPtr BasePropertyItem::getName() const
 
 QString BasePropertyItem::showValue() const
 {
-    const auto value = owner.getPropertyValue(prop.getName());
-    return QString::fromStdString(value);
+    try
+    {
+        if (hasSelectionValues())
+            return QString::fromStdString(owner.getPropertySelectionValue(getName()));
+
+        const auto value = owner.getPropertyValue(prop.getName());
+        return QString::fromStdString(value);
+    }
+    catch (...)
+    {
+        const auto value = owner.getPropertyValue(prop.getName());
+        return QString::fromStdString(value);
+    }
 }
 
 bool BasePropertyItem::isReadOnly() const
@@ -64,7 +79,7 @@ bool BasePropertyItem::isKeyEditable() const
 
 bool BasePropertyItem::isValueEditable() const
 {
-    return !isReadOnly();
+    return !isReadOnly() && !hasSelectionValues();
 }
 
 bool BasePropertyItem::hasSubtree() const
@@ -228,7 +243,18 @@ void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
     const QString nameStr = QString::fromStdString(getName());
     const QString valueStr = showValue();
     widgetItem->setText(0, nameStr);
-    widgetItem->setToolTip(0, nameStr);
+    try
+    {
+        const auto description = prop.getDescription();
+        if (description.assigned())
+            widgetItem->setToolTip(0, nameStr + QStringLiteral(": ") + QString::fromStdString(description));
+        else
+            widgetItem->setToolTip(0, nameStr);
+    }
+    catch (...)
+    {
+        widgetItem->setToolTip(0, nameStr);
+    }
     widgetItem->setText(1, valueStr);
     widgetItem->setToolTip(1, valueStr);
     const QStringList meta = getAvailableMetadata();
@@ -244,8 +270,53 @@ void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, 
 {
 }
 
-void BasePropertyItem::handle_double_click(PropertyObjectView*, QTreeWidgetItem*)
+void BasePropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidgetItem* item)
 {
+    if (!view || !item)
+        return;
+
+    QStringList selectionValues = getSelectionValues();
+    if (selectionValues.isEmpty())
+        return;
+
+    QString currentValue = showValue();
+
+    QMenu menu(view);
+    for (const QString& val : selectionValues)
+    {
+        QAction* action = menu.addAction(val);
+        if (val == currentValue)
+        {
+            action->setCheckable(true);
+            action->setChecked(true);
+        }
+    }
+
+    QRect itemRect = view->visualItemRect(item);
+    int valueColumnX = view->columnViewportPosition(1);
+    QPoint pos = view->viewport()->mapToGlobal(QPoint(valueColumnX, itemRect.y() + itemRect.height()));
+
+    QAction* selected = menu.exec(pos);
+    if (selected)
+    {
+        try
+        {
+            setBySelectionValue(selected->text());
+            view->onPropertyValueChanged(owner);
+        }
+        catch (const std::exception& e)
+        {
+            QMessageBox::warning(view,
+                                 "Property Update Error",
+                                 QString("Failed to update property: %1").arg(e.what()));
+        }
+        catch (...)
+        {
+            QMessageBox::warning(view,
+                                 "Property Update Error",
+                                 "Failed to update property: unknown error");
+        }
+    }
 }
 
 void BasePropertyItem::handle_right_click(PropertyObjectView*, QTreeWidgetItem*, const QPoint&)
@@ -259,5 +330,40 @@ void BasePropertyItem::commitEdit(QTreeWidgetItem* item, int column)
         const daq::StringPtr newText = item->text(1).toStdString();
         owner.setPropertyValue(getName(), newText.convertTo(prop.getValueType()));
     }
+}
+
+bool BasePropertyItem::hasSelectionValues() const
+{
+    return prop.getSelectionValues().assigned();
+}
+
+QStringList BasePropertyItem::getSelectionValues() const
+{
+    QStringList result;
+    const auto selection = prop.getSelectionValues();
+
+    if (!selection.assigned())
+        return result;
+
+    if (const auto list = selection.asPtrOrNull<daq::IList>(true); list.assigned())
+    {
+        for (const auto& item : list)
+            result.append(QString::fromStdString(item));
+    }
+    else if (const auto dict = selection.asPtrOrNull<daq::IDict>(true); dict.assigned())
+    {
+        for (const auto& [key, value] : dict)
+            result.append(QString::fromStdString(value));
+    }
+
+    return result;
+}
+
+void BasePropertyItem::setBySelectionValue(const QString& value)
+{
+    if (!hasSelectionValues())
+        return;
+
+    owner.setPropertySelectionValue(getName(), value.toStdString());
 }
 

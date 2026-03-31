@@ -3,6 +3,8 @@
 #include <QtWidgets>
 
 #include <coreobjects/property_object_ptr.h>
+#include <coretypes/listobject.h>
+#include <coretypes/dictobject.h>
 
 // Forward declarations
 class PropertyObjectView;
@@ -69,6 +71,10 @@ public:
     void setWidgetItem(QTreeWidgetItem* item);
 
 protected:
+    bool hasSelectionValues() const;
+    QStringList getSelectionValues() const;
+    void setBySelectionValue(const QString& value);
+
     daq::PropertyObjectPtr owner;
     daq::PropertyPtr prop;
     bool expanded = false;
