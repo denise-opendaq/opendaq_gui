@@ -14,6 +14,39 @@
 #include <QKeyEvent>
 #include <coreobjects/property_object_internal_ptr.h>
 
+namespace
+{
+class ValueEditRoleDelegate final : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void setEditorData(QWidget* editor, const QModelIndex& index) const override
+    {
+        const QString raw = index.data(Qt::UserRole).toString();
+        if (auto* lineEdit = qobject_cast<QLineEdit*>(editor))
+        {
+            lineEdit->setText(raw.isEmpty() ? index.data(Qt::DisplayRole).toString() : raw);
+            return;
+        }
+
+        QStyledItemDelegate::setEditorData(editor, index);
+    }
+
+    void setModelData(QWidget* editor, QAbstractItemModel* model, const QModelIndex& index) const override
+    {
+        if (auto* lineEdit = qobject_cast<QLineEdit*>(editor))
+        {
+            // Store edited value as raw in UserRole; display formatting is restored by BasePropertyItem::commitEdit
+            model->setData(index, lineEdit->text(), Qt::UserRole);
+            return;
+        }
+
+        QStyledItemDelegate::setModelData(editor, model, index);
+    }
+};
+}
+
 struct Column
 {
     Column(const QString& name, bool visible, bool readOnly = false)
@@ -96,6 +129,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     setUniformRowHeights(true);
     setExpandsOnDoubleClick(true);
     setContextMenuPolicy(Qt::CustomContextMenu);
+    setItemDelegateForColumn(1, new ValueEditRoleDelegate(this));
 
     connect(this, &QTreeWidget::itemChanged, this, &PropertyObjectView::onItemChanged);
     connect(this, &QTreeWidget::itemExpanded, this, &PropertyObjectView::onItemExpanded);

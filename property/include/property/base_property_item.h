@@ -3,6 +3,8 @@
 #include <QtWidgets>
 
 #include <coreobjects/property_object_ptr.h>
+#include <coretypes/listobject.h>
+#include <coretypes/dictobject.h>
 
 // Forward declarations
 class PropertyObjectView;
@@ -25,6 +27,7 @@ public:
 
     // What to show in "Value" column
     virtual QString showValue() const;
+    virtual QString showDisplayValue() const;
 
     // Can user edit key (column 0)?
     virtual bool isKeyEditable() const;
@@ -69,6 +72,10 @@ public:
     void setWidgetItem(QTreeWidgetItem* item);
 
 protected:
+    bool hasSelectionValues() const;
+    QStringList getSelectionValues() const;
+    void setBySelectionValue(const QString& value);
+
     daq::PropertyObjectPtr owner;
     daq::PropertyPtr prop;
     bool expanded = false;

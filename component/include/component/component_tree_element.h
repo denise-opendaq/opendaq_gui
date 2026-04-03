@@ -44,4 +44,7 @@ protected Q_SLOTS:
 
 protected:
     daq::ComponentPtr daqComponent;
+
+private:
+    void applyActiveStyle();
 };
