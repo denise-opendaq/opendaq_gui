@@ -11,6 +11,8 @@
 #include <QMenu>
 #include <QDialogButtonBox>
 #include <QTimer>
+#include <QSet>
+#include <unordered_map>
 #include <opendaq/opendaq.h>
 
 class AddDeviceDialog : public QDialog
@@ -40,7 +42,8 @@ private:
 
     daq::DevicePtr parentDevice;
     daq::PropertyObjectPtr config;
-    daq::ListPtr<daq::IDeviceInfo> availableDevices;
+    QSet<QString> knownConnectionStrings;
+    std::unordered_map<std::string, daq::DeviceInfoPtr> deviceInfoCache;
 
     QLineEdit* connectionStringEdit;
     QTreeWidget* deviceTree;
