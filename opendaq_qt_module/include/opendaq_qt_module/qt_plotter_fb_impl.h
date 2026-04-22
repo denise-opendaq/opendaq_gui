@@ -24,6 +24,9 @@ class QValueAxis;
 class QDateTimeAxis;
 class QTimer;
 class QGraphicsTextItem;
+class QListWidget;
+class QTableWidget;
+class QPushButton;
 QT_END_NAMESPACE
 
 BEGIN_NAMESPACE_OPENDAQ_QT_MODULE
@@ -167,6 +170,11 @@ private:
     Qt::PenStyle getQtPenStyle() const;  // Convert LineStyle enum to Qt::PenStyle
     void handleEventPacket(SignalContext& sigCtx, const daq::EventPacketPtr& eventPacket);  // Handle event packets (e.g., DATA_DESCRIPTOR_CHANGED)
     bool handleData(SignalContext& sigCtx, QLineSeries* series, size_t count, qint64& outLatestTime);  // Handle data reading, processing, and series update
+
+    // UI panels
+    void rebuildSignalsTable();
+    void updateLegendPanel();
+    void toggleSignalVisible(const daq::InputPortPtr& port, bool visible);
     
     // Marker methods
     void addMarkerAtTime(qint64 timeMsec);
@@ -221,6 +229,12 @@ private:
     
     // Widget for embedding in tabs
     QPointer<QWidget> embeddedWidget;
+
+    // Optional UI panels inside embeddedWidget
+    QPointer<QListWidget> legendList;
+    QPointer<QTableWidget> signalsTable;
+    QPointer<QPushButton> addSignalButton;
+    QPointer<QPushButton> removeSignalButton;
     
     // Update timer for plot
     QPointer<QTimer> updateTimer;

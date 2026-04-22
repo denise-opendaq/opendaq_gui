@@ -17,8 +17,14 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QGroupBox>
+#include <QHeaderView>
+#include <QListWidget>
 #include <QMainWindow>
+#include <QMenu>
 #include <QTimer>
+#include <QTableWidget>
+#include <QToolButton>
 #include <QtCharts/QChart>
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
@@ -554,6 +560,9 @@ void QtPlotterFbImpl::onConnected(const daq::InputPortPtr& inputPort)
     if (createNewPort)
         updateInputPorts();
 
+    rebuildSignalsTable();
+    updateLegendPanel();
+
     LOG_W("Connected to port {}", inputPort.getLocalId());
 }
 
@@ -574,6 +583,10 @@ void QtPlotterFbImpl::onDisconnected(const daq::InputPortPtr& inputPort)
     }
 
     removeInputPort(inputPort);
+
+    rebuildSignalsTable();
+    updateLegendPanel();
+
     LOG_W("Disconnected from port {}", inputPort.getLocalId());
 }
 
@@ -888,6 +901,10 @@ void QtPlotterFbImpl::updatePlot()
     
     // Update markers when plot updates
     updateMarkers();
+
+    // Keep UI panels in sync
+    rebuildSignalsTable();
+    updateLegendPanel();
 }
 
 double QtPlotterFbImpl::getSignalValueAtTime(QLineSeries* series, qint64 timeMsec)
@@ -1424,6 +1441,7 @@ void QtPlotterFbImpl::createChart()
     chart->setTitleBrush(palette.brush(QPalette::Text));
     chart->legend()->setLabelColor(palette.color(QPalette::Text));
     chart->legend()->setVisible(showLegend);
+    chart->legend()->setAlignment(Qt::AlignRight);
     
     // Reduce chart margins - minimal horizontal margins for tight fit
     chart->setMargins(QMargins(0, 5, 0, 5));
@@ -1468,6 +1486,7 @@ void QtPlotterFbImpl::createWidget()
     auto* widget = new QWidget();
     auto* layout = new QVBoxLayout(widget);
     layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(6);
     
     // Create toolbar
     auto* toolbarWidget = new QWidget(widget);
@@ -1479,21 +1498,104 @@ void QtPlotterFbImpl::createWidget()
     toolbarLayout->addStretch();
     layout->addWidget(toolbarWidget);
     
+    // Middle area: chart + legend panel (right)
+    auto* middleWidget = new QWidget(widget);
+    auto* middleLayout = new QHBoxLayout(middleWidget);
+    middleLayout->setContentsMargins(0, 0, 0, 0);
+    middleLayout->setSpacing(8);
+
     // Create chart view (reuse the same chart)
-    auto* embeddedChartView = new QChartView(chart, widget);
+    auto* embeddedChartView = new QChartView(chart, middleWidget);
     embeddedChartView->setRenderHint(QPainter::Antialiasing);
     embeddedChartView->setRubberBand(QChartView::NoRubberBand);
     embeddedChartView->setDragMode(QGraphicsView::NoDrag);
-    
+
     // Store reference to chart view
     chartView = embeddedChartView;
-    
+
     // Install event filter
     embeddedChartView->viewport()->installEventFilter(new ChartEventFilter(embeddedChartView, this));
-    
-    layout->addWidget(embeddedChartView);
+
+    // Right legend panel (external, like in the screenshot)
+    auto* legendPanel = new QGroupBox("Cursor", middleWidget);
+    auto* legendLayout = new QVBoxLayout(legendPanel);
+    legendLayout->setContentsMargins(8, 8, 8, 8);
+    legendLayout->setSpacing(6);
+
+    legendList = new QListWidget(legendPanel);
+    legendList->setSelectionMode(QAbstractItemView::NoSelection);
+    legendList->setAlternatingRowColors(true);
+    legendLayout->addWidget(legendList);
+
+    middleLayout->addWidget(embeddedChartView, 1);
+    middleLayout->addWidget(legendPanel, 0);
+
+    layout->addWidget(middleWidget, 1);
+
+    // Bottom area: Signals table (structure like screenshot)
+    auto* signalsGroup = new QGroupBox("Signals", widget);
+    auto* signalsLayout = new QVBoxLayout(signalsGroup);
+    signalsLayout->setContentsMargins(8, 8, 8, 8);
+    signalsLayout->setSpacing(6);
+
+    signalsTable = new QTableWidget(signalsGroup);
+    signalsTable->setColumnCount(4);
+    signalsTable->setHorizontalHeaderLabels(QStringList() << "Show" << "Name" << "Source" << "Color");
+    signalsTable->horizontalHeader()->setStretchLastSection(true);
+    signalsTable->verticalHeader()->setVisible(false);
+    signalsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    signalsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    signalsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    signalsTable->setShowGrid(false);
+    signalsTable->setAlternatingRowColors(true);
+    signalsTable->setMinimumHeight(140);
+    signalsLayout->addWidget(signalsTable, 1);
+
+    auto* signalsButtonsRow = new QHBoxLayout();
+    addSignalButton = new QPushButton("+ Add Signal", signalsGroup);
+    removeSignalButton = new QPushButton("Remove Signal", signalsGroup);
+    signalsButtonsRow->addWidget(addSignalButton);
+    signalsButtonsRow->addStretch();
+    signalsButtonsRow->addWidget(removeSignalButton);
+    signalsLayout->addLayout(signalsButtonsRow);
+
+    layout->addWidget(signalsGroup, 0);
     
     embeddedWidget = widget;
+
+    QObject::connect(addSignalButton, &QPushButton::clicked, [this]()
+    {
+        // OpenDAQ plotter adds a new input port; it becomes available for connection in UI
+        updateInputPorts();
+        rebuildSignalsTable();
+    });
+
+    QObject::connect(removeSignalButton, &QPushButton::clicked, [this]()
+    {
+        if (!signalsTable)
+            return;
+
+        const int row = signalsTable->currentRow();
+        if (row < 0)
+            return;
+
+        const QVariant portPtrVar = signalsTable->item(row, 1) ? signalsTable->item(row, 1)->data(Qt::UserRole) : QVariant{};
+        if (!portPtrVar.isValid())
+            return;
+
+        const quintptr portObj = portPtrVar.value<quintptr>();
+        for (const auto& [port, sigCtx] : signalContexts)
+        {
+            if (reinterpret_cast<quintptr>(port.getObject()) == portObj)
+            {
+                onDisconnected(port);
+                break;
+            }
+        }
+
+        rebuildSignalsTable();
+        updateLegendPanel();
+    });
     
     // Create debounce timer for visible series updates during zoom/pan
     if (!visibleUpdateTimer && axisX)
@@ -1558,6 +1660,121 @@ void QtPlotterFbImpl::createWidget()
             if (visibleUpdateTimer)
                 visibleUpdateTimer->start();
         });
+    }
+}
+
+void QtPlotterFbImpl::toggleSignalVisible(const daq::InputPortPtr& port, bool visible)
+{
+    auto it = signalContexts.find(port);
+    if (it == signalContexts.end())
+        return;
+
+    auto& sigCtx = it->second;
+    if (sigCtx.series)
+        sigCtx.series->setVisible(visible);
+}
+
+void QtPlotterFbImpl::rebuildSignalsTable()
+{
+    if (!signalsTable)
+        return;
+
+    signalsTable->setRowCount(0);
+
+    int row = 0;
+    for (auto& [port, sigCtx] : signalContexts)
+    {
+        // Show only ports that have been used or are connectable; keep structure simple
+        signalsTable->insertRow(row);
+
+        // Show checkbox
+        auto* showItem = new QTableWidgetItem();
+        showItem->setFlags(showItem->flags() | Qt::ItemIsUserCheckable);
+        const bool isVisible = sigCtx.series ? sigCtx.series->isVisible() : true;
+        showItem->setCheckState(isVisible ? Qt::Checked : Qt::Unchecked);
+        signalsTable->setItem(row, 0, showItem);
+
+        // Name (also stores port identity)
+        const QString name = !sigCtx.caption.empty()
+                                 ? QString::fromStdString(sigCtx.caption)
+                                 : QString::fromStdString(port.getLocalId());
+        auto* nameItem = new QTableWidgetItem(name);
+        nameItem->setData(Qt::UserRole, QVariant::fromValue<quintptr>(reinterpret_cast<quintptr>(port.getObject())));
+        signalsTable->setItem(row, 1, nameItem);
+
+        // Source
+        const QString source = QString::fromStdString(port.getLocalId());
+        signalsTable->setItem(row, 2, new QTableWidgetItem(source));
+
+        // Color
+        QColor color = QApplication::palette().color(QPalette::Mid);
+        if (sigCtx.series)
+            color = sigCtx.series->pen().color();
+        auto* colorItem = new QTableWidgetItem();
+        colorItem->setData(Qt::DecorationRole, color);
+        signalsTable->setItem(row, 3, colorItem);
+
+        row++;
+    }
+
+    signalsTable->resizeColumnsToContents();
+    signalsTable->setColumnWidth(0, 50);
+
+    // Handle checkbox toggles
+    QObject::disconnect(signalsTable, nullptr, embeddedWidget, nullptr);
+    QObject::connect(signalsTable, &QTableWidget::itemChanged, embeddedWidget, [this](QTableWidgetItem* item)
+    {
+        if (!signalsTable || !item || item->column() != 0)
+            return;
+
+        const int row = item->row();
+        auto* nameItem = signalsTable->item(row, 1);
+        if (!nameItem)
+            return;
+
+        const QVariant portPtrVar = nameItem->data(Qt::UserRole);
+        if (!portPtrVar.isValid())
+            return;
+
+        const quintptr portObj = portPtrVar.value<quintptr>();
+        for (const auto& [port, sigCtx] : signalContexts)
+        {
+            if (reinterpret_cast<quintptr>(port.getObject()) == portObj)
+            {
+                toggleSignalVisible(port, item->checkState() == Qt::Checked);
+                break;
+            }
+        }
+
+        updateLegendPanel();
+    });
+}
+
+void QtPlotterFbImpl::updateLegendPanel()
+{
+    if (!legendList)
+        return;
+
+    legendList->clear();
+
+    // Use latest visible value (last point in buffer) as a lightweight "cursor" value
+    for (const auto& [port, sigCtx] : signalContexts)
+    {
+        if (!sigCtx.isSignalConnected || !sigCtx.series || !sigCtx.series->isVisible())
+            continue;
+
+        QString label = sigCtx.series->name();
+        double lastValue = std::numeric_limits<double>::quiet_NaN();
+        if (!sigCtx.pointsBuffer.isEmpty())
+            lastValue = sigCtx.pointsBuffer.last().y();
+
+        if (std::isnan(lastValue))
+            label = QString("%1  —").arg(label);
+        else
+            label = QString("%1  %2").arg(label).arg(lastValue, 0, 'g', 6);
+
+        auto* item = new QListWidgetItem(label, legendList);
+        item->setForeground(sigCtx.series->pen().color());
     }
 }
 
