@@ -19,6 +19,7 @@ ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::Compone
 void ComponentTreeElement::init(BaseTreeElement* parent)
 {
     BaseTreeElement::init(parent);
+    applyActiveStyle();
 
     // Subscribe to component core events
     try
@@ -113,6 +114,33 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
             LOG_W("Error updating name: {}", e.what());
         }
     }
+    else if (attributeName == "Active")
+    {
+        applyActiveStyle();
+    }
+}
+
+void ComponentTreeElement::applyActiveStyle()
+{
+    if (!treeItem)
+        return;
+
+    bool active = true;
+    try
+    {
+        if (daqComponent.assigned())
+            active = daqComponent.getActive();
+    }
+    catch (...)
+    {
+        active = true;
+    }
+
+    const QPalette pal = tree ? tree->palette() : QApplication::palette();
+    const QColor normal = pal.color(QPalette::Normal, QPalette::Text);
+    const QColor disabled = pal.color(QPalette::Disabled, QPalette::Text);
+
+    treeItem->setForeground(0, QBrush(active ? normal : disabled));
 }
 
 daq::ComponentPtr ComponentTreeElement::getDaqComponent() const

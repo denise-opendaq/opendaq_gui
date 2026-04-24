@@ -1,6 +1,7 @@
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
+#include "context/icon_provider.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QGroupBox>
@@ -16,6 +17,7 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
     , inputPort(inputPort)
     , componentTree(componentTree)
     , signalComboBox(nullptr)
+    , disconnectButton(nullptr)
     , groupBox(nullptr)
     , showGroupBox(true)
 {
@@ -103,13 +105,31 @@ void InputPortSignalSelector::setupSignalSelection()
         containerLayout = mainLayout;
     }
 
+    auto* row = new QHBoxLayout();
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(6);
+
     signalComboBox = new QComboBox(containerWidget);
     signalComboBox->setEditable(false);
     signalComboBox->setMinimumWidth(300);
     connect(signalComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &InputPortSignalSelector::onSignalSelected);
 
-    containerLayout->addWidget(signalComboBox);
+    disconnectButton = new QToolButton(containerWidget);
+    disconnectButton->setIcon(IconProvider::instance().icon("unlink"));
+    disconnectButton->setToolTip("Disconnect signal");
+    disconnectButton->setAutoRaise(true);
+    disconnectButton->setFocusPolicy(Qt::NoFocus);
+    disconnectButton->setStyleSheet(QStringLiteral("QToolButton { border: none; padding: 0px; } QToolButton:pressed { border: none; }"));
+    disconnectButton->setEnabled(false);
+    connect(disconnectButton, &QToolButton::clicked, this, [this]()
+    {
+        disconnectSignal();
+    });
+    row->addWidget(disconnectButton, /*stretch*/ 0);
+    row->addWidget(signalComboBox, /*stretch*/ 1);
+
+    containerLayout->addLayout(row);
     
     if (!showGroupBox)
         mainLayout->addStretch();
@@ -155,6 +175,8 @@ void InputPortSignalSelector::populateSignals()
             if (currentSignal.assigned())
                 currentSignalPath = getSignalPath(currentSignal);
         }
+        if (disconnectButton)
+            disconnectButton->setEnabled(!currentSignalPath.isEmpty());
 
         // Add signals to combo box
         for (const auto & signal : allSignals) 
