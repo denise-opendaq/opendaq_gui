@@ -60,8 +60,6 @@ foreach(_plugin_dir platforms platformthemes imageformats iconengines)
 endforeach()
 
 # qt.conf so the app finds bundled plugins
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cmake/packaging/linux")
-set(_qt_conf "${CMAKE_BINARY_DIR}/cmake/packaging/linux/qt.conf")
-file(WRITE "${_qt_conf}" "[Paths]\nPlugins = ../lib/${app_name}/qt6/plugins\n")
-file(INSTALL DESTINATION "${_bin_dst}" TYPE FILE FILES "${_qt_conf}")
+# Write directly into the staged install tree (DESTDIR + prefix).
+file(WRITE "${_bin_dst}/qt.conf" "[Paths]\nPlugins = ../lib/${app_name}/qt6/plugins\n")
 
