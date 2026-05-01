@@ -1,0 +1,40 @@
+set(app_name "@APP_NAME@")
+set(project_binary_name "@PROJECT_BINARY_NAME@")
+set(build_bin_dir "@BUILD_BIN_DIR@")
+set(windeployqt "@WINDEPLOYQT@")
+
+# During CPack packaging, DESTDIR is used as staging root.
+set(_destdir "$ENV{DESTDIR}")
+if(_destdir STREQUAL "")
+  set(_destdir "")
+endif()
+
+set(_prefix "${_destdir}${CMAKE_INSTALL_PREFIX}")
+set(_bin_dst "${_prefix}/bin")
+
+file(MAKE_DIRECTORY "${_bin_dst}")
+
+# Copy openDAQ DLLs produced next to the executable into installed bin/
+file(GLOB _dlls "${build_bin_dir}/*.dll")
+foreach(_dll IN LISTS _dlls)
+  file(INSTALL DESTINATION "${_bin_dst}" TYPE FILE FILES "${_dll}")
+endforeach()
+
+set(_installed_exe "${_bin_dst}/${project_binary_name}.exe")
+if(NOT EXISTS "${_installed_exe}")
+  message(FATAL_ERROR "Installed executable not found: ${_installed_exe}")
+endif()
+
+if(NOT EXISTS "${windeployqt}")
+  message(FATAL_ERROR "windeployqt not found at: ${windeployqt}")
+endif()
+
+# Deploy Qt into the install tree used by CPack
+execute_process(
+  COMMAND "${windeployqt}" "${_installed_exe}" --release --compiler-runtime
+  RESULT_VARIABLE r
+)
+if(NOT r EQUAL 0)
+  message(FATAL_ERROR "windeployqt failed with code: ${r}")
+endif()
+

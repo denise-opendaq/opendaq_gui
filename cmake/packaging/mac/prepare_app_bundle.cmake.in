@@ -94,3 +94,4 @@ execute_process(
 if(NOT r3 EQUAL 0)
     message(FATAL_ERROR "codesign failed with code: ${r3}")
 endif()
+

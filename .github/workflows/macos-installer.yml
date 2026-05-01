@@ -20,27 +20,27 @@ jobs:
 
     - name: Configure (Release)
       run: |
-        cmake --preset opendaq-qt-gui  -DCMAKE_BUILD_TYPE=Release
+        cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DEXTRA_MODULE_PATH="../Frameworks"
 
     - name: Build (Release)
       run: cmake --build --preset opendaq-qt-gui --config Release
 
     - name: Package with CPack (PKG)
       run: |
-        mkdir -p build/package
-        cpack -G productbuild -C Release -B build/package --config build/CPackConfig.cmake
+        mkdir -p build/dist/macos
+        cpack -G productbuild -C Release -B build/dist/macos --config build/CPackConfig.cmake
 
     - name: Upload PKG artifact
       uses: actions/upload-artifact@v4
       with:
         name: OpenDAQ-Qt-GUI-macOS-PKG
-        path: build/package/OpenDAQ.Qt.GUI-*-mac-*.pkg
+        path: build/dist/macos/OpenDAQ.Qt.GUI-*-mac-*.pkg
         retention-days: 30
 
     - name: Upload PKG to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: build/package/OpenDAQ.Qt.GUI-*-mac-*.pkg
+        files: build/dist/macos/OpenDAQ.Qt.GUI-*-mac-*.pkg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
