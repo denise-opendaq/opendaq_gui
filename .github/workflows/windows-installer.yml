@@ -14,6 +14,11 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Setup MSVC toolchain
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
     - name: Install dependencies
       run: |
         choco install cmake ninja nsis -y
@@ -29,8 +34,11 @@ jobs:
     - name: Configure (Release)
       shell: pwsh
       run: |
+        # Ensure we build with MSVC (Qt is MSVC build) and don't accidentally pick MinGW.
+        $env:CC = "cl"
+        $env:CXX = "cl"
         $env:CMAKE_PREFIX_PATH = "$env:Qt6_DIR"
-        cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release
+        cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
 
     - name: Build (Release)
       shell: pwsh

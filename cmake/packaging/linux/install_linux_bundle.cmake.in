@@ -4,13 +4,15 @@ set(qt_lib_dir "@QT_LIB_DIR@")
 set(qt_plugins_dir "@QT_PLUGINS_DIR@")
 set(build_bin_dir "@BUILD_BIN_DIR@")
 
-if(NOT IS_DIRECTORY "${CMAKE_INSTALL_PREFIX}")
-  # CPack sets DESTDIR; CMAKE_INSTALL_PREFIX is still a prefix like /usr.
-  # The actual staging root is handled by file(INSTALL ...) automatically.
+# When invoked via CPack, installation is staged under $ENV{DESTDIR}.
+set(_destdir "$ENV{DESTDIR}")
+if(_destdir STREQUAL "")
+  set(_destdir "")
 endif()
+set(_prefix "${_destdir}${CMAKE_INSTALL_PREFIX}")
 
-set(_bin_dst "${CMAKE_INSTALL_PREFIX}/bin")
-set(_lib_dst "${CMAKE_INSTALL_PREFIX}/lib/${app_name}")
+set(_bin_dst "${_prefix}/bin")
+set(_lib_dst "${_prefix}/lib/${app_name}")
 set(_qt_dst "${_lib_dst}/qt6")
 set(_qt_plugins_dst "${_qt_dst}/plugins")
 
@@ -58,6 +60,8 @@ foreach(_plugin_dir platforms platformthemes imageformats iconengines)
 endforeach()
 
 # qt.conf so the app finds bundled plugins
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/qt.conf" "[Paths]\nPlugins = ../lib/${app_name}/qt6/plugins\n")
-file(INSTALL DESTINATION "${_bin_dst}" TYPE FILE FILES "${CMAKE_CURRENT_BINARY_DIR}/qt.conf")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cmake/packaging/linux")
+set(_qt_conf "${CMAKE_BINARY_DIR}/cmake/packaging/linux/qt.conf")
+file(WRITE "${_qt_conf}" "[Paths]\nPlugins = ../lib/${app_name}/qt6/plugins\n")
+file(INSTALL DESTINATION "${_bin_dst}" TYPE FILE FILES "${_qt_conf}")
 
