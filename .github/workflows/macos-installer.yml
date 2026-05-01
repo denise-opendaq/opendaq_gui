@@ -18,8 +18,17 @@ jobs:
       run: |
         brew install cmake ninja qt@6 mono
 
-    - name: Build installer
-      run: ./package/mac/build_installer.sh
+    - name: Configure (Release)
+      run: |
+        cmake --preset opendaq-qt-gui  -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build (Release)
+      run: cmake --build --preset opendaq-qt-gui --config Release
+
+    - name: Package with CPack (PKG)
+      run: |
+        mkdir -p build/package
+        cpack -G productbuild -C Release -B build/package --config build/CPackConfig.cmake
 
     - name: Upload PKG artifact
       uses: actions/upload-artifact@v4

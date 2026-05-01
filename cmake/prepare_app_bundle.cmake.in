@@ -1,0 +1,96 @@
+set(app_bundle "@APP_BUNDLE@")
+set(bin_dir "@BIN_DIR@")
+set(macdeployqt "@MACDEPLOYQT@")
+
+if(NOT EXISTS "${app_bundle}")
+  message(FATAL_ERROR "App bundle not found: ${app_bundle}")
+endif()
+
+set(frameworks_dir "${app_bundle}/Contents/Frameworks")
+file(MAKE_DIRECTORY "${frameworks_dir}")
+
+file(GLOB dylibs "${bin_dir}/*.dylib")
+foreach(lib IN LISTS dylibs)
+  file(COPY "${lib}" DESTINATION "${frameworks_dir}")
+endforeach()
+
+# Copy known transitive Homebrew deps that macdeployqt doesn't resolve on its own.
+# Using cp instead of file(COPY) because file(COPY) fails on signed bundle dirs.
+foreach(_dep "libbrotlicommon.1.dylib" "libbrotlienc.1.dylib")
+  if(NOT EXISTS "${frameworks_dir}/${_dep}")
+    foreach(_hb "/opt/homebrew/lib" "/usr/local/lib")
+      if(EXISTS "${_hb}/${_dep}")
+        execute_process(COMMAND cp "${_hb}/${_dep}" "${frameworks_dir}/${_dep}")
+        # Homebrew dylibs can be copied in as read-only, which makes `strip`
+        # (triggered by later install/bundle steps) fail with EPERM.
+        execute_process(COMMAND chmod u+w "${frameworks_dir}/${_dep}" ERROR_QUIET)
+        execute_process(COMMAND install_name_tool -id "@rpath/${_dep}"
+                        "${frameworks_dir}/${_dep}" ERROR_QUIET)
+        break()
+      endif()
+    endforeach()
+  endif()
+endforeach()
+
+# Ensure all bundled dylibs are writable for any post-processing steps
+# (strip/codesign/macos bundle fixups).
+file(GLOB _framework_dylibs "${frameworks_dir}/*.dylib")
+foreach(_dylib IN LISTS _framework_dylibs)
+  execute_process(COMMAND chmod u+w "${_dylib}" ERROR_QUIET)
+endforeach()
+
+set(exe "${app_bundle}/Contents/MacOS/@PROJECT_NAME@")
+if(EXISTS "${exe}")
+  # The target already sets INSTALL_RPATH to @executable_path/../Frameworks.
+  # Adding it again makes install_name_tool error out (duplicate LC_RPATH).
+  execute_process(
+    COMMAND /usr/bin/otool -l "${exe}"
+    OUTPUT_VARIABLE _otool_out
+    ERROR_QUIET
+  )
+  if(NOT _otool_out MATCHES "path @executable_path/../Frameworks \\(offset")
+    execute_process(
+      COMMAND /usr/bin/install_name_tool -add_rpath @executable_path/../Frameworks "${exe}"
+      RESULT_VARIABLE r
+      ERROR_QUIET
+    )
+  endif()
+endif()
+
+if(EXISTS "${macdeployqt}" AND NOT "${macdeployqt}" STREQUAL "")
+  execute_process(
+    COMMAND "${macdeployqt}" "${app_bundle}" -verbose=1
+    RESULT_VARIABLE r2
+  )
+  if(NOT r2 EQUAL 0)
+    message(FATAL_ERROR "macdeployqt failed with code: ${r2}")
+  endif()
+endif()
+
+# macdeployqt and install_name_tool invalidate existing code signatures.
+# --deep is deprecated on macOS 15+; sign leaf binaries first, then the bundle.
+
+# Sign all dylibs and .so plugins (leaves)
+file(GLOB_RECURSE _libs
+    "${app_bundle}/Contents/Frameworks/*.dylib"
+    "${app_bundle}/Contents/PlugIns/*.dylib"
+    "${app_bundle}/Contents/PlugIns/*.so"
+)
+foreach(_lib IN LISTS _libs)
+    execute_process(COMMAND codesign --force --sign - "${_lib}")
+endforeach()
+
+# Sign framework bundles (after their inner dylibs)
+file(GLOB _frameworks "${app_bundle}/Contents/Frameworks/*.framework")
+foreach(_fw IN LISTS _frameworks)
+    execute_process(COMMAND codesign --force --sign - "${_fw}")
+endforeach()
+
+# Sign the app bundle itself last
+execute_process(
+    COMMAND codesign --force --sign - "${app_bundle}"
+    RESULT_VARIABLE r3
+)
+if(NOT r3 EQUAL 0)
+    message(FATAL_ERROR "codesign failed with code: ${r3}")
+endif()
