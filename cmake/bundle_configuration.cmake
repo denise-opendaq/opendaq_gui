@@ -94,13 +94,38 @@ elseif(UNIX)
 
         install(SCRIPT "${_LINUX_INSTALL_SCRIPT}" COMPONENT app)
     endif()
-endif()
 
-# ── Windows ──────────────────────────────────────────────────────────────────
-if(WIN32)
+    # Desktop integration (icon + .desktop)
+    set(_LINUX_ICON_PNG "${CMAKE_CURRENT_LIST_DIR}/logo/logo.png")
+    if(EXISTS "${_LINUX_ICON_PNG}")
+        install(FILES "${_LINUX_ICON_PNG}"
+                DESTINATION "share/icons/hicolor/256x256/apps"
+                RENAME "opendaq-qt-gui.png"
+                COMPONENT app)
+    endif()
+
+    configure_file(
+        "${CMAKE_CURRENT_LIST_DIR}/packaging/linux/opendaq-qt-gui.desktop.in"
+        "${CMAKE_BINARY_DIR}/cmake/packaging/linux/opendaq-qt-gui.desktop"
+        @ONLY
+    )
+    install(FILES "${CMAKE_BINARY_DIR}/cmake/packaging/linux/opendaq-qt-gui.desktop"
+            DESTINATION "share/applications"
+            COMPONENT app)
+
+elseif(WIN32)
+
     install(TARGETS ${PROJECT_NAME}
             RUNTIME DESTINATION "bin"
             COMPONENT app)
+
+    # Installer + shortcut icon via CPack/NSIS
+    set(_WIN_ICON_ICO "${CMAKE_CURRENT_LIST_DIR}/logo/logo.ico")
+    if(EXISTS "${_WIN_ICON_ICO}")
+        set(CPACK_NSIS_MUI_ICON "${_WIN_ICON_ICO}")
+        set(CPACK_NSIS_MUI_UNIICON "${_WIN_ICON_ICO}")
+        set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\opendaq_qt_gui.exe")
+    endif()
 
     if(TARGET Qt6::qmake)
         get_target_property(_qmake_executable Qt6::qmake IMPORTED_LOCATION)

@@ -106,6 +106,7 @@ elseif(WIN32)
     set(CPACK_NSIS_DISPLAY_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_PACKAGE_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_MODIFY_PATH OFF)
+
   else()
     message(STATUS "NSIS (makensis) not found. Skipping CPack NSIS configuration.")
   endif()
