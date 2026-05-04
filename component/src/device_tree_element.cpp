@@ -4,6 +4,7 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "dialogs/load_configuration_dialog.h"
 #include "context/gui_constants.h"
+#include "widgets/device_widget.h"
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
@@ -25,6 +26,29 @@ DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& da
 bool DeviceTreeElement::visible() const
 {
     return true;
+}
+
+QStringList DeviceTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs = Super::getAvailableTabNames();
+    tabs.prepend("Overview");
+    return tabs;
+}
+
+void DeviceTreeElement::openTab(const QString& tabName)
+{
+    if (!layoutManager)
+        return;
+
+    if (tabName == "Overview")
+    {
+        auto device = daqComponent.asPtr<daq::IDevice>(true);
+        auto* deviceWidget = new DeviceWidget(device);
+        addTab(deviceWidget, tabName, LayoutZone::Default, "Attributes");
+        return;
+    }
+
+    Super::openTab(tabName);
 }
 
 

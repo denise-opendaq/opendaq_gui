@@ -71,6 +71,12 @@ add_executable(${PROJECT_NAME}
     ${HEADERS}
 )
 
+# Ensure openDAQ Qt module is built before macOS bundle prep runs.
+# The module is not linked into the main executable, so we must wire an explicit dependency.
+if(APPLE AND TARGET qt_module)
+    add_dependencies(${PROJECT_NAME} qt_module)
+endif()
+
 # Link Qt6 libraries
 target_link_libraries(${PROJECT_NAME}
     PRIVATE

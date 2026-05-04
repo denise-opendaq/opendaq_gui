@@ -13,7 +13,7 @@ FetchContent_MakeAvailable(opendaq-cmake-utils)
 FetchContent_Declare(
     openDAQ
     GIT_REPOSITORY  https://github.com/openDAQ/openDAQ.git
-    GIT_TAG         be12629693fcbc1cdb22313968a23ec1af6d9052
+    GIT_TAG         sync_component_rework
     GIT_PROGRESS   ON
     GIT_SHALLOW    OFF
     SOURCE_SUBDIR  "INVALID"

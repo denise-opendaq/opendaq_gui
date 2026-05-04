@@ -14,6 +14,9 @@ public:
 
     bool visible() const override;
 
+    QStringList getAvailableTabNames() const override;
+    void openTab(const QString& tabName) override;
+
     // Override to add device-specific context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
