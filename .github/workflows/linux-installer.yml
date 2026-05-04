@@ -46,21 +46,30 @@ jobs:
         sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-12 100
         sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-12 100
 
-    - name: Build installer
-      run: ./package/linux/build_installer.sh
+    - name: Configure (Release)
+      run: |
+        cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DEXTRA_MODULE_PATH="../lib/opendaq-qt-gui"
+
+    - name: Build (Release)
+      run: cmake --build --preset opendaq-qt-gui --config Release
+
+    - name: Package with CPack (DEB)
+      run: |
+        mkdir -p build/dist/linux
+        cpack -G DEB -C Release -B build/dist/linux --config build/CPackConfig.cmake
 
     - name: Upload DEB artifact
       uses: actions/upload-artifact@v4
       with:
         name: OpenDAQ-Qt-GUI-Linux-DEB
-        path: build/package/OpenDAQ.Qt.GUI-*-linux-*.deb
+        path: build/dist/linux/OpenDAQ.Qt.GUI-*-linux-*.deb
         retention-days: 30
 
     - name: Upload DEB to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: build/package/OpenDAQ.Qt.GUI-*-linux-*.deb
+        files: build/dist/linux/OpenDAQ.Qt.GUI-*-linux-*.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
