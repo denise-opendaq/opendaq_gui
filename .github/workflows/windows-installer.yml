@@ -14,9 +14,14 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Setup MSVC toolchain
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: x64
+
     - name: Install dependencies
       run: |
-        choco install cmake nsis -y
+        choco install cmake ninja nsis -y
 
     - name: Install Qt
       uses: jurplel/install-qt-action@v3
@@ -26,23 +31,38 @@ jobs:
         modules: 'qtcharts'
         cache: 'true'
 
-    - name: Build installer
+    - name: Configure (Release)
+      shell: pwsh
       run: |
+        # Ensure we build with MSVC (Qt is MSVC build) and don't accidentally pick MinGW.
+        $env:CC = "cl"
+        $env:CXX = "cl"
         $env:CMAKE_PREFIX_PATH = "$env:Qt6_DIR"
-        package\windows\build_installer.bat
+        cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=cl -DCMAKE_CXX_COMPILER=cl
+
+    - name: Build (Release)
+      shell: pwsh
+      run: |
+        cmake --build --preset opendaq-qt-gui --config Release
+
+    - name: Package with CPack (NSIS)
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path build\\dist\\windows | Out-Null
+        cpack -G NSIS -C Release -B build\\dist\\windows --config build\\CPackConfig.cmake
 
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
         name: OpenDAQ-Qt-GUI-Windows-Installer
-        path: build/package/OpenDAQ.Qt.GUI-*-windows-*.exe
+        path: build/dist/windows/OpenDAQ.Qt.GUI-*-windows-*.exe
         retention-days: 30
 
     - name: Upload installer to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v1
       with:
-        files: build/package/OpenDAQ.Qt.GUI-*-windows-*.exe
+        files: build/dist/windows/OpenDAQ.Qt.GUI-*-windows-*.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

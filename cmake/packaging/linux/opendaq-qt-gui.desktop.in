@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenDAQ Qt GUI
+Exec=opendaq_qt_gui
+Icon=opendaq-qt-gui
+Categories=Development;Engineering;
+Terminal=false
+

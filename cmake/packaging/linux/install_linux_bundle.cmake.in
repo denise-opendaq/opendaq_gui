@@ -1,0 +1,65 @@
+set(app_name "@APP_NAME@")
+set(project_binary_name "@PROJECT_BINARY_NAME@")
+set(qt_lib_dir "@QT_LIB_DIR@")
+set(qt_plugins_dir "@QT_PLUGINS_DIR@")
+set(build_bin_dir "@BUILD_BIN_DIR@")
+
+# When invoked via CPack, installation is staged under $ENV{DESTDIR}.
+set(_destdir "$ENV{DESTDIR}")
+if(_destdir STREQUAL "")
+  set(_destdir "")
+endif()
+set(_prefix "${_destdir}${CMAKE_INSTALL_PREFIX}")
+
+set(_bin_dst "${_prefix}/bin")
+set(_lib_dst "${_prefix}/lib/${app_name}")
+set(_qt_dst "${_lib_dst}/qt6")
+set(_qt_plugins_dst "${_qt_dst}/plugins")
+
+file(MAKE_DIRECTORY "${_bin_dst}")
+file(MAKE_DIRECTORY "${_qt_plugins_dst}")
+
+# Main executable
+file(INSTALL
+  DESTINATION "${_bin_dst}"
+  TYPE FILE
+  FILES "${build_bin_dir}/${project_binary_name}"
+)
+
+# openDAQ runtime libs produced next to the executable
+file(GLOB _so_libs "${build_bin_dir}/*.so*")
+foreach(_lib IN LISTS _so_libs)
+  file(INSTALL DESTINATION "${_lib_dst}" TYPE FILE FILES "${_lib}" FOLLOW_SYMLINK_CHAIN)
+endforeach()
+
+# Qt libs
+foreach(_qt_lib Core Gui Widgets DBus Network)
+  if(EXISTS "${qt_lib_dir}/libQt6${_qt_lib}.so.6")
+    file(INSTALL DESTINATION "${_qt_dst}" TYPE FILE FILES "${qt_lib_dir}/libQt6${_qt_lib}.so.6" FOLLOW_SYMLINK_CHAIN)
+  endif()
+endforeach()
+
+if(EXISTS "${qt_lib_dir}/libQt6XcbQpa.so.6")
+  file(INSTALL DESTINATION "${_qt_dst}" TYPE FILE FILES "${qt_lib_dir}/libQt6XcbQpa.so.6" FOLLOW_SYMLINK_CHAIN)
+endif()
+
+file(GLOB _icu_libs "${qt_lib_dir}/libicu*.so.*")
+foreach(_icu IN LISTS _icu_libs)
+  file(INSTALL DESTINATION "${_qt_dst}" TYPE FILE FILES "${_icu}" FOLLOW_SYMLINK_CHAIN)
+endforeach()
+
+# Qt plugins
+foreach(_plugin_dir platforms platformthemes imageformats iconengines)
+  if(EXISTS "${qt_plugins_dir}/${_plugin_dir}")
+    file(INSTALL
+      DESTINATION "${_qt_plugins_dst}"
+      TYPE DIRECTORY
+      FILES "${qt_plugins_dir}/${_plugin_dir}"
+    )
+  endif()
+endforeach()
+
+# qt.conf so the app finds bundled plugins
+# Write directly into the staged install tree (DESTDIR + prefix).
+file(WRITE "${_bin_dst}/qt.conf" "[Paths]\nPlugins = ../lib/${app_name}/qt6/plugins\n")
+

@@ -106,8 +106,6 @@ void AddDeviceDialog::setupUI()
 
 void AddDeviceDialog::updateAvailableDevices()
 {
-    deviceTree->clear();
-
     if (!parentDevice.assigned())
     {
         statusLabel->setText("No parent device available.");
@@ -116,37 +114,59 @@ void AddDeviceDialog::updateAvailableDevices()
 
     try
     {
-        availableDevices = parentDevice.getAvailableDevices();
-        if (availableDevices.getCount() == 0)
-        {
-            statusLabel->setText("No devices discovered. Enter connection string manually.");
-            return;
-        }
+        auto discovered = parentDevice.getAvailableDevices();
 
-        // Our client device identity (same as main.cpp) to filter ourselves out
         const QString& ourManufacturer = GUIConstants::getClientManufacturer();
         const QString& ourSerialNumber = GUIConstants::getClientSerialNumber();
 
-        int addedCount = 0;
-        for (const auto & deviceInfo : availableDevices)
+        // Build set of currently visible connection strings (excluding self)
+        QSet<QString> currentlyVisible;
+        for (const auto& deviceInfo : discovered)
         {
-            // Skip our client device (root from main.cpp): match by manufacturer and serial number
+            QString devManufacturer = QString::fromStdString(deviceInfo.getManufacturer().toStdString());
+            QString devSerialNumber = QString::fromStdString(deviceInfo.getSerialNumber().toStdString());
+            if (devManufacturer == ourManufacturer && devSerialNumber == ourSerialNumber)
+                continue;
+
+            QString connStr = QString::fromStdString(deviceInfo.getConnectionString().toStdString());
+            currentlyVisible.insert(connStr);
+            deviceInfoCache[connStr.toStdString()] = deviceInfo;
+        }
+
+        // Update existing items: disable if gone, re-enable if returned
+        for (int i = 0; i < deviceTree->topLevelItemCount(); ++i)
+        {
+            auto* item = deviceTree->topLevelItem(i);
+            QString connStr = item->data(1, Qt::UserRole).toString();
+            item->setDisabled(!currentlyVisible.contains(connStr));
+        }
+
+        // Add newly discovered devices to the bottom
+        for (const auto& deviceInfo : discovered)
+        {
             QString devManufacturer = QString::fromStdString(deviceInfo.getManufacturer().toStdString());
             QString devSerialNumber = QString::fromStdString(deviceInfo.getSerialNumber().toStdString());
             if (devManufacturer == ourManufacturer && devSerialNumber == ourSerialNumber)
                 continue;
 
             QString name = QString::fromStdString(deviceInfo.getName().toStdString());
-            QString connectionString = QString::fromStdString(deviceInfo.getConnectionString().toStdString());
+            QString connStr = QString::fromStdString(deviceInfo.getConnectionString().toStdString());
 
-            auto* item = new QTreeWidgetItem(deviceTree);
-            item->setText(0, name);
-            item->setText(1, connectionString);
-            item->setData(1, Qt::UserRole, connectionString);
-            ++addedCount;
+            if (!knownConnectionStrings.contains(connStr))
+            {
+                auto* item = new QTreeWidgetItem(deviceTree);
+                item->setText(0, name);
+                item->setText(1, connStr);
+                item->setData(1, Qt::UserRole, connStr);
+                knownConnectionStrings.insert(connStr);
+            }
         }
 
-        statusLabel->setText(QString("Found %1 device(s). Select one or enter connection string manually.").arg(addedCount));
+        int activeCount = currentlyVisible.size();
+        if (deviceTree->topLevelItemCount() == 0)
+            statusLabel->setText("No devices discovered. Enter connection string manually.");
+        else
+            statusLabel->setText(QString("Found %1 device(s). Select one or enter connection string manually.").arg(activeCount));
     }
     catch (const std::exception& e)
     {
@@ -313,24 +333,11 @@ void AddDeviceDialog::onShowDeviceInfo()
     if (!connectionString.getLength())
         return;
 
-    // Find the deviceInfo by connection string
+    // Find the deviceInfo by connection string in cache
     daq::DeviceInfoPtr info;
-    try
-    {
-        for (const auto & deviceInfo : availableDevices)
-        {
-            if (deviceInfo.getConnectionString() == connectionString)
-            {
-                info = deviceInfo;
-                break;
-            }
-        }
-    }
-    catch (const std::exception& e)
-    {
-        QMessageBox::warning(this, "Error", QString("Failed to get device info: %1").arg(e.what()));
-        return;
-    }
+    auto it = deviceInfoCache.find(connectionString.toStdString());
+    if (it != deviceInfoCache.end())
+        info = it->second;
 
     if (!info.assigned())
     {
