@@ -13,7 +13,13 @@ public:
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
+    bool discoveryIsEnabled;
+
 private Q_SLOTS:
     void onRemove();
+    void onEnableDiscovery();
+    void onDisableDiscovery();
+
+
 };
 
