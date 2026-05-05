@@ -19,6 +19,7 @@ ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::Compone
 void ComponentTreeElement::init(BaseTreeElement* parent)
 {
     BaseTreeElement::init(parent);
+    applyActiveStyle();
 
     // Subscribe to component core events
     try
@@ -113,6 +114,33 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
             LOG_W("Error updating name: {}", e.what());
         }
     }
+    else if (attributeName == "Active")
+    {
+        applyActiveStyle();
+    }
+}
+
+void ComponentTreeElement::applyActiveStyle()
+{
+    if (!treeItem)
+        return;
+
+    bool active = true;
+    try
+    {
+        if (daqComponent.assigned())
+            active = daqComponent.getActive();
+    }
+    catch (...)
+    {
+        active = true;
+    }
+
+    const QPalette pal = tree ? tree->palette() : QApplication::palette();
+    const QColor normal = pal.color(QPalette::Normal, QPalette::Text);
+    const QColor disabled = pal.color(QPalette::Disabled, QPalette::Text);
+
+    treeItem->setForeground(0, QBrush(active ? normal : disabled));
 }
 
 daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
@@ -174,9 +202,29 @@ QMenu* ComponentTreeElement::onCreateRightClickMenu(QWidget* parent)
 
     QAction* endUpdateAction = menu->addAction("End Update");
     connect(endUpdateAction, &QAction::triggered, this, &ComponentTreeElement::onEndUpdate);
-    
+
     menu->addSeparator();
-    
+
+    bool active = true;
+    bool parentActive = true;
+    try
+    {
+        if (daqComponent.assigned())
+        {
+            parentActive = daqComponent.getParentActive();
+            active = daqComponent.getActive();
+        }
+    }
+    catch (...) {}
+
+    if (parentActive)
+    {
+        QAction* changeActiveAction = menu->addAction(active ? "Set Inactive" : "Set Active");
+        connect(changeActiveAction, &QAction::triggered, this, &ComponentTreeElement::onChangeActive);
+
+        menu->addSeparator();
+    }
+
     return menu;
 }
 
@@ -203,5 +251,18 @@ void ComponentTreeElement::onEndUpdate()
     {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to end update: {}", e.what());
+    }
+}
+
+void ComponentTreeElement::onChangeActive()
+{
+    try
+    {
+        daqComponent.setActive(!daqComponent.getActive());
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::LoggerComponent();
+        LOG_E("Failed to change active state: {}", e.what());
     }
 }

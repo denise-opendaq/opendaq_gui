@@ -12,6 +12,8 @@ class DeviceTreeElement : public FolderTreeElement
 public:
     DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, LayoutManager* layoutManager, QObject* parent = nullptr);
 
+    void init(BaseTreeElement* parent = nullptr) override;
+
     bool visible() const override;
 
     QStringList getAvailableTabNames() const override;
@@ -31,4 +33,9 @@ public Q_SLOTS:
 
 private Q_SLOTS:
     void onRemoveDevice();
+
+private:
+    QString connectionStatus;
+    void updateDeviceLabel();
+    static QString operationModeToString(daq::OperationModeType mode);
 };

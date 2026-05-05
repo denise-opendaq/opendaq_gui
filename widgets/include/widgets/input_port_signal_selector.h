@@ -4,6 +4,7 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QGroupBox>
+#include <QToolButton>
 
 #include <opendaq/input_port_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
@@ -40,6 +41,7 @@ private:
     daq::InputPortPtr inputPort;
     ComponentTreeWidget* componentTree;
     QComboBox* signalComboBox;
+    QToolButton* disconnectButton;
     QGroupBox* groupBox;
     bool showGroupBox;
 };

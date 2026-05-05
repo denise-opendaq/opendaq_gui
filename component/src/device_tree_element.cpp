@@ -23,6 +23,12 @@ DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& da
     this->iconName = "device";
 }
 
+void DeviceTreeElement::init(BaseTreeElement* parent)
+{
+    Super::init(parent);
+    updateDeviceLabel();
+}
+
 bool DeviceTreeElement::visible() const
 {
     return true;
@@ -61,11 +67,58 @@ void DeviceTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArg
     {
         const daq::EnumerationPtr statusEnum = args.getParameters()["StatusValue"];
         const daq::StringPtr statusValue = statusEnum.getValue();
-        if (statusValue == "Connected")
-            setName(QString::fromStdString(daqComponent.getName()));
-        else
-            setName(QString::fromStdString(daqComponent.getName() + " [" + statusValue +"]"));
+        connectionStatus = QString::fromStdString(statusValue);
+        updateDeviceLabel();
     }
+    else if (eventId == daq::CoreEventId::DeviceOperationModeChanged)
+    {
+        updateDeviceLabel();
+    }
+}
+
+QString DeviceTreeElement::operationModeToString(daq::OperationModeType mode)
+{
+    switch (mode)
+    {
+        case daq::OperationModeType::Unknown: return QStringLiteral("Unknown");
+        case daq::OperationModeType::Idle: return QStringLiteral("Idle");
+        case daq::OperationModeType::Operation: return QStringLiteral("Operation");
+        case daq::OperationModeType::SafeOperation: return QStringLiteral("SafeOperation");
+        default: return QStringLiteral("Unknown");
+    }
+}
+
+void DeviceTreeElement::updateDeviceLabel()
+{
+    if (!treeItem)
+        return;
+
+    const QString baseName = QString::fromStdString(daqComponent.getName());
+
+    // If status is known and not Connected, show only the status (no operation mode).
+    if (!connectionStatus.isEmpty() && connectionStatus != QStringLiteral("Connected"))
+    {
+        setName(baseName + QStringLiteral(" [") + connectionStatus + QStringLiteral("]"));
+        return;
+    }
+
+    QString modeStr;
+    try
+    {
+        // getOperationMode is available on openDAQ components/devices
+        const auto mode = daqComponent.getOperationMode();
+        modeStr = operationModeToString(mode);
+    }
+    catch (...)
+    {
+        modeStr = QStringLiteral("Unknown");
+    }
+
+    QString label = baseName;
+    if (!modeStr.isEmpty())
+        label += QStringLiteral(" (") + modeStr + QStringLiteral(")");
+
+    setName(label);
 }
 
 QMenu* DeviceTreeElement::onCreateRightClickMenu(QWidget* parent)

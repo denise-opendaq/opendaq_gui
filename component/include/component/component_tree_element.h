@@ -41,7 +41,11 @@ public:
 protected Q_SLOTS:
     void onBeginUpdate();
     void onEndUpdate();
+    void onChangeActive();
 
 protected:
     daq::ComponentPtr daqComponent;
+
+private:
+    void applyActiveStyle();
 };
