@@ -76,7 +76,7 @@ void ServersFolderTreeElement::onAddServer()
             daq::PropertyObjectPtr config = dialog.getConfig();
             
             // Add server using instance interface
-            instance.addServer(serverType.toStdString(), config).enableDiscovery();
+            instance.addServer(serverType.toStdString(), config);
         }
         catch (const std::exception& e)
         {
