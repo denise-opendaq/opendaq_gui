@@ -49,12 +49,7 @@ QString BasePropertyItem::showValue() const
     try
     {
         if (hasSelectionValues())
-        {
-            if (prop.getPropertyType() == daq::PropertyType::Selection)
-                return QString::fromStdString(owner.getPropertyValue(getName()));
-            else
-                return QString::fromStdString(owner.getPropertySelectionValue(getName()));
-        }
+            return QString::fromStdString(owner.getPropertySelectionValue(getName()));
 
         const auto value = owner.getPropertyValue(prop.getName());
         return QString::fromStdString(value);
@@ -408,12 +403,7 @@ QStringList BasePropertyItem::getSelectionValues() const
 
 void BasePropertyItem::setBySelectionValue(const QString& value)
 {
-    if (!hasSelectionValues())
-        return;
-
-    if (prop.getPropertyType() == daq::PropertyType::Selection)
-        owner.setPropertyValue(getName(), value.toStdString()); 
-    else
+    if (hasSelectionValues())
         owner.setPropertySelectionValue(getName(), value.toStdString());
 }
 

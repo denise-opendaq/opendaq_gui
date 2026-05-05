@@ -202,9 +202,29 @@ QMenu* ComponentTreeElement::onCreateRightClickMenu(QWidget* parent)
 
     QAction* endUpdateAction = menu->addAction("End Update");
     connect(endUpdateAction, &QAction::triggered, this, &ComponentTreeElement::onEndUpdate);
-    
+
     menu->addSeparator();
-    
+
+    bool active = true;
+    bool parentActive = true;
+    try
+    {
+        if (daqComponent.assigned())
+        {
+            parentActive = daqComponent.getParentActive();
+            active = daqComponent.getActive();
+        }
+    }
+    catch (...) {}
+
+    if (parentActive)
+    {
+        QAction* changeActiveAction = menu->addAction(active ? "Set Inactive" : "Set Active");
+        connect(changeActiveAction, &QAction::triggered, this, &ComponentTreeElement::onChangeActive);
+
+        menu->addSeparator();
+    }
+
     return menu;
 }
 
@@ -231,5 +251,18 @@ void ComponentTreeElement::onEndUpdate()
     {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to end update: {}", e.what());
+    }
+}
+
+void ComponentTreeElement::onChangeActive()
+{
+    try
+    {
+        daqComponent.setActive(!daqComponent.getActive());
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::LoggerComponent();
+        LOG_E("Failed to change active state: {}", e.what());
     }
 }
