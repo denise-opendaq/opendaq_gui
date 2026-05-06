@@ -47,7 +47,10 @@ private:
     QLabel* overviewOpModeValue;
     QLabel* overviewTicksSinceOriginValue;
     QLabel* overviewCurrentTimeValue;
+    QWidget* overviewConnStatusSection;    // whole "Connection Status" section widget
     QWidget* overviewConnStatusContainer;  // dynamic rows, cleared on each refresh
+    QFrame* overviewConnStatusSepLeft;
+    QFrame* overviewConnStatusSepRight;
 
     // Device info card
     QLabel* deviceInfoSerialNumberValue;

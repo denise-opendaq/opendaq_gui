@@ -119,7 +119,10 @@ DeviceWidget::DeviceWidget(const daq::DevicePtr& device, QWidget* parent)
     , overviewOpModeValue(nullptr)
     , overviewTicksSinceOriginValue(nullptr)
     , overviewCurrentTimeValue(nullptr)
+    , overviewConnStatusSection(nullptr)
     , overviewConnStatusContainer(nullptr)
+    , overviewConnStatusSepLeft(nullptr)
+    , overviewConnStatusSepRight(nullptr)
     , deviceInfoSerialNumberValue(nullptr)
     , deviceInfoLocationValue(nullptr)
     , deviceInfoConnectionStringValue(nullptr)
@@ -191,6 +194,9 @@ void DeviceWidget::onScheduledUpdate()
 
 void DeviceWidget::setupUi()
 {
+    // Constrain how small the widget/window can get.
+    setMinimumSize(640, 420);
+
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
@@ -291,7 +297,33 @@ QWidget* DeviceWidget::createOverviewCard()
     h->addWidget(infoW, 1);
 
     // ── Separator ─────────────────────────────────────────────────────────────
-    h->addWidget(makeVSep(card));
+    overviewConnStatusSepLeft = makeVSep(card);
+    h->addWidget(overviewConnStatusSepLeft);
+
+    // ── Connection Status section ─────────────────────────────────────────────
+    overviewConnStatusSection = new QWidget(card);
+    auto* connV = new QVBoxLayout(overviewConnStatusSection);
+    connV->setContentsMargins(0, 0, 0, 0);
+    connV->setSpacing(8);
+    connV->addStretch();
+
+    auto* connTitle = new QLabel("Connection Status", overviewConnStatusSection);
+    connTitle->setObjectName("sectionTitle");
+    connV->addWidget(connTitle);
+
+    // Rows are populated dynamically in refresh() using connectionName as label
+    overviewConnStatusContainer = new QWidget(overviewConnStatusSection);
+    overviewConnStatusContainer->setLayout(new QVBoxLayout());
+    overviewConnStatusContainer->layout()->setContentsMargins(0, 0, 0, 0);
+    static_cast<QVBoxLayout*>(overviewConnStatusContainer->layout())->setSpacing(8);
+    connV->addWidget(overviewConnStatusContainer);
+
+    connV->addStretch();
+    h->addWidget(overviewConnStatusSection);
+
+    // ── Separator ─────────────────────────────────────────────────────────────
+    overviewConnStatusSepRight = makeVSep(card);
+    h->addWidget(overviewConnStatusSepRight);
 
     // ── Domain (Time) section ─────────────────────────────────────────────────
     auto makeKVSection = [&](QWidget* parent, const QString& sectionTitle,
@@ -333,30 +365,6 @@ QWidget* DeviceWidget::createOverviewCard()
         {"Ticks Since Origin", &overviewTicksSinceOriginValue},
         {"Current Time",       &overviewCurrentTimeValue},
     }));
-
-    // ── Separator ─────────────────────────────────────────────────────────────
-    h->addWidget(makeVSep(card));
-
-    // ── Connection Status section ─────────────────────────────────────────────
-    auto* connW = new QWidget(card);
-    auto* connV = new QVBoxLayout(connW);
-    connV->setContentsMargins(0, 0, 0, 0);
-    connV->setSpacing(8);
-    connV->addStretch();
-
-    auto* connTitle = new QLabel("Connection Status", connW);
-    connTitle->setObjectName("sectionTitle");
-    connV->addWidget(connTitle);
-
-    // Rows are populated dynamically in refresh() using connectionName as label
-    overviewConnStatusContainer = new QWidget(connW);
-    overviewConnStatusContainer->setLayout(new QVBoxLayout());
-    overviewConnStatusContainer->layout()->setContentsMargins(0, 0, 0, 0);
-    static_cast<QVBoxLayout*>(overviewConnStatusContainer->layout())->setSpacing(8);
-    connV->addWidget(overviewConnStatusContainer);
-
-    connV->addStretch();
-    h->addWidget(connW);
 
     return card;
 }
@@ -675,6 +683,7 @@ void DeviceWidget::refresh()
         // Connection status — rebuild rows dynamically using connectionName as label
         if (overviewConnStatusContainer)
         {
+            int connectionRows = 0;
             QLayoutItem* item;
             while ((item = overviewConnStatusContainer->layout()->takeAt(0)) != nullptr)
             {
@@ -706,9 +715,18 @@ void DeviceWidget::refresh()
                     rh->addWidget(keyLbl);
                     rh->addWidget(valLbl, 1);
                     overviewConnStatusContainer->layout()->addWidget(row);
+                    ++connectionRows;
                 }
             }
             catch (...) {}
+
+            const bool showConn = (connectionRows > 0);
+            if (overviewConnStatusSection)
+                overviewConnStatusSection->setVisible(showConn);
+            if (overviewConnStatusSepLeft)
+                overviewConnStatusSepLeft->setVisible(showConn);
+            if (overviewConnStatusSepRight)
+                overviewConnStatusSepRight->setVisible(showConn);
         }
 
         // Log files table
