@@ -41,6 +41,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
+    void paintEvent(QPaintEvent* event) override;
 
 private:
     QPoint dragStartPos;
@@ -102,6 +103,7 @@ protected:
     void dropEvent(QDropEvent* event) override;
     void tabInserted(int index) override;
     void tabRemoved(int index) override;
+    void paintEvent(QPaintEvent* event) override;
 
 private:
     bool isPointOnTabBar(const QPoint& widgetPos) const;

@@ -4,6 +4,7 @@
 #include "context/AppContext.h"
 #include <functional>
 #include <QMessageBox>
+#include <QHeaderView>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
@@ -124,6 +125,81 @@ void ComponentTreeWidget::setupUI()
 {
     setHeaderLabel("Components");
     setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Behavior + geometry to match modern sidebar trees
+    setRootIsDecorated(true);
+    setUniformRowHeights(true);
+    setAnimated(false);
+    setAllColumnsShowFocus(false);
+    setSelectionMode(QAbstractItemView::SingleSelection);
+    setSelectionBehavior(QAbstractItemView::SelectRows);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setIconSize(QSize(16, 16));
+    setIndentation(14);
+
+    if (header())
+    {
+        header()->setStretchLastSection(true);
+        header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        header()->setHighlightSections(false);
+    }
+
+    // Styling (selection, padding, branch indicators)
+    setStyleSheet(QStringLiteral(R"(
+        QTreeWidget {
+            background: #ffffff;
+            border: none;
+            outline: 0;
+        }
+
+        QTreeWidget::item {
+            padding: 6px 6px;
+            margin: 0px;
+        }
+
+        QTreeWidget::item:hover {
+            background: #F3F7FF;
+        }
+
+        QTreeWidget::item:selected {
+            background: #E8F1FF;
+            color: #1F2937;
+        }
+
+        QTreeWidget::item:selected:active {
+            background: #E8F1FF;
+        }
+
+        QHeaderView::section {
+            background: transparent;
+            border: none;
+            padding: 10px 8px 6px 8px;
+            color: #111827;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* Replace default expander triangles with our icons */
+        QTreeView::branch {
+            background: transparent;
+        }
+
+        QTreeView::branch:has-children:closed {
+            image: url(:/icons/right.png);
+        }
+
+        QTreeView::branch:has-children:open {
+            image: url(:/icons/down.png);
+        }
+
+        /* Hide connector lines */
+        QTreeView::branch:has-siblings:!adjoins-item,
+        QTreeView::branch:has-siblings:adjoins-item,
+        QTreeView::branch:!has-children:!has-siblings:adjoins-item,
+        QTreeView::branch:!has-children:has-siblings:adjoins-item {
+            border-image: none;
+        }
+    )"));
 
     // Connect signals
     connect(this, &QTreeWidget::itemSelectionChanged,

@@ -60,5 +60,9 @@ namespace GUIConstants {
     constexpr int DEFAULT_LAYOUT_SPACING = 8;
     constexpr int DIALOG_LAYOUT_MARGIN = 0;
     constexpr int DIALOG_LAYOUT_SPACING = 0;
+
+    // Tabs / headers
+    // Used to align left sidebar header with the main tab bar
+    constexpr int TAB_BAR_HEIGHT = 42;
 }
 

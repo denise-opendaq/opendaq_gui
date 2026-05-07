@@ -37,6 +37,7 @@ private:
     void setupUI();
     void setupMenuBar();
     void stopAllAnimations();
+    void syncLeftSidebarHeaderHeightToTabBar();
 
 private Q_SLOTS:
     void onViewSelectionChanged(int index);
@@ -54,6 +55,7 @@ private:
 
     // Left panel
     QComboBox* viewSelector = nullptr;
+    QWidget* leftSidebarHeader = nullptr;
     ComponentTreeWidget* componentTreeWidget = nullptr;
 
     // Layout manager for tab and window management

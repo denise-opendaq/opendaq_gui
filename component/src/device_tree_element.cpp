@@ -50,7 +50,7 @@ void DeviceTreeElement::openTab(const QString& tabName)
     {
         auto device = daqComponent.asPtr<daq::IDevice>(true);
         auto* deviceWidget = new DeviceWidget(device);
-        addTab(deviceWidget, tabName, LayoutZone::Default, "Attributes");
+        addTab(deviceWidget, tabName);
         return;
     }
 

@@ -7,9 +7,12 @@
 #include <memory>
 #include <QToolButton>
 #include <QStyle>
+#include <QStyleFactory>
 #include <QStyleOption>
 #include <QPainter>
 #include <QTimer>
+
+#include "context/gui_constants.h"
 
 namespace {
 
@@ -59,6 +62,15 @@ DetachableTabBar::DetachableTabBar(QWidget* parent)
     setMovable(false);
     setTabsClosable(false);
     setAcceptDrops(false);
+}
+
+void DetachableTabBar::paintEvent(QPaintEvent* event)
+{
+    // On macOS in documentMode, the native style can paint a gray strip behind tabs
+    // that ignores QSS/palette. Force-fill the entire tab bar rect with white first.
+    QPainter p(this);
+    p.fillRect(rect(), Qt::white);
+    QTabBar::paintEvent(event);
 }
 
 void DetachableTabBar::mousePressEvent(QMouseEvent* event)
@@ -183,9 +195,75 @@ DetachableTabWidget::DetachableTabWidget(QWidget* parent)
     setTabBar(bar);
 
     setAcceptDrops(true);
+    setDocumentMode(true);
+    tabBar()->setExpanding(false);
+    tabBar()->setUsesScrollButtons(true);
+    tabBar()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    tabBar()->setFixedHeight(GUIConstants::TAB_BAR_HEIGHT);
+    tabBar()->setContentsMargins(0, 0, 0, 0);
+
+    // macOS native tab style (especially in documentMode) can paint an unstyled gray strip
+    // behind/around the tab bar that ignores palette/QSS and even custom paint on children.
+    // Force Fusion style locally for predictable rendering.
+    if (QStyle* fusion = QStyleFactory::create(QStringLiteral("Fusion")))
+    {
+        fusion->setParent(this);
+        setStyle(fusion);
+        tabBar()->setStyle(fusion);
+    }
+
+    // macOS style can paint the tab strip background from the widget palette,
+    // even when QSS sets backgrounds. Force Window/Base to white and fill it.
+    setAutoFillBackground(true);
+    tabBar()->setAutoFillBackground(true);
+    setAttribute(Qt::WA_StyledBackground, true);
+    tabBar()->setAttribute(Qt::WA_StyledBackground, true);
+
+    QPalette whitePal = palette();
+    whitePal.setColor(QPalette::Window, Qt::white);
+    whitePal.setColor(QPalette::Base, Qt::white);
+    setPalette(whitePal);
+    tabBar()->setPalette(whitePal);
+
+    // Force a white background for the tab strip and its pane.
+    // On macOS, palette(base) / transparency can look persistently gray.
+    setStyleSheet(QStringLiteral(
+        "QTabWidget { background: #ffffff; }"
+        "QTabWidget::tab-bar { background: #ffffff; height: 42px; }"
+        "QTabWidget::left-corner { background: #ffffff; }"
+        "QTabWidget::right-corner { background: #ffffff; }"
+        "QTabWidget::pane { background: #ffffff; border: 0px; border-top: 1px solid #e5e7eb; }"
+        "QTabBar::base { background: #ffffff; border: 0px; }"
+        "QTabBar { background: #ffffff; min-height: 42px; max-height: 42px; }"
+        "QTabBar::tab {"
+        "  background: transparent;"
+        "  border: 0px;"
+        "  border-bottom: 2px solid transparent;"
+        "  padding: 4px 12px 2px 12px;"
+        "  margin: 0px 2px 0px 0px;"
+        "  min-height: 18px;"
+        "  color: palette(text);"
+        "}"
+        "QTabBar::tab:hover {"
+        "  border-bottom: 2px solid #93c5fd;"
+        "}"
+        "QTabBar::tab:selected {"
+        "  color: #2563eb;"
+        "  border-bottom: 2px solid #2563eb;"
+        "}"
+    ));
 
     connect(bar, &DetachableTabBar::detachRequested,
             this, &DetachableTabWidget::onDetachRequested);
+}
+
+void DetachableTabWidget::paintEvent(QPaintEvent* event)
+{
+    // Last-resort for macOS: force-fill the whole widget background white
+    // (the native style can paint a gray strip behind the tab area).
+    QPainter p(this);
+    p.fillRect(rect(), Qt::white);
+    QTabWidget::paintEvent(event);
 }
 
 void DetachableTabWidget::setEnableDetach(bool enable)

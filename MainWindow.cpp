@@ -25,6 +25,7 @@
 #include <QWidget>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QTabBar>
 
 #include "context/gui_constants.h"
 #include "component/base_tree_element.h"
@@ -70,6 +71,30 @@ MainWindow::~MainWindow()
     if (componentTreeWidget)
         disconnect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
                    this, &MainWindow::onComponentSelected);
+}
+
+void MainWindow::syncLeftSidebarHeaderHeightToTabBar()
+{
+    int targetHeight = GUIConstants::TAB_BAR_HEIGHT;
+
+    if (layoutManager)
+    {
+        if (auto* tw = layoutManager->getDefaultTabWidget())
+        {
+            if (auto* bar = tw->tabBar())
+            {
+                // Use actual laid-out height; on macOS style can diverge from sizeHint.
+                const int actual = bar->height();
+                const int hinted = bar->sizeHint().height();
+                targetHeight = qMax(actual, hinted);
+            }
+        }
+    }
+
+    targetHeight = qMax(targetHeight, GUIConstants::TAB_BAR_HEIGHT);
+
+    if (leftSidebarHeader)
+        leftSidebarHeader->setFixedHeight(targetHeight);
 }
 
 bool MainWindow::eventFilter(QObject* obj, QEvent* event)
@@ -225,18 +250,49 @@ void MainWindow::setupUI()
 
     // === LEFT PANEL (Tree) ===
     QWidget* leftWidget = new QWidget();
+    leftWidget->setObjectName("leftSidebar");
+    leftWidget->setStyleSheet(
+        "#leftSidebar { border-right: 1px solid palette(mid); }"
+        "#leftSidebarHeader { border-bottom: 1px solid palette(mid); }"
+    );
     QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
-    leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN, 
-                                    GUIConstants::DEFAULT_LAYOUT_MARGIN, 
-                                    GUIConstants::DEFAULT_LAYOUT_MARGIN, 
-                                    GUIConstants::DEFAULT_LAYOUT_MARGIN);
-    leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(0);
 
     viewSelector = new QComboBox();
     viewSelector->addItems({"System Overview", "Signals", "Channels", "Function blocks", "Full Topology"});
+    viewSelector->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    viewSelector->setStyleSheet(
+        "QComboBox {"
+        "  padding: 0px 28px 0px 10px;"
+        "  border: 1px solid #d1d5db;"
+        "  border-radius: 6px;"
+        "  background: #ffffff;"
+        "  color: palette(text);"
+        "}"
+        "QComboBox:hover { border-color: #9ca3af; }"
+        "QComboBox::drop-down { width: 24px; border: 0px; subcontrol-position: right center; }"
+        "QComboBox::down-arrow {"
+        "  image: none;"
+        "  width: 0px; height: 0px;"
+        "  border-left: 4px solid transparent;"
+        "  border-right: 4px solid transparent;"
+        "  border-top: 5px solid #6b7280;"
+        "}"
+    );
     connect(viewSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &MainWindow::onViewSelectionChanged);
-    leftLayout->addWidget(viewSelector);
+    leftSidebarHeader = new QWidget();
+    leftSidebarHeader->setObjectName("leftSidebarHeader");
+    leftSidebarHeader->setFixedHeight(GUIConstants::TAB_BAR_HEIGHT);
+    QHBoxLayout* leftHeaderLayout = new QHBoxLayout(leftSidebarHeader);
+    leftHeaderLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                         5,
+                                         GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                         5);
+    leftHeaderLayout->setSpacing(0);
+    leftHeaderLayout->addWidget(viewSelector);
+    leftLayout->addWidget(leftSidebarHeader);
 
     // === RIGHT PANEL (Content) ===
     // Create vertical splitter for content area (tabs | log)
@@ -269,7 +325,15 @@ void MainWindow::setupUI()
     connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
             this, &MainWindow::onComponentSelected);
 
-    leftLayout->addWidget(componentTreeWidget);
+    QWidget* treeWrapper = new QWidget();
+    QVBoxLayout* treeWrapperLayout = new QVBoxLayout(treeWrapper);
+    treeWrapperLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                          GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                          GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                          GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    treeWrapperLayout->setSpacing(0);
+    treeWrapperLayout->addWidget(componentTreeWidget);
+    leftLayout->addWidget(treeWrapper);
     
     // Add widgets to main splitter
     mainSplitter->addWidget(leftWidget);
@@ -361,6 +425,11 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
 void MainWindow::showEvent(QShowEvent* event)
 {
     QMainWindow::showEvent(event);
+
+    // After the window is shown and layouts/styles are applied, match the real tab bar height.
+    QTimer::singleShot(0, this, [this]() { syncLeftSidebarHeaderHeightToTabBar(); });
+    QTimer::singleShot(50, this, [this]() { syncLeftSidebarHeaderHeightToTabBar(); });
+
     // Defer update check so the window appears first and the request doesn't block startup
     QTimer::singleShot(1000, this, [this]() {
         if (m_updateChecker)
