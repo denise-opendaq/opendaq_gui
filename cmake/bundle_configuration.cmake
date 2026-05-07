@@ -18,12 +18,11 @@ if(APPLE)
         MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_LIST_DIR}/packaging/mac/MacOSXBundleInfo.plist.in"
     )
 
-    # Use install RPATH at build time too so CMake never adds the build-tree
-    # library directory to the binary's LC_RPATH. Without this, CMake tries to
-    # strip that path during `cmake --install`, but macdeployqt (POST_BUILD) has
-    # already modified the binary so the path is gone — causing install_name_tool errors.
+    # During development the binary resolves dylibs from the build bin/ dir.
+    # At install time CMake rewrites RPATH to @executable_path/../Frameworks,
+    # after which the bundle-prep install script copies the dylibs there.
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        BUILD_WITH_INSTALL_RPATH TRUE
+        BUILD_RPATH "${CMAKE_BINARY_DIR}/bin"
         INSTALL_RPATH "@executable_path/../Frameworks"
     )
 
@@ -38,7 +37,6 @@ if(APPLE)
     set(_BUNDLE_PREP_SCRIPT "${CMAKE_BINARY_DIR}/cmake/prepare_app_bundle.cmake")
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cmake")
 
-    set(APP_BUNDLE "${CMAKE_BINARY_DIR}/bin/${PROJECT_NAME}.app")
     set(BIN_DIR "${CMAKE_BINARY_DIR}/bin")
     set(MACDEPLOYQT "${MACDEPLOYQT_EXECUTABLE}")
     configure_file(
@@ -47,15 +45,11 @@ if(APPLE)
         @ONLY
     )
 
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -P "${_BUNDLE_PREP_SCRIPT}"
-        COMMENT "Preparing app bundle for packaging"
-        VERBATIM
-    )
+    install(SCRIPT "${_BUNDLE_PREP_SCRIPT}" COMPONENT app)
 
 elseif(UNIX)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        BUILD_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
+        BUILD_RPATH "${CMAKE_BINARY_DIR}/bin"
         INSTALL_RPATH "\$ORIGIN/../lib/opendaq-qt-gui:\$ORIGIN/../lib/opendaq-qt-gui/qt6"
     )
 
@@ -115,15 +109,21 @@ elseif(UNIX)
 
 elseif(WIN32)
 
+    # Embed the app icon into the .exe (shows in Explorer, taskbar, Alt+Tab)
+    set(_WIN_ICON_RC "${CMAKE_CURRENT_LIST_DIR}/logo/opendaq_qt_gui.rc")
+    if(EXISTS "${_WIN_ICON_RC}")
+        target_sources(${PROJECT_NAME} PRIVATE "${_WIN_ICON_RC}")
+    endif()
+
     install(TARGETS ${PROJECT_NAME}
             RUNTIME DESTINATION "bin"
             COMPONENT app)
 
-    # Installer + shortcut icon via CPack/NSIS
+    # NSIS installer icon (also uses the same .ico via the installed .exe)
     set(_WIN_ICON_ICO "${CMAKE_CURRENT_LIST_DIR}/logo/logo.ico")
     if(EXISTS "${_WIN_ICON_ICO}")
-        set(CPACK_NSIS_MUI_ICON "${_WIN_ICON_ICO}")
-        set(CPACK_NSIS_MUI_UNIICON "${_WIN_ICON_ICO}")
+        set(CPACK_NSIS_MUI_ICON           "${_WIN_ICON_ICO}")
+        set(CPACK_NSIS_MUI_UNIICON        "${_WIN_ICON_ICO}")
         set(CPACK_NSIS_INSTALLED_ICON_NAME "bin\\\\opendaq_qt_gui.exe")
     endif()
 

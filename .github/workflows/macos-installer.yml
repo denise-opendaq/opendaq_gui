@@ -28,7 +28,7 @@ jobs:
     - name: Package with CPack (PKG)
       run: |
         mkdir -p build/dist/macos
-        cpack -G productbuild -C Release -B build/dist/macos --config build/CPackConfig.cmake
+        cpack -C Release -B build/dist/macos --config build/CPackConfig.cmake
 
     - name: Upload PKG artifact
       uses: actions/upload-artifact@v4
