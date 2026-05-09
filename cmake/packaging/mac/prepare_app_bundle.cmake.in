@@ -1,4 +1,5 @@
-set(app_bundle "@APP_BUNDLE@")
+# CMAKE_INSTALL_PREFIX and ENV{DESTDIR} are set by CPack/cmake --install at run time.
+set(app_bundle "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/Applications/@PROJECT_NAME@.app")
 set(bin_dir "@BIN_DIR@")
 set(macdeployqt "@MACDEPLOYQT@")
 
