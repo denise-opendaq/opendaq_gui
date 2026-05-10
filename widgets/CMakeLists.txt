@@ -9,6 +9,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(HEADERS
     include/widgets/signal_value_widget.h
     include/widgets/property_object_view.h
+    include/widgets/property_inspector.h
     include/widgets/input_port_widget.h
     include/widgets/input_port_signal_selector.h
     include/widgets/input_port_folder_selector.h
@@ -20,6 +21,7 @@ set(HEADERS
 set(SOURCES
     src/signal_value_widget.cpp
     src/property_object_view.cpp
+    src/property_inspector.cpp
     src/input_port_widget.cpp
     src/input_port_signal_selector.cpp
     src/input_port_folder_selector.cpp

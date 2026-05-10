@@ -273,29 +273,9 @@ void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
     const QString rawValueStr = showValue();
     const QString displayValueStr = showDisplayValue();
     widgetItem->setText(0, nameStr);
-    try
-    {
-        const auto description = prop.getDescription();
-        if (description.assigned())
-            widgetItem->setToolTip(0, nameStr + QStringLiteral(": ") + QString::fromStdString(description));
-        else
-            widgetItem->setToolTip(0, nameStr);
-    }
-    catch (...)
-    {
-        widgetItem->setToolTip(0, nameStr);
-    }
     // Keep "raw" and "display" values separate so units never leak into edits/saves
     widgetItem->setData(1, Qt::UserRole, rawValueStr);
     widgetItem->setText(1, displayValueStr);
-    widgetItem->setToolTip(1, displayValueStr);
-    const QStringList meta = getAvailableMetadata();
-    for (int i = 0; i < meta.size(); ++i)
-    {
-        const QString text = getMetadataValue(meta[i]);
-        widgetItem->setText(2 + i, text);
-        widgetItem->setToolTip(2 + i, text);
-    }
 }
 
 void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool)

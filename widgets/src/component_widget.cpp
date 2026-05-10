@@ -49,14 +49,12 @@ ComponentWidget::~ComponentWidget()
 
 void ComponentWidget::setupUI()
 {
-    auto mainLayout = new QVBoxLayout(this);
+    auto* mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
 
-    // Create PropertyObject wrapper for component attributes
     createComponentPropertyObject();
-    
-    // Use PropertyObjectView to display component attributes
+
     propertyView = new PropertyObjectView(componentPropertyObject, this, component);
     mainLayout->addWidget(propertyView);
 }
