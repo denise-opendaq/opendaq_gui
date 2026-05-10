@@ -19,13 +19,6 @@ set(_qt_plugins_dst "${_qt_dst}/plugins")
 file(MAKE_DIRECTORY "${_bin_dst}")
 file(MAKE_DIRECTORY "${_qt_plugins_dst}")
 
-# Main executable
-file(INSTALL
-  DESTINATION "${_bin_dst}"
-  TYPE FILE
-  FILES "${build_bin_dir}/${project_binary_name}"
-)
-
 # openDAQ runtime libs produced next to the executable
 file(GLOB _so_libs "${build_bin_dir}/*.so*")
 foreach(_lib IN LISTS _so_libs)
