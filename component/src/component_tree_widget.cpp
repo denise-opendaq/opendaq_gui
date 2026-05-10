@@ -108,16 +108,39 @@ void ComponentTreeWidget::setShowHidden(bool show)
     refreshVisibility();
 }
 
-void ComponentTreeWidget::setComponentTypeFilter(const QSet<QString>& types)
+
+void ComponentTreeWidget::setSearchFilter(const QString& text)
 {
-    AppContext::Instance()->setShowComponentTypes(types);
+    m_searchFilter = text;
     refreshVisibility();
+}
+
+bool ComponentTreeWidget::applySearchFilter(QTreeWidgetItem* item, const QString& filter)
+{
+    bool anyChildVisible = false;
+    for (int i = 0; i < item->childCount(); ++i)
+        if (applySearchFilter(item->child(i), filter))
+            anyChildVisible = true;
+
+    const bool selfMatches = item->text(0).contains(filter, Qt::CaseInsensitive);
+    const bool visible = selfMatches || anyChildVisible;
+    item->setHidden(!visible);
+    if (anyChildVisible)
+        item->setExpanded(true);
+    return visible;
 }
 
 void ComponentTreeWidget::refreshVisibility()
 {
-    if (rootElement)
-        rootElement->showFiltered();
+    if (m_searchFilter.isEmpty())
+    {
+        if (rootElement)
+            rootElement->showFiltered();
+        return;
+    }
+
+    for (int i = 0; i < topLevelItemCount(); ++i)
+        applySearchFilter(topLevelItem(i), m_searchFilter);
 }
 
 void ComponentTreeWidget::setupUI()
@@ -125,11 +148,12 @@ void ComponentTreeWidget::setupUI()
     setHeaderLabel("Components");
     setContextMenuPolicy(Qt::CustomContextMenu);
 
-    // Connect signals
     connect(this, &QTreeWidget::itemSelectionChanged,
             this, &ComponentTreeWidget::onSelectionChanged);
     connect(this, &QTreeWidget::customContextMenuRequested,
             this, &ComponentTreeWidget::onContextMenuRequested);
+    connect(AppContext::Instance(), &AppContext::showInvisibleChanged,
+            this, &ComponentTreeWidget::refreshVisibility);
 }
 
 void ComponentTreeWidget::onSelectionChanged()

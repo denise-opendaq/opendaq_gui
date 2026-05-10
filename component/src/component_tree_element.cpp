@@ -59,12 +59,7 @@ bool ComponentTreeElement::visible() const
         if (!componentVisible && !AppContext::Instance()->showInvisibleComponents())
             return false;
 
-        // Check if we're filtering by component type
-        QSet<QString> allowedTypes = AppContext::Instance()->showComponentTypes();
-        if (allowedTypes.isEmpty())
-            return true;
-
-        return allowedTypes.contains(type);
+        return true;
     }
     catch (const std::exception&)
     {

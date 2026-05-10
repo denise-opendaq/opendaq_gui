@@ -1,6 +1,5 @@
 #pragma once
 #include <QTreeWidget>
-#include <QSet>
 #include <QString>
 #include <memory>
 
@@ -38,8 +37,8 @@ public:
     // Set whether to show hidden components
     void setShowHidden(bool show);
 
-    // Set component type filter
-    void setComponentTypeFilter(const QSet<QString>& types);
+    // Set text search filter (empty string clears search)
+    void setSearchFilter(const QString& text);
 
     // Refresh visibility based on current filters
     void refreshVisibility();
@@ -56,6 +55,9 @@ private Q_SLOTS:
     void onContextMenuRequested(const QPoint& pos);
 
 private:
+    bool applySearchFilter(QTreeWidgetItem* item, const QString& filter);
+
     std::unique_ptr<BaseTreeElement> rootElement;
     LayoutManager* layoutManager = nullptr;
+    QString m_searchFilter;
 };

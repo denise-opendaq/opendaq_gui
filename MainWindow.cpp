@@ -232,11 +232,10 @@ void MainWindow::setupUI()
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN);
     leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    viewSelector = new QComboBox();
-    viewSelector->addItems({"System Overview", "Signals", "Channels", "Function blocks", "Full Topology"});
-    connect(viewSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onViewSelectionChanged);
-    leftLayout->addWidget(viewSelector);
+    searchBox = new QLineEdit();
+    searchBox->setPlaceholderText(tr("Search components..."));
+    searchBox->setClearButtonEnabled(true);
+    leftLayout->addWidget(searchBox);
 
     // === RIGHT PANEL (Content) ===
     // Create vertical splitter for content area (tabs | log)
@@ -268,6 +267,9 @@ void MainWindow::setupUI()
     // Connect component selection to show properties
     connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
             this, &MainWindow::onComponentSelected);
+
+    connect(searchBox, &QLineEdit::textChanged,
+            componentTreeWidget, &ComponentTreeWidget::setSearchFilter);
 
     leftLayout->addWidget(componentTreeWidget);
     
@@ -315,36 +317,6 @@ void MainWindow::setupUI()
 // ============================================================================
 
 
-void MainWindow::onViewSelectionChanged(int index)
-{
-    const QString viewName = viewSelector->itemText(index);
-    const auto loggerComponent = AppContext::LoggerComponent();
-    LOG_I("View changed to: {}", viewName.toStdString());
-
-    // Update component type filter based on selection
-    QSet<QString> componentsToShow;
-    if (viewName == "System Overview")
-    {
-        componentsToShow = {"Device", "Folder", "Signal", "Channel", "FunctionBlock"};
-    }
-    else if (viewName == "Signals")
-    {
-        componentsToShow = {"Device", "Signal"};
-    }
-    else if (viewName == "Channels")
-    {
-        componentsToShow = {"Device", "Channel"};
-    }
-    else if (viewName == "Function blocks")
-    {
-        componentsToShow = {"Device", "FunctionBlock"};
-    }
-
-    if (componentTreeWidget)
-    {
-        componentTreeWidget->setComponentTypeFilter(componentsToShow);
-    }
-}
 
 void MainWindow::onComponentSelected(BaseTreeElement* element)
 {

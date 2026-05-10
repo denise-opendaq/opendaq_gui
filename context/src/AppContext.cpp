@@ -6,7 +6,6 @@
 
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
-#include <QSet>
 #include <memory>
 
 // PIMPL to hide openDAQ headers from Qt headers
@@ -16,7 +15,6 @@ public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
     bool expandAllProperties = true;
-    QSet<QString> componentTypes; // empty means show all
     daq::LoggerSinkPtr loggerSink;
     UpdateScheduler* scheduler = nullptr;
     EventQueue eventQueue;
@@ -128,16 +126,6 @@ void AppContext::setExpandAllProperties(bool expand)
         d->expandAllProperties = expand;
         Q_EMIT expandAllPropertiesChanged(expand);
     }
-}
-
-QSet<QString> AppContext::showComponentTypes() const
-{
-    return d->componentTypes;
-}
-
-void AppContext::setShowComponentTypes(const QSet<QString>& types)
-{
-    d->componentTypes = types;
 }
 
 UpdateScheduler* AppContext::updateScheduler() const
