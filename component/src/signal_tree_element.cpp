@@ -24,7 +24,7 @@ void SignalTreeElement::openTab(const QString& tabName)
     if (tabName == "Value")
     {
         auto valueWidget = new SignalValueWidget(daqComponent);
-        addTab(valueWidget, tabName, LayoutZone::Left);
+        addTab(valueWidget, tabName);
     }
     else
     {

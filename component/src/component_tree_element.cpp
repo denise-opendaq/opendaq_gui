@@ -175,7 +175,7 @@ void ComponentTreeElement::openTab(const QString& tabName)
     else if (tabName == "Properties")
     {
         auto* propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
-        addTab(propertyView, tabName, LayoutZone::Bottom, "Attributes");
+        addTab(propertyView, tabName);
     }
     else if (tabName == "QTWidget")
     {
@@ -187,7 +187,7 @@ void ComponentTreeElement::openTab(const QString& tabName)
             if (qtWidget)
             {
                 // QTWidget opens in left zone
-                addTab(qtWidget, tabName, LayoutZone::Left);
+                addTab(qtWidget, tabName);
             }
         }
     }
