@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QFrame>
+#include <QToolButton>
 #include <coreobjects/property_object_internal_ptr.h>
 
 static QString formatUnit(const daq::PropertyPtr& prop)
@@ -74,6 +75,69 @@ static QString formatAllowedValues(const daq::PropertyPtr& prop)
 PropertyInspector::PropertyInspector(QWidget* parent)
     : QWidget(parent)
 {
+    setObjectName("propertyInspector");
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(
+        "QWidget#propertyInspector {"
+        "  background: #ffffff;"
+        "  border: 1px solid #e5e7eb;"
+        "  border-radius: 16px;"
+        "}"
+        "QWidget#inspectorHeader {"
+        "  background: transparent;"
+        "  border: none;"
+        "}"
+        "QLabel#inspectorTitle {"
+        "  color: #111827;"
+        "  font-size: 16px;"
+        "  font-weight: 600;"
+        "  border: none;"
+        "}"
+        "QToolButton#inspectorCloseButton {"
+        "  background: transparent;"
+        "  border: none;"
+        "  border-radius: 10px;"
+        "  color: #6b7280;"
+        "  font-size: 16px;"
+        "  padding: 2px;"
+        "}"
+        "QToolButton#inspectorCloseButton:hover {"
+        "  background: #f3f4f6;"
+        "  color: #111827;"
+        "}"
+        "QScrollArea#inspectorScroll, QWidget#inspectorScrollContent, QWidget#inspectorContent, QWidget#advancedContent {"
+        "  background: transparent;"
+        "  border: none;"
+        "}"
+        "QLabel#inspectorEmptyState {"
+        "  color: #9ca3af;"
+        "  border: none;"
+        "  padding: 24px 8px;"
+        "}"
+        "QLabel#inspectorFieldLabel {"
+        "  color: #6b7280;"
+        "  font-size: 11px;"
+        "  font-weight: 600;"
+        "  text-transform: uppercase;"
+        "  letter-spacing: 0.5px;"
+        "  border: none;"
+        "  margin-top: 10px;"
+        "}"
+        "QLabel#inspectorFieldValue {"
+        "  color: #374151;"
+        "  border: none;"
+        "  padding-top: 2px;"
+        "  font-size: 13px;"
+        "  font-weight: 600;"
+        "}"
+        "QToolButton#advancedToggle {"
+        "  background: transparent;"
+        "  border: none;"
+        "  color: #111827;"
+        "  font-weight: 600;"
+        "  padding: 10px 0 2px 0;"
+        "}"
+    );
     setupUI();
     clearProperty();
 }
@@ -81,12 +145,10 @@ PropertyInspector::PropertyInspector(QWidget* parent)
 static PropertyInspector::Row makeRow(QVBoxLayout* layout)
 {
     auto* label = new QLabel();
-    QFont f = label->font();
-    f.setBold(true);
-    label->setFont(f);
-    label->setContentsMargins(0, 8, 0, 0);
+    label->setObjectName("inspectorFieldLabel");
 
     auto* value = new QLabel();
+    value->setObjectName("inspectorFieldValue");
     value->setWordWrap(true);
     value->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
@@ -106,32 +168,42 @@ void PropertyInspector::setupUI()
     auto* header = new QWidget(this);
     header->setObjectName("inspectorHeader");
     auto* headerLayout = new QHBoxLayout(header);
-    headerLayout->setContentsMargins(12, 8, 8, 8);
+    headerLayout->setContentsMargins(16, 14, 12, 8);
 
     auto* titleLabel = new QLabel(tr("Property Inspector"), header);
-    QFont f = titleLabel->font();
-    f.setBold(true);
-    titleLabel->setFont(f);
+    titleLabel->setObjectName("inspectorTitle");
 
     headerLayout->addWidget(titleLabel);
+    headerLayout->addStretch();
+
+    auto* closeButton = new QToolButton(header);
+    closeButton->setObjectName("inspectorCloseButton");
+    closeButton->setText(QStringLiteral("x"));
+    closeButton->setAutoRaise(true);
+    connect(closeButton, &QToolButton::clicked, this, &QWidget::hide);
+    headerLayout->addWidget(closeButton);
 
     // Separator line
     auto* separator = new QFrame(this);
     separator->setFrameShape(QFrame::HLine);
     separator->setFrameShadow(QFrame::Sunken);
+    separator->setStyleSheet("border: none; background: #f3f4f6; min-height: 1px; max-height: 1px;");
 
     // Scroll area
     auto* scroll = new QScrollArea(this);
+    scroll->setObjectName("inspectorScroll");
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
 
     auto* scrollContent = new QWidget();
+    scrollContent->setObjectName("inspectorScrollContent");
     auto* scrollLayout = new QVBoxLayout(scrollContent);
-    scrollLayout->setContentsMargins(12, 4, 12, 12);
+    scrollLayout->setContentsMargins(16, 8, 16, 16);
     scrollLayout->setSpacing(0);
 
     // Empty state
     emptyState = new QLabel(tr("Select a property to inspect"), scrollContent);
+    emptyState->setObjectName("inspectorEmptyState");
     emptyState->setAlignment(Qt::AlignCenter);
     QPalette pal = emptyState->palette();
     pal.setColor(QPalette::WindowText, pal.color(QPalette::Disabled, QPalette::WindowText));
@@ -140,9 +212,10 @@ void PropertyInspector::setupUI()
 
     // Content with rows
     content = new QWidget(scrollContent);
+    content->setObjectName("inspectorContent");
     auto* contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);
-    contentLayout->setSpacing(0);
+    contentLayout->setSpacing(8);
 
     rowName        = makeRow(contentLayout);
     rowPath        = makeRow(contentLayout);
@@ -153,6 +226,9 @@ void PropertyInspector::setupUI()
     rowCurrent     = makeRow(contentLayout);
     rowAllowed     = makeRow(contentLayout);
     rowWritable    = makeRow(contentLayout);
+
+    rowMin = makeRow(contentLayout);
+    rowMax = makeRow(contentLayout);
     contentLayout->addStretch();
 
     rowName.label->setText(tr("Name"));
@@ -164,6 +240,8 @@ void PropertyInspector::setupUI()
     rowCurrent.label->setText(tr("Current value"));
     rowAllowed.label->setText(tr("Allowed values"));
     rowWritable.label->setText(tr("Writable"));
+    rowMin.label->setText(tr("Minimum"));
+    rowMax.label->setText(tr("Maximum"));
 
     scrollLayout->addWidget(content);
     scroll->setWidget(scrollContent);
@@ -251,8 +329,18 @@ void PropertyInspector::showProperty(BasePropertyItem* item)
     writableLabel->setPalette(pal);
     setRowVisible(rowWritable, true);
 
+    const QString minValue = item->getMetadataValue(QStringLiteral("Min value"));
+    setRowText(rowMin, minValue);
+    setRowVisible(rowMin, !minValue.isEmpty());
+
+    const QString maxValue = item->getMetadataValue(QStringLiteral("Max value"));
+    setRowText(rowMax, maxValue);
+    setRowVisible(rowMax, !maxValue.isEmpty());
+
+
     emptyState->setVisible(false);
     content->setVisible(true);
+    setVisible(true);
 }
 
 void PropertyInspector::clearProperty()

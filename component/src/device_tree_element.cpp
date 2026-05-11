@@ -1,4 +1,5 @@
 #include "component/device_tree_element.h"
+#include "widgets/device_widget.h"
 #include "widgets/property_object_view.h"
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_function_block_dialog.h"
@@ -282,6 +283,27 @@ void DeviceTreeElement::onSaveConfiguration()
     {
         QMessageBox::critical(nullptr, "Error",
             QString("Failed to save configuration: %1").arg(e.what()));
+    }
+}
+
+QStringList DeviceTreeElement::getAvailableTabNames() const
+{
+    QStringList tabs;
+    tabs << "Attributes";
+    return tabs;
+}
+
+void DeviceTreeElement::openTab(const QString& tabName)
+{
+    if (tabName == "Attributes")
+    {
+        auto device = daqComponent.asPtr<daq::IDevice>(true);
+        auto* widget = new DeviceWidget(device);
+        addTab(widget, tabName);
+    }
+    else
+    {
+        Super::openTab(tabName);
     }
 }
 

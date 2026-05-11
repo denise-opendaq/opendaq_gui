@@ -4,6 +4,7 @@
 
 class QLabel;
 class BasePropertyItem;
+class QToolButton;
 
 class PropertyInspector : public QWidget
 {
@@ -36,6 +37,8 @@ private:
     Row rowCurrent;
     Row rowAllowed;
     Row rowWritable;
+    Row rowMin;
+    Row rowMax;
 
     QLabel* emptyState;
     QWidget* content;

@@ -5,6 +5,8 @@
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
 #include <QHeaderView>
+#include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QSignalBlocker>
 #include <QSplitter>
@@ -115,6 +117,59 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     , owner(owner)
     , root(root)
 {
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(
+        "PropertyObjectView { background: transparent; }"
+        "QWidget#propertyPanel {"
+        "  background: transparent;"
+        "  border: none;"
+        "}"
+        "QLabel#propertiesTitle {"
+        "  color: #111827;"
+        "  font-size: 16px;"
+        "  font-weight: 600;"
+        "}"
+        "QLineEdit#propertySearch {"
+        "  background: #f9fafb;"
+        "  border: 1px solid #e5e7eb;"
+        "  border-radius: 10px;"
+        "  padding: 9px 12px;"
+        "  color: #111827;"
+        "}"
+        "QLineEdit#propertySearch:focus {"
+        "  border-color: #cbd5e1;"
+        "  background: #ffffff;"
+        "}"
+        "QTreeWidget#propertyTree {"
+        "  background: transparent;"
+        "  border: none;"
+        "  outline: none;"
+        "}"
+        "QTreeWidget#propertyTree::item {"
+        "  padding: 7px 8px;"
+        "  color: #111827;"
+        "}"
+        "QTreeWidget#propertyTree::item:selected {"
+        "  background: #eff6ff;"
+        "  color: #111827;"
+        "}"
+        "QTreeWidget#propertyTree::branch {"
+        "  background: transparent;"
+        "}"
+        "QHeaderView::section {"
+        "  background: transparent;"
+        "  border: none;"
+        "  border-bottom: 1px solid #e5e7eb;"
+        "  padding: 10px 8px 8px 8px;"
+        "  color: #6b7280;"
+        "  font-weight: 600;"
+        "}"
+        "QSplitter::handle {"
+        "  background: transparent;"
+        // "  width: 12px;"
+        "}"
+    );
+
     if (const auto internal = root.asPtrOrNull<daq::IPropertyObjectInternal>(true); internal.assigned())
     {
         if (const auto path = internal.getPath(); path.assigned())
@@ -123,8 +178,9 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
 
     // Create tree widget
     tree = new PropertyTreeWidget(this);
+    tree->setObjectName("propertyTree");
     tree->setColumnCount(2);
-    tree->setHeaderLabels({QStringLiteral("Property name"), QStringLiteral("Value")});
+    tree->setHeaderLabels({QStringLiteral("Property"), QStringLiteral("Value")});
     tree->setHeaderHidden(false);
     tree->header()->setStretchLastSection(true);
     tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
@@ -134,14 +190,37 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     tree->setExpandsOnDoubleClick(true);
     tree->setContextMenuPolicy(Qt::CustomContextMenu);
     tree->setItemDelegateForColumn(1, new ValueEditRoleDelegate(tree));
+    tree->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tree->setIndentation(20);
+    tree->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
+
+    searchEdit = new QLineEdit(this);
+    searchEdit->setObjectName("propertySearch");
+    searchEdit->setClearButtonEnabled(true);
+    searchEdit->setPlaceholderText(QStringLiteral("Search properties..."));
 
     // Create inspector (hidden until a property is selected)
     m_inspector = new PropertyInspector();
     m_inspector->setVisible(false);
+    m_inspector->setMinimumWidth(300);
+
+    auto* propertyPanel = new QWidget(this);
+    propertyPanel->setObjectName("propertyPanel");
+    auto* propertyPanelLayout = new QVBoxLayout(propertyPanel);
+    propertyPanelLayout->setContentsMargins(16, 16, 16, 16);
+    propertyPanelLayout->setSpacing(12);
+
+    auto* propertiesTitle = new QLabel(tr("Properties"), propertyPanel);
+    propertiesTitle->setObjectName("propertiesTitle");
+    propertyPanelLayout->addWidget(propertiesTitle);
+    propertyPanelLayout->addWidget(searchEdit);
+    propertyPanelLayout->addWidget(tree, 1);
 
     // Layout: splitter with tree (left) and inspector (right)
     auto* splitter = new QSplitter(Qt::Horizontal, this);
-    splitter->addWidget(tree);
+    splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(14);
+    splitter->addWidget(propertyPanel);
     splitter->addWidget(m_inspector);
     splitter->setStretchFactor(0, 3);
     splitter->setStretchFactor(1, 2);
@@ -156,6 +235,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     connect(tree, &QTreeWidget::itemCollapsed,    this, &PropertyObjectView::onItemCollapsed);
     connect(tree, &QTreeWidget::itemDoubleClicked,this, &PropertyObjectView::onItemDoubleClicked);
     connect(tree, &QWidget::customContextMenuRequested, this, &PropertyObjectView::onContextMenu);
+    connect(searchEdit, &QLineEdit::textChanged, this, &PropertyObjectView::onSearchTextChanged);
 
     connect(tree, &QTreeWidget::currentItemChanged, this, [this](QTreeWidgetItem* current, QTreeWidgetItem*)
     {
@@ -173,6 +253,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     connect(AppContext::Instance(), &AppContext::expandAllPropertiesChanged, this, [this](bool)
     {
         applyExpandState();
+        applyFilter();
     });
 }
 
@@ -184,11 +265,15 @@ PropertyObjectView::~PropertyObjectView()
 
 void PropertyObjectView::refresh()
 {
-    QSignalBlocker b(tree);
-    propertyObjectToLogic[root] = nullptr;
-    PropertySubtreeBuilder builder(*this);
-    builder.buildFromPropertyObject(nullptr, root);
-    applyExpandState();
+    {
+        QSignalBlocker b(tree);
+        propertyObjectToLogic[root] = nullptr;
+        PropertySubtreeBuilder builder(*this);
+        builder.buildFromPropertyObject(nullptr, root);
+        applyExpandState();
+    }
+
+    applyFilter();
 }
 
 void PropertyObjectView::addTopLevelItem(QTreeWidgetItem* item)
@@ -262,6 +347,7 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         const daq::StringPtr propName = eventArgs.getParameters().get("Name");
         ObjectPropertyItem* objLogic = parentIt->second;
         removeChildProperty(objLogic ? objLogic->getWidgetItem() : nullptr, propName);
+        applyFilter();
     }
     else if (eventId == daq::CoreEventId::PropertyObjectUpdateEnd)
     {
@@ -279,17 +365,19 @@ void PropertyObjectView::onPropertyValueChanged(const daq::PropertyObjectPtr& ob
         return;
 
     ObjectPropertyItem* objLogic = it->second;
-    QSignalBlocker blocker(tree);
-
-    if (objLogic)
+    if (!objLogic)
     {
+        refresh();
+        return;
+    }
+
+    {
+        QSignalBlocker blocker(tree);
         PropertySubtreeBuilder builder(*this);
         objLogic->refresh(builder);
     }
-    else
-    {
-        refresh();
-    }
+
+    applyFilter();
 }
 
 BasePropertyItem* PropertyObjectView::store(std::unique_ptr<BasePropertyItem> item)
@@ -397,12 +485,56 @@ void PropertyObjectView::onContextMenu(const QPoint& pos)
         logic->handle_right_click(this, item, tree->viewport()->mapToGlobal(pos));
 }
 
+void PropertyObjectView::onSearchTextChanged(const QString&)
+{
+    applyFilter();
+}
+
 void PropertyObjectView::applyExpandState()
 {
     if (AppContext::Instance()->expandAllProperties())
         tree->expandAll();
     else
         tree->collapseAll();
+}
+
+bool PropertyObjectView::updateItemFilter(QTreeWidgetItem* item, const QString& text)
+{
+    if (!item)
+        return false;
+
+    bool childMatches = false;
+    for (int i = 0; i < item->childCount(); ++i)
+        childMatches = updateItemFilter(item->child(i), text) || childMatches;
+
+    if (text.isEmpty())
+    {
+        item->setHidden(false);
+        return true;
+    }
+
+    const bool selfMatches = item->text(0).contains(text, Qt::CaseInsensitive);
+    const bool visible = selfMatches || childMatches;
+    item->setHidden(!visible);
+
+    if (childMatches)
+        item->setExpanded(true);
+
+    return visible;
+}
+
+void PropertyObjectView::applyFilter()
+{
+    const QString filterText = searchEdit ? searchEdit->text().trimmed() : QString();
+
+    if (filterText.isEmpty())
+        applyExpandState();
+
+    for (int i = 0; i < tree->topLevelItemCount(); ++i)
+        updateItemFilter(tree->topLevelItem(i), filterText);
+
+    if (auto* current = tree->currentItem(); current && current->isHidden())
+        tree->setCurrentItem(nullptr);
 }
 
 void PropertyObjectView::removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName)
@@ -464,7 +596,23 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
     }
 
     if (logic->hasSubtree())
+    {
         it->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
+        QFont sectionFont = it->font(0);
+        sectionFont.setBold(true);
+        it->setFont(0, sectionFont);
+        it->setFont(1, sectionFont);
+        const QColor sectionBackground(0xF8, 0xFA, 0xFC);
+        it->setBackground(0, sectionBackground);
+        it->setBackground(1, sectionBackground);
+        it->setFirstColumnSpanned(true);
+        it->setSizeHint(0, QSize(0, 34));
+    }
+    else
+    {
+        it->setFirstColumnSpanned(false);
+        it->setSizeHint(0, QSize(0, 30));
+    }
 
     PropertySubtreeBuilder builder(*this);
     logic->refresh(builder);

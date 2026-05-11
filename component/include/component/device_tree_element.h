@@ -21,6 +21,9 @@ public:
 
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args) override;
 
+    QStringList getAvailableTabNames() const override;
+    void openTab(const QString& tabName) override;
+
 public Q_SLOTS:
     void onAddDevice();
     void onAddFunctionBlock();

@@ -184,6 +184,19 @@ DetachableTabWidget::DetachableTabWidget(QWidget* parent)
 
     setAcceptDrops(true);
 
+    // Ensure the tab content area doesn't get a gray panel background
+    // on some platform styles (e.g. macOS). Keep tab bar styling intact.
+    setAttribute(Qt::WA_StyledBackground, true);
+    setStyleSheet(
+        "QTabWidget::pane {"
+        "  background-color: #ffffff;"
+        "  border: none;"
+        "}"
+        "QStackedWidget {"
+        "  background-color: #ffffff;"
+        "}"
+    );
+
     connect(bar, &DetachableTabBar::detachRequested,
             this, &DetachableTabWidget::onDetachRequested);
 }

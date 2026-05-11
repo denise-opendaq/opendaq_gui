@@ -8,6 +8,8 @@
 #include "property/object_property_item.h"
 
 class PropertyInspector;
+class QLineEdit;
+class QString;
 
 // Custom hash function for PropertyObjectPtr that uses the object's address
 struct PropertyObjectPtrHash
@@ -110,12 +112,15 @@ private Q_SLOTS:
     void onItemChanged(QTreeWidgetItem* item, int column);
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
+    void onSearchTextChanged(const QString& text);
 
 private:
     void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
     daq::PropertyObjectPtr getChildObject(std::string path);
     void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
     void applyExpandState();
+    void applyFilter();
+    bool updateItemFilter(QTreeWidgetItem* item, const QString& text);
     void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
 
     daq::ComponentPtr owner;
@@ -124,5 +129,6 @@ private:
     std::unordered_map<PropertyKey, std::unique_ptr<BasePropertyItem>, PropertyKeyHash> items;
 
     QTreeWidget* tree = nullptr;
+    QLineEdit* searchEdit = nullptr;
     PropertyInspector* m_inspector = nullptr;
 };
