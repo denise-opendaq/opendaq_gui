@@ -1,5 +1,6 @@
 #include "component/component_tree_element.h"
 #include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include "widgets/property_object_view.h"
 #include "widgets/component_widget.h"
 #include <opendaq/opendaq.h>
@@ -147,9 +148,6 @@ QStringList ComponentTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
     tabs << "Attributes";
-    tabs << "Properties";
-    if (daqComponent.supportsInterface<IQTWidget>())
-       tabs << "QTWidget";
     return tabs;
 }
 
@@ -166,25 +164,6 @@ void ComponentTreeElement::openTab(const QString& tabName)
     {
         auto* componentWidget = new ComponentWidget(daqComponent);
         addTab(componentWidget, tabName);
-    }
-    else if (tabName == "Properties")
-    {
-        auto* propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
-        addTab(propertyView, tabName);
-    }
-    else if (tabName == "QTWidget")
-    {
-        auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
-        if (widgetComponent.assigned())
-        {
-            QWidget* qtWidget;
-            widgetComponent->getWidget(&qtWidget);
-            if (qtWidget)
-            {
-                // QTWidget opens in left zone
-                addTab(qtWidget, tabName);
-            }
-        }
     }
 }
 

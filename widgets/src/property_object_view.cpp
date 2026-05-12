@@ -182,8 +182,8 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     tree->setColumnCount(2);
     tree->setHeaderLabels({QStringLiteral("Property"), QStringLiteral("Value")});
     tree->setHeaderHidden(false);
-    tree->header()->setStretchLastSection(true);
-    tree->header()->setSectionResizeMode(0, QHeaderView::Interactive);
+    tree->header()->setStretchLastSection(false);
+    tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
     tree->header()->setSectionResizeMode(1, QHeaderView::Stretch);
     tree->setRootIsDecorated(true);
     tree->setUniformRowHeights(true);

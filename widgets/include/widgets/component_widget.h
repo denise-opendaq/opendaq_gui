@@ -1,14 +1,13 @@
 #pragma once
 
 #include <QWidget>
-#include <QVBoxLayout>
-
-#include <context/QueuedEventHandler.h>
 
 #include <opendaq/component_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
 
-class PropertyObjectView;
+class QFrame;
+class QLabel;
+class QTabWidget;
 
 class ComponentWidget : public QWidget
 {
@@ -18,21 +17,27 @@ public:
     explicit ComponentWidget(const daq::ComponentPtr& component, QWidget* parent = nullptr);
     ~ComponentWidget() override;
 
-private:
+protected:
+    ComponentWidget(const daq::ComponentPtr& component, QWidget* parent, Qt::Initialization);
+
     void setupUI();
-    void createComponentPropertyObject();
-    void setupPropertyHandlers();
-    void updateStatuses();
+    virtual QWidget* buildHeaderCard();
+    virtual void populateTabs();
+
+    void updateStatus();
+    void updateStatusContainer();
+    void updateTags();
+
+    bool eventFilter(QObject* obj, QEvent* event) override;
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
-    
-    // Async handlers for core events to avoid deadlocks
-    void handleAttributeChangedAsync(const daq::StringPtr& attributeName, const daq::BaseObjectPtr& value);
-    void handleTagsChangedAsync(const daq::TagsPtr& tags);
-    void handleStatusChangedAsync();
 
     daq::ComponentPtr component;
-    PropertyObjectView* propertyView;
-    daq::PropertyObjectPtr componentPropertyObject;
-    std::atomic<int> updatingFromComponent; // Counter to prevent recursive updates
-};
 
+    QLabel*     nameLabel            = nullptr;
+    QLabel*     descLabel            = nullptr;
+    QLabel*     statusLabel          = nullptr;
+    QFrame*     statusSep            = nullptr;
+    QWidget*    statusContainerBlock = nullptr;
+    QWidget*    tagsRow              = nullptr;
+    QTabWidget* tabs                 = nullptr;
+};

@@ -25,7 +25,7 @@ public:
 
 private Q_SLOTS:
     void onProtocolSelected(int index);
-    void onStreamingProtocolSelected(int index);
+    void onStreamingCheckboxChanged();
     void onAddClicked();
 
 private:
@@ -35,6 +35,7 @@ private:
     void initSelectionWidgets();
     void updateConnectionString();
     void updateConfigTabs();
+    void validateConfig();
     daq::StringPtr getConnectionStringFromServerCapability(const QString& protocolName);
 
     daq::DevicePtr parentDevice;
@@ -43,7 +44,8 @@ private:
 
     // Left panel widgets
     QComboBox* configurationProtocolComboBox;
-    QComboBox* streamingProtocolsComboBox;
+    QWidget* streamingCheckboxContainer;
+    QList<QCheckBox*> streamingCheckboxes;
 
     // Right panel widgets
     QTabWidget* configTabs;
@@ -54,8 +56,6 @@ private:
 
     QString selectedConfigurationProtocol;
     QString selectedConfigurationProtocolId;
-    QString selectedStreamingProtocol;
-    QString selectedStreamingProtocolId;
     daq::DeviceInfoPtr deviceInfo;
 };
 

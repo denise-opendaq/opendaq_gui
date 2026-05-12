@@ -16,6 +16,7 @@ set(HEADERS
     include/widgets/function_block_widget.h
     include/widgets/component_widget.h
     include/widgets/device_widget.h
+    include/widgets/device_logs_widget.h
 )
 
 # Source files
@@ -29,6 +30,7 @@ set(SOURCES
     src/function_block_widget.cpp
     src/component_widget.cpp
     src/device_widget.cpp
+    src/device_logs_widget.cpp
 )
 
 # Create library

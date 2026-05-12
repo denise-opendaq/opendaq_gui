@@ -1,17 +1,15 @@
 #pragma once
 
-#include <QWidget>
 #include <atomic>
 
+#include "widgets/component_widget.h"
 #include <opendaq/device_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
 
-class QLabel;
-class QTabWidget;
-class QTimer;
 class QComboBox;
+class QTimer;
 
-class DeviceWidget : public QWidget
+class DeviceWidget : public ComponentWidget
 {
     Q_OBJECT
 
@@ -20,38 +18,25 @@ public:
     ~DeviceWidget() override;
 
 private:
-    void setupUI();
-    QWidget* buildHeaderCard();
-    void populateTabs();
+    QWidget* buildHeaderCard() override;
+    void populateTabs() override;
 
-    void updateStatus();
-    void updateOpModeCombo();
     void updateConnectionStatus();
-    void updateTags();
+    void updateOpModeCombo();
     void updateCurrentTime();
 
     QString formatFrequency(double hz) const;
     QString computeCurrentTime() const;
 
-    bool eventFilter(QObject* obj, QEvent* event) override;
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
     void onOpModeChanged(int index);
+    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     daq::DevicePtr device;
     std::atomic<int> updatingFromDevice{0};
 
-    // Header widgets
-    QLabel*   nameLabel      = nullptr;
-    QLabel*   descLabel      = nullptr;
-    QLabel*   statusLabel    = nullptr;
-    QComboBox* opModeCombo   = nullptr;
-    QWidget*  connectionStatusBlock = nullptr;
-    QWidget*  tagsRow               = nullptr;
-
-    QLabel*   domainLabel    = nullptr;
-    QLabel*   tickFreqLabel  = nullptr;
-    QLabel*   currentTimeLbl = nullptr;
-
-    QTabWidget* tabs  = nullptr;
-    QTimer*     timer = nullptr;
+    QComboBox* opModeCombo    = nullptr;
+    QLabel*    domainLabel    = nullptr;
+    QLabel*    tickFreqLabel  = nullptr;
+    QLabel*    currentTimeLbl = nullptr;
+    QTimer*    timer          = nullptr;
 };

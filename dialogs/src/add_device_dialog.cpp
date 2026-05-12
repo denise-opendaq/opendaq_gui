@@ -26,7 +26,7 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     updateAvailableDevices();
 
     refreshTimer = new QTimer(this);
-    refreshTimer->setInterval(1000);
+    refreshTimer->setInterval(3000);
     connect(refreshTimer, &QTimer::timeout, this, &AddDeviceDialog::updateAvailableDevices);
     refreshTimer->start();
 }
@@ -230,8 +230,11 @@ void AddDeviceDialog::onAddClicked()
     }
 
     // Open config dialog by default
+    refreshTimer->stop();
     AddDeviceConfigDialog configDialog(parentDevice, connectionString, this);
-    if (configDialog.exec() == QDialog::Accepted)
+    const bool accepted = configDialog.exec() == QDialog::Accepted;
+    refreshTimer->start();
+    if (accepted)
     {
         // Store the config
         config = configDialog.getConfig();
@@ -239,7 +242,7 @@ void AddDeviceDialog::onAddClicked()
         QString finalConnectionString = configDialog.getConnectionString();
         if (!finalConnectionString.isEmpty())
             connectionStringEdit->setText(finalConnectionString);
-        
+
         accept();
     }
 }
@@ -303,8 +306,11 @@ void AddDeviceDialog::onAddWithConfigFromContextMenu()
         return;
     
     // Open config dialog
+    refreshTimer->stop();
     AddDeviceConfigDialog configDialog(parentDevice, connectionString, this);
-    if (configDialog.exec() == QDialog::Accepted)
+    const bool accepted = configDialog.exec() == QDialog::Accepted;
+    refreshTimer->start();
+    if (accepted)
     {
         // Store the config
         config = configDialog.getConfig();
