@@ -5,9 +5,14 @@ project(widgets VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(Qt6 REQUIRED COMPONENTS Charts)
+
 # Header files
 set(HEADERS
     include/widgets/signal_value_widget.h
+    include/widgets/signal_widget.h
+    include/widgets/signal_descriptor_widget.h
+    include/widgets/signal_plot_widget.h
     include/widgets/property_object_view.h
     include/widgets/property_inspector.h
     include/widgets/input_port_widget.h
@@ -22,6 +27,9 @@ set(HEADERS
 # Source files
 set(SOURCES
     src/signal_value_widget.cpp
+    src/signal_widget.cpp
+    src/signal_descriptor_widget.cpp
+    src/signal_plot_widget.cpp
     src/property_object_view.cpp
     src/property_inspector.cpp
     src/input_port_widget.cpp
@@ -52,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
         Qt6::Widgets
+        Qt6::Charts
         context
         property
         daq::coreobjects

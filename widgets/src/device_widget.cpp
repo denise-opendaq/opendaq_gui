@@ -147,15 +147,6 @@ QWidget* DeviceWidget::buildHeaderCard()
 
     cardLayout->addWidget(leftBlock, 1, Qt::AlignTop);
 
-    // — Vertical separator —
-    {
-        auto* vLine = new QFrame(card);
-        vLine->setFrameShape(QFrame::VLine);
-        vLine->setFrameShadow(QFrame::Plain);
-        vLine->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
-        cardLayout->addWidget(vLine);
-    }
-
     // — Connection status block (reuses inherited statusContainerBlock / statusSep) —
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
@@ -172,7 +163,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     statusContainerBlock->setVisible(false);
     cardLayout->addWidget(statusContainerBlock, 0, Qt::AlignTop);
 
-    // — Vertical separator —
+    // — Vertical separator before right block —
     {
         auto* vLine = new QFrame(card);
         vLine->setFrameShape(QFrame::VLine);
@@ -210,6 +201,9 @@ QWidget* DeviceWidget::buildHeaderCard()
     makeInfoRow(tr("Domain"),         domainLabel);
     makeInfoRow(tr("Tick Frequency"), tickFreqLabel);
     makeInfoRow(tr("Current Time"),   currentTimeLbl);
+    currentTimeLbl->setStyleSheet(
+        "color: #111827; font-size: 13px; font-weight: 500; font-family: monospace;"
+    );
 
     cardLayout->addWidget(rightBlock, 0, Qt::AlignTop);
 
@@ -295,30 +289,8 @@ void DeviceWidget::populateTabs()
         tabs->setCurrentIndex(1);
     }
 
-    // Signals placeholder
-    {
-        auto* page = new QWidget();
-        auto* layout = new QVBoxLayout(page);
-        layout->setAlignment(Qt::AlignCenter);
-        auto* lbl = new QLabel(tr("Signals — coming soon"), page);
-        lbl->setStyleSheet("color: #9ca3af; font-size: 14px;");
-        layout->addWidget(lbl);
-        tabs->addTab(page, tr("Signals"));
-    }
-
     // Logs tab
     tabs->addTab(new DeviceLogsWidget(device), tr("Logs"));
-
-    // Diagnostics placeholder
-    {
-        auto* page = new QWidget();
-        auto* layout = new QVBoxLayout(page);
-        layout->setAlignment(Qt::AlignCenter);
-        auto* lbl = new QLabel(tr("Diagnostics — coming soon"), page);
-        lbl->setStyleSheet("color: #9ca3af; font-size: 14px;");
-        layout->addWidget(lbl);
-        tabs->addTab(page, tr("Diagnostics"));
-    }
 }
 
 // ============================================================================
@@ -481,12 +453,7 @@ QString DeviceWidget::computeCurrentTime() const
         QDateTime current = originDt.addSecs(wholeSeconds);
         current = current.addMSecs(static_cast<int>(ns / 1'000'000));
 
-        QString timeStr = current.toString("yyyy-MM-dd HH:mm:ss");
-        const int subSec_ns = static_cast<int>(ns % 1'000'000'000);
-        if (subSec_ns > 0)
-            timeStr += QStringLiteral(".") + QString::number(subSec_ns).rightJustified(9, '0');
-
-        return timeStr;
+        return current.toString("yyyy-MM-dd HH:mm:ss.zzz");
     }
     catch (...)
     {
