@@ -20,7 +20,7 @@ void SignalTreeElement::openTab(const QString& tabName)
     if (tabName == "Attributes")
     {
         auto sig = daqComponent.asPtr<daq::ISignal>(true);
-        auto* widget = new SignalWidget(sig);
+        auto* widget = new SignalWidget(sig, nullptr, iconName);
         addTab(widget, tabName);
     }
     else

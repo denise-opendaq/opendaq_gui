@@ -298,7 +298,7 @@ void DeviceTreeElement::openTab(const QString& tabName)
     if (tabName == "Attributes")
     {
         auto device = daqComponent.asPtr<daq::IDevice>(true);
-        auto* widget = new DeviceWidget(device);
+        auto* widget = new DeviceWidget(device, nullptr, iconName);
         addTab(widget, tabName);
     }
     else

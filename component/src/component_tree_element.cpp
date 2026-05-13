@@ -162,7 +162,7 @@ void ComponentTreeElement::openTab(const QString& tabName)
         
     if (tabName == "Attributes")
     {
-        auto* componentWidget = new ComponentWidget(daqComponent);
+        auto* componentWidget = new ComponentWidget(daqComponent, nullptr, iconName);
         addTab(componentWidget, tabName);
     }
 }

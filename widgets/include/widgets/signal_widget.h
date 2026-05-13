@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include <QString>
+
 #include "widgets/component_widget.h"
 #include <opendaq/signal_ptr.h>
 
@@ -14,7 +16,9 @@ class SignalWidget : public ComponentWidget
     Q_OBJECT
 
 public:
-    explicit SignalWidget(const daq::SignalPtr& signal, QWidget* parent = nullptr);
+    explicit SignalWidget(const daq::SignalPtr& signal,
+                          QWidget* parent = nullptr,
+                          const QString& treeIconName = {});
     ~SignalWidget() override;
 
 private:

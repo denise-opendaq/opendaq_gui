@@ -6,8 +6,6 @@
 #include "widgets/signal_plot_widget.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
-#include "context/icon_provider.h"
-
 #include <QCheckBox>
 #include <QDateTime>
 #include <QFrame>
@@ -21,8 +19,8 @@
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
-SignalWidget::SignalWidget(const daq::SignalPtr& sig, QWidget* parent)
-    : ComponentWidget(sig, parent, Qt::Uninitialized)
+SignalWidget::SignalWidget(const daq::SignalPtr& sig, QWidget* parent, const QString& treeIcon)
+    : ComponentWidget(sig, parent, Qt::Uninitialized, treeIcon)
     , signal(sig)
 {
     setupUI();
@@ -63,18 +61,7 @@ QWidget* SignalWidget::buildHeaderCard()
     cardLayout->setContentsMargins(20, 16, 20, 16);
     cardLayout->setSpacing(16);
 
-    // — Signal icon —
-    auto* iconLabel = new QLabel(card);
-    iconLabel->setFixedSize(64, 64);
-    iconLabel->setAlignment(Qt::AlignCenter);
-    {
-        const QIcon ico = IconProvider::instance().icon("signal");
-        if (!ico.isNull())
-            iconLabel->setPixmap(ico.pixmap(52, 52));
-        else
-            iconLabel->setText("⚡");
-    }
-    cardLayout->addWidget(iconLabel, 0, Qt::AlignTop);
+    addTreeIconToHeaderLayout(cardLayout, card);
 
     // — Left info block (name / tags / desc / status / public) —
     auto* leftBlock = new QWidget(card);

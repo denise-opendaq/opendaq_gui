@@ -1,6 +1,8 @@
 #include "widgets/component_widget.h"
 #include "widgets/property_object_view.h"
+#include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
+#include "context/icon_provider.h"
 #include "context/QueuedEventHandler.h"
 
 #include <QEvent>
@@ -14,17 +16,18 @@
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
-ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent)
-    : ComponentWidget(comp, parent, Qt::Uninitialized)
+ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
+    : ComponentWidget(comp, parent, Qt::Uninitialized, treeIcon)
 {
     setupUI();
     if (component.assigned())
         *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
 }
 
-ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, Qt::Initialization)
+ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, Qt::Initialization, const QString& treeIcon)
     : QWidget(parent)
     , component(comp)
+    , treeIconName(treeIcon)
 {}
 
 ComponentWidget::~ComponentWidget()
@@ -67,6 +70,19 @@ void ComponentWidget::setupUI()
     );
 }
 
+void ComponentWidget::addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card)
+{
+    auto* iconLabel = new QLabel(card);
+    iconLabel->setFixedSize(64, 64);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    const QIcon ico = treeIconName.isEmpty() ? QIcon() : IconProvider::instance().icon(treeIconName);
+    if (ico.availableSizes().size() > 0)
+        iconLabel->setPixmap(ico.pixmap(52, 52));
+    else if (!treeIconName.isEmpty())
+        iconLabel->setText(QStringLiteral("\u25C7"));
+    cardLayout->addWidget(iconLabel, 0, Qt::AlignTop);
+}
+
 QWidget* ComponentWidget::buildHeaderCard()
 {
     auto* card = new QWidget(this);
@@ -83,6 +99,8 @@ QWidget* ComponentWidget::buildHeaderCard()
     auto* cardLayout = new QHBoxLayout(card);
     cardLayout->setContentsMargins(20, 16, 20, 16);
     cardLayout->setSpacing(16);
+
+    addTreeIconToHeaderLayout(cardLayout, card);
 
     // — Left info block (name / tags / desc / status) —
     auto* leftBlock = new QWidget(card);
@@ -213,7 +231,7 @@ void ComponentWidget::updateStatusContainer()
 
     try
     {
-        auto container = component.getStatusContainer();
+        const auto container = component.getStatusContainer();
         if (!container.assigned())
         {
             statusContainerBlock->setVisible(false);
@@ -221,7 +239,7 @@ void ComponentWidget::updateStatusContainer()
             return;
         }
 
-        auto statuses = container.getStatuses();
+        const auto statuses = container.getStatuses();
         if (!statuses.assigned())
         {
             statusContainerBlock->setVisible(false);
@@ -241,24 +259,38 @@ void ComponentWidget::updateStatusContainer()
             const QString value = QString::fromStdString(statusEnum.getValue().toStdString());
 
             QString dotColor;
-            if (value == "Connected" || value == "Active")  dotColor = "#16a34a";
-            else if (value == "Reconnecting")               dotColor = "#f59e0b";
-            else if (value == "Unrecoverable" || value == "Error") dotColor = "#dc2626";
-            else if (value == "Warning")                    dotColor = "#f59e0b";
-            else                                            dotColor = "#9ca3af";
+            
+            if (value == "Ok")              dotColor = "#16a34a";
+            else if (value == "Warning")    dotColor = "#f59e0b";
+            else if (value == "Error")      dotColor = "#dc2626";
+            else                            dotColor = "#9ca3af";
 
-            auto* row = new QWidget(statusContainerBlock);
-            auto* rl  = new QHBoxLayout(row);
+            QString statusMessage;
+            try
+            {
+                const auto msg = container.getStatusMessage(statusName);
+                if (msg.assigned())
+                    statusMessage = QString::fromStdString(msg.toStdString()).trimmed();
+            }
+            catch (...) {}
+
+            auto* block = new QWidget(statusContainerBlock);
+            auto* vl    = new QVBoxLayout(block);
+            vl->setContentsMargins(0, 0, 0, 0);
+            vl->setSpacing(4);
+
+            auto* lineRow = new QWidget(block);
+            auto* rl      = new QHBoxLayout(lineRow);
             rl->setContentsMargins(0, 0, 0, 0);
             rl->setSpacing(6);
 
-            auto* nameLbl = new QLabel(name, row);
+            auto* nameLbl = new QLabel(name, lineRow);
             nameLbl->setStyleSheet("color: #6b7280; font-size: 13px;");
 
-            auto* dot = new QLabel("●", row);
+            auto* dot = new QLabel("●", lineRow);
             dot->setStyleSheet(QString("color: %1; font-size: 10px;").arg(dotColor));
 
-            auto* valueLbl = new QLabel(value, row);
+            auto* valueLbl = new QLabel(value, lineRow);
             valueLbl->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
 
             rl->addWidget(nameLbl);
@@ -266,7 +298,12 @@ void ComponentWidget::updateStatusContainer()
             rl->addWidget(valueLbl);
             rl->addStretch();
 
-            layout->addWidget(row);
+            vl->addWidget(lineRow);
+
+            if (!statusMessage.isEmpty())
+                addStatusMessageToLayout(vl, statusMessage, block);
+
+            layout->addWidget(block);
         }
     }
     catch (...) {}

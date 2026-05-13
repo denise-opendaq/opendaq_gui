@@ -22,6 +22,7 @@ set(HEADERS
     include/widgets/component_widget.h
     include/widgets/device_widget.h
     include/widgets/device_logs_widget.h
+    include/widgets/status_message_stack.h
 )
 
 # Source files
@@ -39,6 +40,7 @@ set(SOURCES
     src/component_widget.cpp
     src/device_widget.cpp
     src/device_logs_widget.cpp
+    src/status_message_stack.cpp
 )
 
 # Create library

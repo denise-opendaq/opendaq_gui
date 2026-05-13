@@ -1,10 +1,9 @@
 #include "widgets/device_widget.h"
 #include "widgets/property_object_view.h"
 #include "widgets/device_logs_widget.h"
+#include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
-#include "context/icon_provider.h"
-
 #include <QComboBox>
 #include <QDateTime>
 #include <QFrame>
@@ -19,8 +18,8 @@
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
-DeviceWidget::DeviceWidget(const daq::DevicePtr& dev, QWidget* parent)
-    : ComponentWidget(dev, parent, Qt::Uninitialized)
+DeviceWidget::DeviceWidget(const daq::DevicePtr& dev, QWidget* parent, const QString& treeIcon)
+    : ComponentWidget(dev, parent, Qt::Uninitialized, treeIcon)
     , device(dev)
 {
     setupUI();
@@ -61,18 +60,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     cardLayout->setContentsMargins(20, 16, 20, 16);
     cardLayout->setSpacing(16);
 
-    // — Device icon —
-    auto* iconLabel = new QLabel(card);
-    iconLabel->setFixedSize(64, 64);
-    iconLabel->setAlignment(Qt::AlignCenter);
-    {
-        QIcon ico = IconProvider::instance().icon("device");
-        if (!ico.isNull())
-            iconLabel->setPixmap(ico.pixmap(52, 52));
-        else
-            iconLabel->setText("🖥");
-    }
-    cardLayout->addWidget(iconLabel, 0, Qt::AlignTop);
+    addTreeIconToHeaderLayout(cardLayout, card);
 
     // — Left info block (name / tags / desc / status / opMode) —
     auto* leftBlock = new QWidget(card);
@@ -345,18 +333,32 @@ void DeviceWidget::updateConnectionStatus()
             else if (value == "Unrecoverable") dotColor = "#dc2626";
             else                               dotColor = "#9ca3af";
 
-            auto* row = new QWidget(statusContainerBlock);
-            auto* rl  = new QHBoxLayout(row);
+            QString statusMessage;
+            try
+            {
+                const auto msg = container.getStatusMessage(statusName);
+                if (msg.assigned())
+                    statusMessage = QString::fromStdString(msg.toStdString()).trimmed();
+            }
+            catch (...) {}
+
+            auto* block = new QWidget(statusContainerBlock);
+            auto* vl    = new QVBoxLayout(block);
+            vl->setContentsMargins(0, 0, 0, 0);
+            vl->setSpacing(4);
+
+            auto* lineRow = new QWidget(block);
+            auto* rl      = new QHBoxLayout(lineRow);
             rl->setContentsMargins(0, 0, 0, 0);
             rl->setSpacing(6);
 
-            auto* nameLbl = new QLabel(name, row);
+            auto* nameLbl = new QLabel(name, lineRow);
             nameLbl->setStyleSheet("color: #6b7280; font-size: 13px;");
 
-            auto* dot = new QLabel("●", row);
+            auto* dot = new QLabel("●", lineRow);
             dot->setStyleSheet(QString("color: %1; font-size: 10px;").arg(dotColor));
 
-            auto* valueLbl = new QLabel(value, row);
+            auto* valueLbl = new QLabel(value, lineRow);
             valueLbl->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
 
             rl->addWidget(nameLbl);
@@ -364,7 +366,12 @@ void DeviceWidget::updateConnectionStatus()
             rl->addWidget(valueLbl);
             rl->addStretch();
 
-            layout->addWidget(row);
+            vl->addWidget(lineRow);
+
+            if (!statusMessage.isEmpty())
+                addStatusMessageToLayout(vl, statusMessage, block);
+
+            layout->addWidget(block);
         }
     }
     catch (...) {}

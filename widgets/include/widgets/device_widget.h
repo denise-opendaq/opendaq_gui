@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include <QString>
+
 #include "widgets/component_widget.h"
 #include <opendaq/device_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
@@ -14,7 +16,9 @@ class DeviceWidget : public ComponentWidget
     Q_OBJECT
 
 public:
-    explicit DeviceWidget(const daq::DevicePtr& device, QWidget* parent = nullptr);
+    explicit DeviceWidget(const daq::DevicePtr& device,
+                          QWidget* parent = nullptr,
+                          const QString& treeIconName = {});
     ~DeviceWidget() override;
 
 private:
