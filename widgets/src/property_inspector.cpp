@@ -1,5 +1,6 @@
 #include "widgets/property_inspector.h"
 #include "property/base_property_item.h"
+#include <coretypes/string_ptr.h>
 
 #include <QLabel>
 #include <QScrollArea>
@@ -45,29 +46,41 @@ static QString formatUnit(const daq::PropertyPtr& prop)
     }
 }
 
-static QString formatAllowedValues(const daq::PropertyPtr& prop)
+static QStringList getAllowedValues(const daq::PropertyPtr& prop)
 {
+    QStringList result;
     try
     {
-        const auto selectionValues = prop.getSelectionValues();
-        if (selectionValues.assigned())
+        const auto sel = prop.getSelectionValues();
+        if (sel.assigned())
         {
-            if (const auto dict = selectionValues.asPtrOrNull<daq::IDict>(true); dict.assigned())
-                return QString::fromStdString(dict.getValueList());
-            return QString::fromStdString(selectionValues);
+            if (const auto dict = sel.asPtrOrNull<daq::IDict>(true); dict.assigned())
+            {
+                for (const auto& v : dict.getValueList())
+                    result << QString::fromStdString(v.toString());
+                return result;
+            }
+            if (const auto list = sel.asPtrOrNull<daq::IList>(true); list.assigned())
+            {
+                for (const auto& v : list)
+                    result << QString::fromStdString(v.toString());
+                return result;
+            }
         }
     }
     catch (...) {}
 
     try
     {
-        const auto suggested = prop.getSuggestedValues();
-        if (suggested.assigned())
-            return QString::fromStdString(suggested);
+        const auto sug = prop.getSuggestedValues();
+        if (sug.assigned())
+            if (const auto list = sug.asPtrOrNull<daq::IList>(true); list.assigned())
+                for (const auto& v : list)
+                    result << QString::fromStdString(v.toString());
     }
     catch (...) {}
 
-    return QString();
+    return result;
 }
 
 // ============================================================================
@@ -224,8 +237,17 @@ void PropertyInspector::setupUI()
     rowUnit        = makeRow(contentLayout);
     rowDefault     = makeRow(contentLayout);
     rowCurrent     = makeRow(contentLayout);
-    rowAllowed     = makeRow(contentLayout);
-    rowWritable    = makeRow(contentLayout);
+    rowAllowed = makeRow(contentLayout);
+    rowAllowed.value->hide();
+
+    allowedBubblesWidget = new QWidget(content);
+    allowedBubblesLayout = new QHBoxLayout(allowedBubblesWidget);
+    allowedBubblesLayout->setContentsMargins(0, 2, 0, 0);
+    allowedBubblesLayout->setSpacing(6);
+    allowedBubblesWidget->hide();
+    contentLayout->addWidget(allowedBubblesWidget);
+
+    rowWritable = makeRow(contentLayout);
 
     rowMin = makeRow(contentLayout);
     rowMax = makeRow(contentLayout);
@@ -249,6 +271,40 @@ void PropertyInspector::setupUI()
     outerLayout->addWidget(header);
     outerLayout->addWidget(separator);
     outerLayout->addWidget(scroll, 1);
+}
+
+void PropertyInspector::populateAllowedBubbles(const daq::PropertyPtr& prop)
+{
+    while (allowedBubblesLayout->count())
+    {
+        auto* item = allowedBubblesLayout->takeAt(0);
+        delete item->widget();
+        delete item;
+    }
+
+    const QStringList values = getAllowedValues(prop);
+
+    rowAllowed.label->setVisible(!values.isEmpty());
+    allowedBubblesWidget->setVisible(!values.isEmpty());
+
+    for (const QString& val : values)
+    {
+        auto* bubble = new QWidget(allowedBubblesWidget);
+        bubble->setAttribute(Qt::WA_StyledBackground, true);
+        bubble->setStyleSheet("QWidget { background: #dbeafe; border-radius: 10px; }");
+        auto* bl = new QHBoxLayout(bubble);
+        bl->setContentsMargins(8, 3, 8, 3);
+        bl->setSpacing(0);
+
+        auto* lbl = new QLabel(val, bubble);
+        lbl->setStyleSheet("color: #1d4ed8; font-size: 12px; font-weight: 600; border: none;");
+        bl->addWidget(lbl);
+
+        allowedBubblesLayout->addWidget(bubble);
+    }
+
+    if (!values.isEmpty())
+        allowedBubblesLayout->addStretch();
 }
 
 void PropertyInspector::setRowText(Row& row, const QString& text)
@@ -315,10 +371,8 @@ void PropertyInspector::showProperty(BasePropertyItem* item)
     setRowText(rowCurrent, item->showDisplayValue());
     setRowVisible(rowCurrent, true);
 
-    // Allowed values
-    const QString allowed = formatAllowedValues(prop);
-    setRowText(rowAllowed, allowed);
-    setRowVisible(rowAllowed, !allowed.isEmpty());
+    // Allowed values — bubbles
+    populateAllowedBubbles(prop);
 
     // Writable
     const bool readOnly = item->isReadOnly();

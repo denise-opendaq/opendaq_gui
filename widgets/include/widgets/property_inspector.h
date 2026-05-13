@@ -1,7 +1,9 @@
 #pragma once
 
 #include <QWidget>
+#include <coreobjects/property_ptr.h>
 
+class QHBoxLayout;
 class QLabel;
 class BasePropertyItem;
 class QToolButton;
@@ -27,6 +29,7 @@ private:
     void setupUI();
     void setRowText(Row& row, const QString& text);
     void setRowVisible(Row& row, bool visible);
+    void populateAllowedBubbles(const daq::PropertyPtr& prop);
 
     Row rowName;
     Row rowPath;
@@ -40,6 +43,8 @@ private:
     Row rowMin;
     Row rowMax;
 
-    QLabel* emptyState;
-    QWidget* content;
+    QLabel*      emptyState            = nullptr;
+    QWidget*     content              = nullptr;
+    QWidget*     allowedBubblesWidget = nullptr;
+    QHBoxLayout* allowedBubblesLayout = nullptr;
 };
