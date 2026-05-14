@@ -148,6 +148,8 @@ QStringList ComponentTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
     tabs << "Attributes";
+    if (daqComponent.supportsInterface<IQTWidget>())
+       tabs << "QTWidget";
     return tabs;
 }
 
@@ -164,6 +166,20 @@ void ComponentTreeElement::openTab(const QString& tabName)
     {
         auto* componentWidget = new ComponentWidget(daqComponent, nullptr, iconName);
         addTab(componentWidget, tabName);
+    }
+    else if (tabName == "QTWidget")
+    {
+        const auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
+        if (widgetComponent.assigned())
+        {
+            QWidget* qtWidget;
+            widgetComponent->getWidget(&qtWidget);
+            if (qtWidget)
+            {
+                // QTWidget opens in left zone
+                addTab(qtWidget, tabName);
+            }
+        }
     }
 }
 
