@@ -33,7 +33,7 @@ jobs:
     - name: Upload PKG artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenDAQ-Qt-GUI-macOS-PKG
+        name: OpenDAQ-Qt-GUI-macOS-ARM-PKG
         path: build/dist/macos/OpenDAQ.Qt.GUI-*-mac-*.pkg
         retention-days: 30
 
