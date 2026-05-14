@@ -7,6 +7,10 @@
 
 #include "property/object_property_item.h"
 
+class PropertyInspector;
+class QLineEdit;
+class QString;
+
 // Custom hash function for PropertyObjectPtr that uses the object's address
 struct PropertyObjectPtrHash
 {
@@ -61,46 +65,46 @@ public:
 };
 
 // ============================================================================
-// PropertyObjectView — UI + wiring + storage for BasePropertyItem objects
+// PropertyObjectView — QWidget containing tree + inspector in a splitter
 // ============================================================================
 
-class PropertyObjectView : public QTreeWidget
+class PropertyObjectView : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit PropertyObjectView(const daq::PropertyObjectPtr& root, 
-                                QWidget* parent = nullptr, 
+    explicit PropertyObjectView(const daq::PropertyObjectPtr& root,
+                                QWidget* parent = nullptr,
                                 const daq::ComponentPtr& owner = nullptr);
     virtual ~PropertyObjectView();
+
+Q_SIGNALS:
+    void propertySelected(BasePropertyItem* item);
 
 public Q_SLOTS:
     void refresh();
 
-protected:
-    // Control editing based on column and item logic
-    bool edit(const QModelIndex& index, EditTrigger trigger, QEvent* event) override;
-
-    // Handle key press events (F5 for refresh)
-    void keyPressEvent(QKeyEvent* event) override;
-
-    void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
-
 public:
     // Used by PropertySubtreeBuilder
     BasePropertyItem* store(std::unique_ptr<BasePropertyItem> item);
+    void addTopLevelItem(QTreeWidgetItem* item);
 
-    // Notify that a property value has changed - triggers UI update
-    // force=true will update even if owner is assigned (for manual calls from property items without owner)
+    // Notify that a property value has changed
     void onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force = false);
+
+    // QTreeWidget forwarding methods used by property items
+    QRect visualItemRect(QTreeWidgetItem* item) const;
+    int columnViewportPosition(int column) const;
+    int currentColumn() const;
+    QWidget* viewport() const;
 
     std::unordered_map<daq::PropertyObjectPtr, ObjectPropertyItem*, PropertyObjectPtrHash> propertyObjectToLogic;
 
-private:
-    friend class PropertySubtreeBuilder;
-
     static BasePropertyItem* getLogic(QTreeWidgetItem* it);
     static void setLogic(QTreeWidgetItem* it, BasePropertyItem* logic);
+
+private:
+    friend class PropertySubtreeBuilder;
 
 private Q_SLOTS:
     void onItemExpanded(QTreeWidgetItem* item);
@@ -108,17 +112,23 @@ private Q_SLOTS:
     void onItemChanged(QTreeWidgetItem* item, int column);
     void onItemDoubleClicked(QTreeWidgetItem* item, int column);
     void onContextMenu(const QPoint& pos);
-    void onHeaderContextMenu(const QPoint& pos);
+    void onSearchTextChanged(const QString& text);
 
 private:
     void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
     daq::PropertyObjectPtr getChildObject(std::string path);
     void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
-    void fitColumnsToViewport();
     void applyExpandState();
+    void applyFilter();
+    bool updateItemFilter(QTreeWidgetItem* item, const QString& text);
+    void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
 
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::string rootPath;
     std::unordered_map<PropertyKey, std::unique_ptr<BasePropertyItem>, PropertyKeyHash> items;
+
+    QTreeWidget* tree = nullptr;
+    QLineEdit* searchEdit = nullptr;
+    PropertyInspector* m_inspector = nullptr;
 };

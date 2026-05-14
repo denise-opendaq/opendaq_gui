@@ -35,6 +35,15 @@ void AddServerDialog::setupUI()
     
     // === LEFT PANEL ===
     auto* leftPanel = new QWidget(this);
+    leftPanel->setObjectName("leftPanel");
+    leftPanel->setAttribute(Qt::WA_StyledBackground, true);
+    leftPanel->setStyleSheet(
+        "QWidget#leftPanel {"
+        "  background-color: #f2f2f2;"
+        "  border: 1px solid #e0e0e0;"
+        "  border-radius: 14px;"
+        "}"
+    );
     auto* leftLayout = new QVBoxLayout(leftPanel);
     leftLayout->setContentsMargins(5, 5, 5, 5);
     leftLayout->setSpacing(5);
@@ -58,7 +67,12 @@ void AddServerDialog::setupUI()
     leftLayout->addWidget(serverList);
 
     leftPanel->setLayout(leftLayout);
-    splitter->addWidget(leftPanel);
+    auto* leftWrapper = new QWidget(this);
+    auto* leftWrapperLayout = new QVBoxLayout(leftWrapper);
+    leftWrapperLayout->setContentsMargins(12, 12, 0, 12); // left, top, right, bottom
+    leftWrapperLayout->setSpacing(0);
+    leftWrapperLayout->addWidget(leftPanel);
+    splitter->addWidget(leftWrapper);
 
     // === RIGHT PANEL ===
     auto* rightPanel = new QWidget(this);

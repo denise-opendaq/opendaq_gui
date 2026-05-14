@@ -54,7 +54,7 @@ jobs:
     - name: Upload installer artifact
       uses: actions/upload-artifact@v4
       with:
-        name: OpenDAQ-Qt-GUI-Windows-Installer
+        name: OpenDAQ-Qt-GUI-Windows-x64-Installer
         path: build/dist/windows/OpenDAQ.Qt.GUI-*-windows-*.exe
         retention-days: 30
 

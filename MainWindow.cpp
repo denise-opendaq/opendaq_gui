@@ -25,6 +25,8 @@
 #include <QWidget>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QPainter>
+#include <QStyledItemDelegate>
 
 #include "context/gui_constants.h"
 #include "component/base_tree_element.h"
@@ -32,6 +34,51 @@
 
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
+
+namespace
+{
+class SidebarSelectionDelegate final : public QStyledItemDelegate
+{
+public:
+    explicit SidebarSelectionDelegate(QObject* parent = nullptr)
+        : QStyledItemDelegate(parent)
+    {
+    }
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt(option);
+        initStyleOption(&opt, index);
+
+        const bool selected = opt.state.testFlag(QStyle::State_Selected);
+        const bool hovered = opt.state.testFlag(QStyle::State_MouseOver);
+
+        if ((selected || hovered) && opt.widget)
+        {
+            painter->save();
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(selected ? QColor("#dfe9ff") : QColor("#ececec"));
+
+            QRect r = opt.rect.adjusted(6, 1, -6, -1);
+
+            if (auto* view = qobject_cast<const QAbstractItemView*>(opt.widget))
+            {
+                const int viewportW = view->viewport() ? view->viewport()->width() : r.width();
+                r.setLeft(6);
+                r.setRight(viewportW - 6);
+            }
+
+            painter->drawRoundedRect(r, 10.0, 10.0);
+            painter->restore();
+        }
+
+        opt.state &= ~QStyle::State_Selected;
+        opt.state &= ~QStyle::State_MouseOver;
+        QStyledItemDelegate::paint(painter, opt, index);
+    }
+};
+} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -225,6 +272,14 @@ void MainWindow::setupUI()
 
     // === LEFT PANEL (Tree) ===
     QWidget* leftWidget = new QWidget();
+    leftWidget->setObjectName("leftPanel");
+    leftWidget->setAttribute(Qt::WA_StyledBackground, true);
+    leftWidget->setStyleSheet(
+        "QWidget#leftPanel {"
+        "  background-color: #f2f2f2;"
+        "  border: 1px solid #e0e0e0;"
+        "}"
+    );
     QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN, 
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN, 
@@ -232,11 +287,23 @@ void MainWindow::setupUI()
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN);
     leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    viewSelector = new QComboBox();
-    viewSelector->addItems({"System Overview", "Signals", "Channels", "Function blocks", "Full Topology"});
-    connect(viewSelector, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &MainWindow::onViewSelectionChanged);
-    leftLayout->addWidget(viewSelector);
+    searchBox = new QLineEdit();
+    searchBox->setPlaceholderText(tr("Search components..."));
+    searchBox->setClearButtonEnabled(true);
+    searchBox->setStyleSheet(
+        "QLineEdit {"
+        "  background-color: #f7f7f7;"
+        "  border: 1px solid #e5e5e5;"
+        "  border-radius: 10px;"
+        "  padding: 8px 10px;"
+        "  font-size: 13px;"
+        "}"
+        "QLineEdit:focus {"
+        "  border: 1px solid #c8d6ff;"
+        "  background-color: #ffffff;"
+        "}"
+    );
+    leftLayout->addWidget(searchBox);
 
     // === RIGHT PANEL (Content) ===
     // Create vertical splitter for content area (tabs | log)
@@ -261,6 +328,47 @@ void MainWindow::setupUI()
 
     // Create ComponentTreeWidget and load openDAQ instance
     componentTreeWidget = new ComponentTreeWidget(layoutManager);
+    componentTreeWidget->setAlternatingRowColors(false);
+    componentTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    componentTreeWidget->setAllColumnsShowFocus(false);
+    componentTreeWidget->setItemDelegate(new SidebarSelectionDelegate(componentTreeWidget));
+    componentTreeWidget->setAttribute(Qt::WA_StyledBackground, true);
+    componentTreeWidget->setStyleSheet(
+        "QTreeWidget {"
+        "  background-color: #f2f2f2;"
+        "  border: none;"
+        "  font-size: 13px;"
+        "  outline: 0;"
+        "  show-decoration-selected: 1;"
+        "  selection-background-color: transparent;"
+        "  selection-color: #1f2a44;"
+        "}"
+        "QTreeWidget::item {"
+        "  padding: 6px 8px;"
+        "  border-radius: 8px;"
+        "}"
+        "QTreeWidget::item:selected, QTreeWidget::item:selected:active, QTreeWidget::item:selected:!active {"
+        "  color: #1f2a44;"
+        "}"
+"QTreeView::branch {"
+        "  background: transparent;"
+        "}"
+        "QTreeView::branch:selected {"
+        "  background: transparent;"
+        "}"
+        "QHeaderView::section {"
+        "  background-color: #f2f2f2;"
+        "  border: none;"
+        "  padding: 6px 8px;"
+        "  font-size: 11px;"
+        "  font-weight: 600;"
+        "  text-transform: uppercase;"
+        "  color: #6b6b6b;"
+        "}"
+        "QHeaderView {"
+        "  background-color: #f2f2f2;"
+        "}"
+    );
     auto instance = AppContext::Instance()->daqInstance();
     if (instance.assigned())
         componentTreeWidget->loadInstance(instance);
@@ -269,10 +377,19 @@ void MainWindow::setupUI()
     connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
             this, &MainWindow::onComponentSelected);
 
+    connect(searchBox, &QLineEdit::textChanged,
+            componentTreeWidget, &ComponentTreeWidget::setSearchFilter);
+
     leftLayout->addWidget(componentTreeWidget);
     
     // Add widgets to main splitter
-    mainSplitter->addWidget(leftWidget);
+    QWidget* leftWrapper = new QWidget();
+    QVBoxLayout* leftWrapperLayout = new QVBoxLayout(leftWrapper);
+    leftWrapperLayout->setContentsMargins(0, 0, 0, 0);
+    leftWrapperLayout->setSpacing(0);
+    leftWrapperLayout->addWidget(leftWidget);
+
+    mainSplitter->addWidget(leftWrapper);
     mainSplitter->addWidget(verticalSplitter);
     mainSplitter->setStretchFactor(0, 0); // Left panel doesn't stretch
     mainSplitter->setStretchFactor(1, 1); // Right panel stretches
@@ -315,36 +432,6 @@ void MainWindow::setupUI()
 // ============================================================================
 
 
-void MainWindow::onViewSelectionChanged(int index)
-{
-    const QString viewName = viewSelector->itemText(index);
-    const auto loggerComponent = AppContext::LoggerComponent();
-    LOG_I("View changed to: {}", viewName.toStdString());
-
-    // Update component type filter based on selection
-    QSet<QString> componentsToShow;
-    if (viewName == "System Overview")
-    {
-        componentsToShow = {"Device", "Folder", "Signal", "Channel", "FunctionBlock"};
-    }
-    else if (viewName == "Signals")
-    {
-        componentsToShow = {"Device", "Signal"};
-    }
-    else if (viewName == "Channels")
-    {
-        componentsToShow = {"Device", "Channel"};
-    }
-    else if (viewName == "Function blocks")
-    {
-        componentsToShow = {"Device", "FunctionBlock"};
-    }
-
-    if (componentTreeWidget)
-    {
-        componentTreeWidget->setComponentTypeFilter(componentsToShow);
-    }
-}
 
 void MainWindow::onComponentSelected(BaseTreeElement* element)
 {

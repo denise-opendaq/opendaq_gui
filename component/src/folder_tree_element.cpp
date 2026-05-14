@@ -26,7 +26,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
     {
         auto folder = daqComponent.asPtr<daq::IFolder>(true);
 
-        for (const auto & item : folder.getItems())
+        for (const auto & item : folder.getItems(daq::search::Any()))
         {
             auto childElement = createTreeElement(tree, item, layoutManager, this);
             if (childElement)
@@ -58,7 +58,7 @@ void FolderTreeElement::refresh()
     try
     {
         auto folder = daqComponent.asPtr<daq::IFolder>(true);
-        auto items = folder.getItems();
+        auto items = folder.getItems(daq::search::Any());
 
         // Add new items that don't exist yet
         for (const auto & item : items)

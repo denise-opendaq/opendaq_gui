@@ -1,298 +1,402 @@
 #include "widgets/component_widget.h"
 #include "widgets/property_object_view.h"
+#include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
+#include "context/icon_provider.h"
 #include "context/QueuedEventHandler.h"
+
+#include <QEvent>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QTabWidget>
+#include <QVBoxLayout>
+
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
-#include <opendaq/logger_component_ptr.h>
-#include <set>
 
-// RAII helper to manage updatingFromComponent counter
-struct UpdateGuard
-{
-    UpdateGuard(std::atomic<int>& cnt)
-        : cnt(cnt)
-    {
-        cnt++;
-    }
-
-    ~UpdateGuard()
-    {
-        cnt--;
-    }
-
-private:
-   std::atomic<int>& cnt;
-};
-
-ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent)
-    : QWidget(parent)
-    , component(comp)
-    , propertyView(nullptr)
-    , componentPropertyObject(nullptr)
-    , updatingFromComponent(0)
+ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
+    : ComponentWidget(comp, parent, Qt::Uninitialized, treeIcon)
 {
     setupUI();
-
     if (component.assigned())
-    {
-       *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
-    }
-
+        *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
 }
+
+ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, Qt::Initialization, const QString& treeIcon)
+    : QWidget(parent)
+    , component(comp)
+    , treeIconName(treeIcon)
+{}
 
 ComponentWidget::~ComponentWidget()
 {
-    // Unregister from core event listener
-    *AppContext::DaqEvent() -= daq::event(this, &ComponentWidget::onCoreEvent);
+    if (component.assigned())
+        *AppContext::DaqEvent() -= daq::event(this, &ComponentWidget::onCoreEvent);
 }
 
 void ComponentWidget::setupUI()
 {
-    auto mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(16, 16, 16, 0);
+    root->setSpacing(12);
 
-    // Create PropertyObject wrapper for component attributes
-    createComponentPropertyObject();
-    
-    // Use PropertyObjectView to display component attributes
-    propertyView = new PropertyObjectView(componentPropertyObject, this, component);
-    mainLayout->addWidget(propertyView);
+    root->addWidget(buildHeaderCard());
+    root->addWidget(tabs = new QTabWidget(this), 1);
+
+    populateTabs();
+
+    tabs->setStyleSheet(
+        "QTabWidget { background: transparent; }"
+        "QTabWidget::pane { border: none; background: transparent; }"
+        "QTabBar::tab {"
+        "  padding: 10px 18px;"
+        "  color: #6b7280;"
+        "  background: transparent;"
+        "  font-size: 13px;"
+        "  border: none;"
+        "  border-bottom: 2px solid transparent;"
+        "}"
+        "QTabBar::tab:selected {"
+        "  color: #1d4ed8;"
+        "  border-bottom: 2px solid #1d4ed8;"
+        "  font-weight: 600;"
+        "}"
+        "QTabBar::tab:hover:!selected {"
+        "  color: #374151;"
+        "  border-bottom: 2px solid #d1d5db;"
+        "}"
+    );
 }
 
-void ComponentWidget::createComponentPropertyObject()
+void ComponentWidget::addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card)
 {
-    if (!component.assigned())
+    auto* iconLabel = new QLabel(card);
+    iconLabel->setFixedSize(64, 64);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    const QIcon ico = treeIconName.isEmpty() ? QIcon() : IconProvider::instance().icon(treeIconName);
+    if (ico.availableSizes().size() > 0)
+        iconLabel->setPixmap(ico.pixmap(52, 52));
+    else if (!treeIconName.isEmpty())
+        iconLabel->setText(QStringLiteral("\u25C7"));
+    cardLayout->addWidget(iconLabel, 0, Qt::AlignTop);
+}
+
+QWidget* ComponentWidget::buildHeaderCard()
+{
+    auto* card = new QWidget(this);
+    card->setObjectName("componentHeaderCard");
+    card->setAttribute(Qt::WA_StyledBackground, true);
+    card->setStyleSheet(
+        "QWidget#componentHeaderCard {"
+        "  background: #ffffff;"
+        "  border: 1px solid #e5e7eb;"
+        "  border-radius: 16px;"
+        "}"
+    );
+
+    auto* cardLayout = new QHBoxLayout(card);
+    cardLayout->setContentsMargins(20, 16, 20, 16);
+    cardLayout->setSpacing(16);
+
+    addTreeIconToHeaderLayout(cardLayout, card);
+
+    // — Left info block (name / tags / desc / status) —
+    auto* leftBlock = new QWidget(card);
+    auto* leftLayout = new QVBoxLayout(leftBlock);
+    leftLayout->setContentsMargins(0, 0, 0, 0);
+    leftLayout->setSpacing(4);
+
+    nameLabel = new QLabel(leftBlock);
+    nameLabel->setObjectName("componentNameLabel");
+    nameLabel->setStyleSheet(
+        "QLabel#componentNameLabel {"
+        "  font-size: 20px;"
+        "  font-weight: 700;"
+        "  color: #111827;"
+        "}"
+    );
+    leftLayout->addWidget(nameLabel);
+
+    tagsRow = new QWidget(leftBlock);
+    auto* tagsLayout = new QHBoxLayout(tagsRow);
+    tagsLayout->setContentsMargins(0, 2, 0, 2);
+    tagsLayout->setSpacing(6);
+    leftLayout->addWidget(tagsRow);
+
+    descLabel = new QLabel(leftBlock);
+    descLabel->setObjectName("componentDescLabel");
+    descLabel->setStyleSheet(
+        "QLabel#componentDescLabel {"
+        "  font-size: 13px;"
+        "  color: #6b7280;"
+        "}"
+    );
+    leftLayout->addWidget(descLabel);
+
+    auto* statusRow = new QWidget(leftBlock);
+    auto* statusRowLayout = new QHBoxLayout(statusRow);
+    statusRowLayout->setContentsMargins(0, 4, 0, 0);
+    statusRowLayout->setSpacing(16);
+
+    statusLabel = new QLabel(statusRow);
+    statusLabel->setObjectName("componentStatusLabel");
+    statusLabel->setCursor(Qt::PointingHandCursor);
+    statusLabel->installEventFilter(this);
+    statusRowLayout->addWidget(statusLabel);
+    statusRowLayout->addStretch();
+    leftLayout->addWidget(statusRow);
+
+    cardLayout->addWidget(leftBlock, 1, Qt::AlignTop);
+
+    // — Vertical separator (hidden until statuses are present) —
+    statusSep = new QFrame(card);
+    statusSep->setFrameShape(QFrame::VLine);
+    statusSep->setFrameShadow(QFrame::Plain);
+    statusSep->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+    statusSep->setVisible(false);
+    cardLayout->addWidget(statusSep);
+
+    // — Status container block —
+    statusContainerBlock = new QWidget(card);
+    statusContainerBlock->setLayout(new QVBoxLayout());
+    statusContainerBlock->layout()->setContentsMargins(8, 0, 8, 0);
+    static_cast<QVBoxLayout*>(statusContainerBlock->layout())->setSpacing(6);
+    static_cast<QVBoxLayout*>(statusContainerBlock->layout())->setAlignment(Qt::AlignTop);
+    statusContainerBlock->setVisible(false);
+    cardLayout->addWidget(statusContainerBlock, 0, Qt::AlignTop);
+
+    updateStatus();
+    updateTags();
+    updateStatusContainer();
+
+    return card;
+}
+
+void ComponentWidget::populateTabs()
+{
+    auto* propView = new PropertyObjectView(component, nullptr, component);
+    tabs->addTab(propView, tr("Attributes"));
+}
+
+void ComponentWidget::updateStatus()
+{
+    if (!nameLabel)
         return;
 
     try
     {
-        // Create PropertyObject for component attributes
-        componentPropertyObject = daq::PropertyObject();
-
-        // Get locked attributes
-        std::set<std::string> lockedSet;
-        for (const auto & attribute : component.getLockedAttributes())
-            lockedSet.insert(attribute);
-
-        // Add Name property
-        bool nameLocked = lockedSet.find("Name") != lockedSet.end();
-        auto nameProp = daq::StringPropertyBuilder("Name", component.getName().toStdString())
-            .setReadOnly(nameLocked)
-            .build();
-        componentPropertyObject.addProperty(nameProp);
-        
-        // Add Description property
-        bool descriptionLocked = lockedSet.find("Description") != lockedSet.end();
-        auto descriptionProp = daq::StringPropertyBuilder("Description", component.getDescription().toStdString())
-            .setReadOnly(descriptionLocked)
-            .build();
-        componentPropertyObject.addProperty(descriptionProp);
-        
-        // Add Active property
-        bool activeLocked = lockedSet.find("Active") != lockedSet.end();
-        auto activeProp = daq::BoolPropertyBuilder("Active", component.getActive())
-            .setReadOnly(activeLocked)
-            .build();
-        componentPropertyObject.addProperty(activeProp);
-        
-        // Add Visible property
-        bool visibleLocked = lockedSet.find("Visible") != lockedSet.end();
-        auto visibleProp = daq::BoolPropertyBuilder("Visible", component.getVisible())
-            .setReadOnly(visibleLocked)
-            .build();
-        componentPropertyObject.addProperty(visibleProp);
-        
-        // Add Tags property (read-only, as list)
-        auto tags = component.getTags();
-        auto tagsProp = daq::ListPropertyBuilder("Tags", tags.getList())
-            .setReadOnly(true)
-            .build();
-        componentPropertyObject.addProperty(tagsProp);
-        
-        // Add Global ID property (read-only)
-        auto globalIdProp = daq::StringPropertyBuilder("Global ID", component.getGlobalId().toStdString())
-            .setReadOnly(true)
-            .build();
-        componentPropertyObject.addProperty(globalIdProp);
-        
-        // Add Local ID property (read-only)
-        auto localIdProp = daq::StringPropertyBuilder("Local ID", component.getLocalId().toStdString())
-            .setReadOnly(true)
-            .build();
-        componentPropertyObject.addProperty(localIdProp);
-
-        if (component.supportsInterface<daq::IDevice>())
-        {
-            auto selection = daq::Dict<daq::IInteger, daq::IString>(
-            {
-                {static_cast<int>(daq::OperationModeType::Unknown), "Unknown"},
-                {static_cast<int>(daq::OperationModeType::Idle), "Idle"},
-                {static_cast<int>(daq::OperationModeType::Operation), "Operation"},
-                {static_cast<int>(daq::OperationModeType::SafeOperation), "SafeOperation"}, 
-            });
-            auto opModeProp = daq::SparseSelectionProperty("Operation Mode", selection, static_cast<int>(component.getOperationMode()));
-            componentPropertyObject.addProperty(opModeProp);
-        }
-
-        // Add Statuses property (read-only, as dict)
-        updateStatuses();
-
-        // Set up read/write handlers for each property
-        setupPropertyHandlers();
-
-        auto internal = componentPropertyObject.asPtr<daq::IPropertyObjectInternal>(true);
-        internal.setPath("daqComponentAttributes");
-
-        internal.setCoreEventTrigger([this](const daq::CoreEventArgsPtr& args) 
-        { 
-            daq::EventPtr<const daq::ComponentPtr, const daq::CoreEventArgsPtr> coreEvent;
-            AppContext::Daq().getContext()->getOnCoreEvent(&coreEvent);
-            coreEvent(component, args); 
-        });
-        internal.enableCoreEventTrigger();
-
+        nameLabel->setText(QString::fromStdString(component.getName()));
     }
-    catch (const std::exception& e)
-    {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error creating component property object: {}", e.what());
-    }
-}
-
-void ComponentWidget::setupPropertyHandlers()
-{
-    if (!componentPropertyObject.assigned() || !component.assigned())
-        return;
+    catch (...) {}
 
     try
     {
-        // Helper lambda to setup property handler with guard
-        auto setupHandler = [this](const QString& propName, auto setter) 
-        {
-            componentPropertyObject.getOnPropertyValueWrite(propName.toStdString()) += 
-                [this, setter](daq::PropertyObjectPtr&, daq::PropertyValueEventArgsPtr& args)
-                {
-                    if (updatingFromComponent == 0)
-                    {
-                        UpdateGuard guard(updatingFromComponent);
-                        setter(args.getValue());
-                    }
-                };
-        };
-
-        // Name property write handler - sync changes back to component
-        setupHandler("Name", [this](const daq::BaseObjectPtr& value) 
-        {
-            component.setName(value.asPtr<daq::IString>(true));
-        });
-
-        // Description property write handler
-        setupHandler("Description", [this](const daq::BaseObjectPtr& value) 
-        {
-            component.setDescription(value.asPtr<daq::IString>());
-        });
-
-        // Active property write handler
-        setupHandler("Active", [this](const daq::BaseObjectPtr& value)
-        {
-            component.setActive(static_cast<bool>(value));
-        });
-
-        // Visible property write handler
-        setupHandler("Visible", [this](const daq::BaseObjectPtr& value)
-        {
-            component.setVisible(static_cast<bool>(value));
-        });
-
-        // Operation mode property write handler
-        if (componentPropertyObject.hasProperty("Operation Mode"))
-        {
-            setupHandler("Operation Mode", [this](const daq::BaseObjectPtr& value)
-            {
-                if (const auto device = component.asPtrOrNull<daq::IDevice>(true); device.assigned())
-                    device.setOperationMode(static_cast<daq::OperationModeType>(static_cast<int>(value)));
-            });
-        }
+        const QString desc = QString::fromStdString(component.getDescription());
+        descLabel->setText(desc.isEmpty() ? tr("—") : desc);
     }
-    catch (const std::exception& e)
+    catch (...)
     {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error setting up property handlers: {}", e.what());
+        descLabel->setText(tr("—"));
+    }
+
+    bool active = true;
+    try { active = component.getActive(); } catch (...) {}
+
+    if (active)
+    {
+        statusLabel->setText(tr("● Active"));
+        statusLabel->setStyleSheet("color: #16a34a; font-size: 13px; font-weight: 600;");
+    }
+    else
+    {
+        statusLabel->setText(tr("● Inactive"));
+        statusLabel->setStyleSheet("color: #9ca3af; font-size: 13px; font-weight: 600;");
     }
 }
 
-void ComponentWidget::updateStatuses()
+void ComponentWidget::updateStatusContainer()
 {
-    if (!component.assigned() || !componentPropertyObject.assigned())
+    if (!statusContainerBlock)
         return;
+
+    auto* layout = static_cast<QVBoxLayout*>(statusContainerBlock->layout());
+    while (layout->count())
+    {
+        auto* item = layout->takeAt(0);
+        delete item->widget();
+        delete item;
+    }
 
     try
     {
-        daq::ComponentStatusContainerPtr statusContainer = component.getStatusContainer();
-        if (!statusContainer.assigned())
+        const auto container = component.getStatusContainer();
+        if (!container.assigned())
+        {
+            statusContainerBlock->setVisible(false);
+            if (statusSep) statusSep->setVisible(false);
             return;
+        }
 
-        // Get all statuses
-        auto statuses = statusContainer.getStatuses();
+        const auto statuses = container.getStatuses();
         if (!statuses.assigned())
-            return;
-
-        // Create a dict with status names and their string values
-        daq::DictPtr<daq::IString, daq::IString> statusDict = daq::Dict<daq::IString, daq::IString>();
-        for (const auto& [name, statusEnum] : statuses)
         {
-            QString statusValue = QString::fromStdString(statusEnum.getValue().toStdString());
+            statusContainerBlock->setVisible(false);
+            if (statusSep) statusSep->setVisible(false);
+            return;
+        }
+
+        auto* title = new QLabel(tr("Status"), statusContainerBlock);
+        title->setStyleSheet(
+            "color: #6b7280; font-size: 11px; font-weight: 600;"
+            " text-transform: uppercase; letter-spacing: 0.5px;");
+        layout->addWidget(title);
+
+        for (const auto& [statusName, statusEnum] : statuses)
+        {
+            const QString name  = QString::fromStdString(statusName.toStdString());
+            const QString value = QString::fromStdString(statusEnum.getValue().toStdString());
+
+            QString dotColor;
+            
+            if (value == "Ok")              dotColor = "#16a34a";
+            else if (value == "Warning")    dotColor = "#f59e0b";
+            else if (value == "Error")      dotColor = "#dc2626";
+            else                            dotColor = "#9ca3af";
+
             QString statusMessage;
             try
             {
-                daq::StringPtr messagePtr = statusContainer.getStatusMessage(name);
-                if (messagePtr.assigned() && messagePtr.getLength())
-                {
-                    statusMessage = QString::fromStdString(messagePtr.toStdString());
-                    statusValue += QString(" (%1)").arg(statusMessage);
-                }
+                const auto msg = container.getStatusMessage(statusName);
+                if (msg.assigned())
+                    statusMessage = QString::fromStdString(msg.toStdString()).trimmed();
             }
-            catch (const std::exception& e)
-            {
-                // If message is not available, just use the value
-                const auto loggerComponent = AppContext::LoggerComponent();
-                LOG_D("Could not get status message for '{}': {}", name.toStdString(), e.what());
-            }
-            statusDict.set(name, daq::String(statusValue.toStdString()));
-        }
+            catch (...) {}
 
-        // Check if Statuses property already exists
-        if (componentPropertyObject.hasProperty("Statuses"))
-        {
-            UpdateGuard guard(updatingFromComponent);
-            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-            protectedObj.setProtectedPropertyValue("Statuses", statusDict);
-        }
-        else
-        {
-            // Add Statuses property (read-only, as dict)
-            auto statusesProp = daq::DictPropertyBuilder("Statuses", statusDict)
-                .setReadOnly(true)
-                .build();
-            componentPropertyObject.addProperty(statusesProp);
+            auto* block = new QWidget(statusContainerBlock);
+            auto* vl    = new QVBoxLayout(block);
+            vl->setContentsMargins(0, 0, 0, 0);
+            vl->setSpacing(4);
+
+            auto* lineRow = new QWidget(block);
+            auto* rl      = new QHBoxLayout(lineRow);
+            rl->setContentsMargins(0, 0, 0, 0);
+            rl->setSpacing(6);
+
+            auto* nameLbl = new QLabel(name, lineRow);
+            nameLbl->setStyleSheet("color: #6b7280; font-size: 13px;");
+
+            auto* dot = new QLabel("●", lineRow);
+            dot->setStyleSheet(QString("color: %1; font-size: 10px;").arg(dotColor));
+
+            auto* valueLbl = new QLabel(value, lineRow);
+            valueLbl->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
+
+            rl->addWidget(nameLbl);
+            rl->addWidget(dot);
+            rl->addWidget(valueLbl);
+            rl->addStretch();
+
+            vl->addWidget(lineRow);
+
+            if (!statusMessage.isEmpty())
+                addStatusMessageToLayout(vl, statusMessage, block);
+
+            layout->addWidget(block);
         }
     }
-    catch (const std::exception& e)
+    catch (...) {}
+
+    const bool hasStatuses = layout->count() > 0;
+    statusContainerBlock->setVisible(hasStatuses);
+    if (statusSep) statusSep->setVisible(hasStatuses);
+}
+
+void ComponentWidget::updateTags()
+{
+    if (!tagsRow)
+        return;
+
+    auto* layout = static_cast<QHBoxLayout*>(tagsRow->layout());
+    while (layout->count())
     {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error updating statuses: {}", e.what());
+        auto* item = layout->takeAt(0);
+        delete item->widget();
+        delete item;
     }
+
+    static const struct { const char* bg; const char* fg; } palette[] = {
+        {"#dbeafe", "#1d4ed8"}, {"#dcfce7", "#16a34a"}, {"#fef9c3", "#ca8a04"},
+        {"#fce7f3", "#be185d"}, {"#ede9fe", "#7c3aed"}, {"#ffedd5", "#ea580c"},
+    };
+
+    int idx = 0;
+    try
+    {
+        auto tags = component.getTags();
+        for (const auto& tagObj : tags.getList())
+        {
+            const QString tagName = QString::fromStdString(tagObj.toStdString());
+            const auto& c = palette[idx % 6];
+
+            auto* bubble = new QWidget(tagsRow);
+            bubble->setAttribute(Qt::WA_StyledBackground, true);
+            bubble->setStyleSheet(
+                QString("QWidget { background: %1; border-radius: 10px; }").arg(c.bg));
+
+            auto* bl = new QHBoxLayout(bubble);
+            bl->setContentsMargins(8, 3, 5, 3);
+            bl->setSpacing(4);
+
+            auto* nameLbl = new QLabel(tagName, bubble);
+            nameLbl->setStyleSheet(
+                QString("color: %1; font-size: 12px; font-weight: 600; background: transparent;").arg(c.fg));
+
+            auto* removeBtn = new QPushButton("×", bubble);
+            removeBtn->setFlat(true);
+            removeBtn->setCursor(Qt::PointingHandCursor);
+            removeBtn->setFixedSize(14, 14);
+            removeBtn->setStyleSheet(
+                QString("QPushButton { color: %1; background: transparent; border: none;"
+                        " font-size: 13px; font-weight: 700; padding: 0; }"
+                        "QPushButton:hover { color: #111827; }").arg(c.fg));
+
+            connect(removeBtn, &QPushButton::clicked, this, [this, tagName]()
+            {
+                try
+                {
+                    component.getTags().asPtr<daq::ITagsPrivate>(true).remove(tagName.toStdString());
+                }
+                catch (...) {}
+                updateTags();
+            });
+
+            bl->addWidget(nameLbl);
+            bl->addWidget(removeBtn);
+            layout->addWidget(bubble);
+            ++idx;
+        }
+    }
+    catch (...) {}
+
+    layout->addStretch();
+}
+
+bool ComponentWidget::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == statusLabel && event->type() == QEvent::MouseButtonDblClick)
+    {
+        try { component.setActive(!component.getActive()); }
+        catch (...) {}
+        return true;
+    }
+    return QWidget::eventFilter(obj, event);
 }
 
 void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
     if (sender != component)
-        return;
-
-    // Ignore events that we triggered ourselves
-    if (updatingFromComponent > 0)
         return;
 
     try
@@ -301,74 +405,19 @@ void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsP
 
         if (eventId == daq::CoreEventId::AttributeChanged)
         {
-            const daq::StringPtr attributeName = args.getParameters().get("AttributeName");
-            const daq::BaseObjectPtr attributeValue = args.getParameters().get(attributeName);
-            handleAttributeChangedAsync(attributeName, attributeValue);
-        }
-        else if (eventId == daq::CoreEventId::TagsChanged)
-        {
-            daq::TagsPtr tags = args.getParameters()["Tags"];
-            handleTagsChangedAsync(tags);
+            const daq::StringPtr attrName = args.getParameters().get("AttributeName");
+            const std::string name = attrName.toStdString();
+            if (name == "Name" || name == "Active" || name == "Description")
+                updateStatus();
         }
         else if (eventId == daq::CoreEventId::StatusChanged)
         {
-            handleStatusChangedAsync();
+            updateStatusContainer();
         }
-        else if (eventId == daq::CoreEventId::DeviceOperationModeChanged)
+        else if (eventId == daq::CoreEventId::TagsChanged)
         {
-            handleAttributeChangedAsync("Operation Mode", args.getParameters().get("OperationMode"));
+            updateTags();
         }
     }
-    catch (const std::exception& e)
-    {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error handling core event: {}", e.what());
-    }
-}
-
-void ComponentWidget::handleAttributeChangedAsync(const daq::StringPtr& attributeName, const daq::BaseObjectPtr& value)
-{
-    if (updatingFromComponent > 0 || !componentPropertyObject.assigned())
-        return;
-
-    try
-    {
-        if (componentPropertyObject.hasProperty(attributeName))
-        {
-            UpdateGuard guard(updatingFromComponent);
-            auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-            protectedObj.setProtectedPropertyValue(attributeName, value);
-        }
-    }
-    catch (const std::exception& e)
-    {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error handling attribute changed async: {}", e.what());
-    }
-}
-
-void ComponentWidget::handleTagsChangedAsync(const daq::TagsPtr& tags)
-{
-    if (updatingFromComponent > 0 || !componentPropertyObject.assigned())
-        return;
-
-    try
-    {
-        UpdateGuard guard(updatingFromComponent);
-        auto protectedObj = componentPropertyObject.asPtr<daq::IPropertyObjectProtected>(true);
-        protectedObj.setProtectedPropertyValue("Tags", tags.getList());
-    }
-    catch (const std::exception& e)
-    {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error handling tags changed async: {}", e.what());
-    }
-}
-
-void ComponentWidget::handleStatusChangedAsync()
-{
-    if (updatingFromComponent > 0)
-        return;
-
-    updateStatuses();
+    catch (...) {}
 }

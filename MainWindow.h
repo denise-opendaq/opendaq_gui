@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QMainWindow>
-#include <QComboBox>
+#include <QLineEdit>
 #include <QTextEdit>
 #include <QSplitter>
 #include <QList>
@@ -39,7 +39,6 @@ private:
     void stopAllAnimations();
 
 private Q_SLOTS:
-    void onViewSelectionChanged(int index);
     void onShowHiddenComponentsToggled(bool checked);
     void onComponentSelected(BaseTreeElement* element);
     void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
@@ -53,7 +52,7 @@ private:
     QSplitter* contentSplitter = nullptr;   // Root for split views in content area
 
     // Left panel
-    QComboBox* viewSelector = nullptr;
+    QLineEdit* searchBox = nullptr;
     ComponentTreeWidget* componentTreeWidget = nullptr;
 
     // Layout manager for tab and window management

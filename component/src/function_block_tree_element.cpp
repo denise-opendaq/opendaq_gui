@@ -92,10 +92,7 @@ void FunctionBlockTreeElement::openTab(const QString& tabName)
     {
         auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
         auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
-        if (daqComponent.supportsInterface<IQTWidget>())
-            addTab(functionBlockWidget, tabName, LayoutZone::Bottom, "Properties");
-        else
-            addTab(functionBlockWidget, tabName, LayoutZone::Left);
+        addTab(functionBlockWidget, tabName);
     }
     else
     {

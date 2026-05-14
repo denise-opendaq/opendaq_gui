@@ -15,6 +15,7 @@
 #include <QPainter>
 #include <QApplication>
 #include <QMetaObject>
+#include <QScrollBar>
 
 #include "logger/qt_text_edit_sink.h"
 #include <spdlog/details/log_msg.h>
@@ -332,6 +333,10 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
     if (!tableWidget)
         return;
 
+    QScrollBar* verticalScrollBar = tableWidget->verticalScrollBar();
+    const bool shouldAutoScroll = !verticalScrollBar
+        || verticalScrollBar->value() >= verticalScrollBar->maximum();
+
     // Remove old rows if we exceed MAX_ROWS
     int currentRowCount = tableWidget->rowCount();
     if (currentRowCount >= MAX_ROWS)
@@ -380,6 +385,9 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
         bool matches = rowMatchesFilter(row, currentFilterText);
         tableWidget->setRowHidden(row, !matches);
     }
+
+    if (shouldAutoScroll)
+        tableWidget->scrollToBottom();
     
     // Don't resize row immediately - do it in batch at the end for better performance
 }
