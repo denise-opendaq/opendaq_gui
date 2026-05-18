@@ -15,7 +15,7 @@ public:
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
-    // Override tab methods to add Input Ports tab
+    // Override tab methods to open FunctionBlockWidget
     QStringList getAvailableTabNames() const override;
     void openTab(const QString& tabName) override;
 

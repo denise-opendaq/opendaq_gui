@@ -82,7 +82,7 @@ static daq::PropertyObjectPtr createDescriptorObject()
     obj.addProperty(daq::StringPropertyBuilder(K_RESOLUTION, "—").setReadOnly(true).build());
     obj.addProperty(daq::StringPropertyBuilder(K_ORIGIN, "—").setReadOnly(true).build());
     obj.addProperty(daq::ObjectPropertyBuilder(K_RANGE, range).setReadOnly(true).build());
-    obj.addProperty(daq::StringPropertyBuilder(K_DIMENSIONS, "—").setReadOnly(true).build());
+    obj.addProperty(daq::IntPropertyBuilder(K_DIMENSIONS, 1).setReadOnly(true).build());
     obj.addProperty(daq::StringPropertyBuilder(K_STRUCT_FIELDS, "—").setReadOnly(true).build());
 
     return obj;
@@ -169,16 +169,8 @@ void SignalDescriptorWidget::update()
             rangeProt.setProtectedPropertyValue(K_RANGE_HIGH, high);
     }
 
-    if (const auto dims = d.getDimensions(); dims.assigned() && dims.getCount() > 0)
-    {
-        std::string s;
-        for (const auto& dim : dims)
-        {
-            if (!s.empty()) s += ", ";
-            try { s += std::to_string(dim.getSize()); } catch (...) { s += "?"; }
-        }
-        prot.setProtectedPropertyValue(K_DIMENSIONS, s);
-    }
+    if (const auto dims = d.getDimensions(); dims.assigned())
+        prot.setProtectedPropertyValue(K_DIMENSIONS, dims.getCount() + 1);
 
     if (const auto fields = d.getStructFields(); fields.assigned())
     {

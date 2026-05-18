@@ -91,7 +91,8 @@ void InputPortFolderSelector::updateInputPorts()
 {
     if (!inputPortsFolder.assigned())
     {
-        auto label = new QLabel("Input ports folder not assigned", this);
+        auto label = new QLabel(tr("Input ports folder not assigned"), this);
+        label->setStyleSheet(QStringLiteral("color: #9ca3af; font-size: 14px;"));
         inputPortsLayout->addWidget(label);
         return;
     }
@@ -121,7 +122,8 @@ void InputPortFolderSelector::updateInputPorts()
 
             if (!hasNoPortsLabel)
             {
-                auto label = new QLabel("No input ports available", this);
+                auto label = new QLabel(tr("No input ports available"), this);
+                label->setStyleSheet(QStringLiteral("color: #9ca3af; font-size: 14px;"));
                 inputPortsLayout->addWidget(label);
             }
             inputPortsLayout->addStretch();
@@ -226,7 +228,8 @@ void InputPortFolderSelector::updateInputPorts()
     }
     catch (const std::exception& e)
     {
-        auto label = new QLabel(QString("Error getting input ports: %1").arg(e.what()), this);
+        auto label = new QLabel(tr("Error getting input ports: %1").arg(e.what()), this);
+        label->setStyleSheet(QStringLiteral("color: #dc2626; font-size: 14px;"));
         inputPortsLayout->addWidget(label);
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting input ports: {}", e.what());

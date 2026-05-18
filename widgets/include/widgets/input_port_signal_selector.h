@@ -3,7 +3,7 @@
 #include <QWidget>
 #include <QComboBox>
 #include <QLabel>
-#include <QGroupBox>
+#include <QFrame>
 #include <QToolButton>
 
 #include <opendaq/input_port_ptr.h>
@@ -42,7 +42,7 @@ private:
     ComponentTreeWidget* componentTree;
     QComboBox* signalComboBox;
     QToolButton* disconnectButton;
-    QGroupBox* groupBox;
+    QFrame* cardFrame = nullptr;
     bool showGroupBox;
 };
 

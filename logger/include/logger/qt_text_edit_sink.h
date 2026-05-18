@@ -3,12 +3,15 @@
 #include <memory>
 #include <QMutex>
 #include <QString>
-#include <QColor>
 
 class QTableWidget;
 class QWidget;
 class QLineEdit;
 class QTimer;
+class QLabel;
+class QPushButton;
+class QToolButton;
+class QCheckBox;
 
 #include <spdlog/sinks/base_sink.h>
 #include <coretypes/baseobject.h>
@@ -32,19 +35,30 @@ protected:
 
 private:
     QTableWidget* tableWidget;
-    QWidget* containerWidget;
-    QLineEdit* searchEdit;
-    QString currentFilterText;
+    QWidget*      containerWidget;
+    QWidget*      cardWidget = nullptr;
+    QLineEdit*    searchEdit;
+    QLabel*       footerLabel = nullptr;
+    QPushButton*  filterErrBtn = nullptr;
+    QPushButton*  filterWarnBtn = nullptr;
+    QPushButton*  filterInfoBtn = nullptr;
+    QPushButton*  filterDebugBtn = nullptr;
+    QToolButton*  pauseBtn = nullptr;
+    QCheckBox*    autoScrollCheck = nullptr;
+    QString       currentFilterText;
+    bool          paused = false;
     
     static constexpr int MAX_ROWS = 10000;  // Maximum number of rows to keep
     
     void setupTableWidget();
-    void setupSearchWidget();
-    void filterTable(const QString& searchText);
+    void setupChromeWidget();
+    void applyFilters();
+    void updateFooter();
+    bool rowMatchesLevelFilter(int row) const;
+
     bool rowMatchesFilter(int row, const QString& searchText) const;
     QString formatTime(const spdlog::log_clock::time_point& time) const;
     QString levelToString(spdlog::level::level_enum level) const;
-    QColor getColorForLevel(spdlog::level::level_enum level) const;
     struct LogMsgData {
         spdlog::log_clock::time_point time;
         spdlog::level::level_enum level;

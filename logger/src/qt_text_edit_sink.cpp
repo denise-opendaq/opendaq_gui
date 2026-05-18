@@ -16,8 +16,17 @@
 #include <QApplication>
 #include <QMetaObject>
 #include <QScrollBar>
+#include <QFrame>
+#include <QPushButton>
+#include <QToolButton>
+#include <QCheckBox>
+#include <QAction>
+#include <QStyle>
+#include <QCoreApplication>
 
 #include "logger/qt_text_edit_sink.h"
+#include "context/icon_provider.h"
+#include "coretypes/ctutils.h"
 #include <spdlog/details/log_msg.h>
 #include <spdlog/fmt/chrono.h>
 
@@ -73,6 +82,59 @@ public:
     }
 };
 
+// Pill-style level badges (INFO / WARN / ERROR, …)
+class LevelBadgeDelegate final : public QStyledItemDelegate
+{
+public:
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const QString text = opt.text;
+
+        QColor bg(QStringLiteral("#f3f4f6"));
+        QColor fg(QStringLiteral("#374151"));
+        if (text == QStringLiteral("INFO"))
+        {
+            bg = QColor(QStringLiteral("#dcfce7"));
+            fg = QColor(QStringLiteral("#166534"));
+        }
+        else if (text == QStringLiteral("DEBUG") || text == QStringLiteral("TRACE"))
+        {
+            bg = QColor(QStringLiteral("#e0e7ff"));
+            fg = QColor(QStringLiteral("#3730a3"));
+        }
+        else if (text == QStringLiteral("WARN") || text == QStringLiteral("WARNING"))
+        {
+            bg = QColor(QStringLiteral("#fef9c3"));
+            fg = QColor(QStringLiteral("#a16207"));
+        }
+        else if (text == QStringLiteral("ERROR") || text == QStringLiteral("CRITICAL"))
+        {
+            bg = QColor(QStringLiteral("#fee2e2"));
+            fg = QColor(QStringLiteral("#b91c1c"));
+        }
+
+        painter->save();
+        QRect r = opt.rect.adjusted(2, 3, -2, -3);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(bg);
+        painter->drawRoundedRect(r, 6, 6);
+        painter->setPen(fg);
+        painter->setFont(opt.font);
+        painter->drawText(r, Qt::AlignCenter, text);
+        painter->restore();
+    }
+
+    QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        const int w = qMax(52, option.fontMetrics.horizontalAdvance(opt.text) + 24);
+        return QSize(w, 24);
+    }
+};
+
 // QTableWidgetSpdlogSink implementation
 QTableWidgetSpdlogSink::QTableWidgetSpdlogSink(QTableWidget* tableWidget)
     : tableWidget(tableWidget)
@@ -81,7 +143,7 @@ QTableWidgetSpdlogSink::QTableWidgetSpdlogSink(QTableWidget* tableWidget)
     , currentFilterText()
 {
     setupTableWidget();
-    setupSearchWidget();
+    setupChromeWidget();
 }
 
 void QTableWidgetSpdlogSink::setupTableWidget()
@@ -134,19 +196,30 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     tableWidget->setAlternatingRowColors(true);
     tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    tableWidget->setSortingEnabled(true);
+    tableWidget->setSortingEnabled(false);
+
+    tableWidget->setStyleSheet(
+        QStringLiteral("QTableWidget { background: #ffffff; gridline-color: #f3f4f6; font-size: 13px; color: #111827; border: none; }"
+                       "QTableWidget::item { padding: 6px 8px; }"
+                       "QHeaderView::section { background: #fafafa; color: #6b7280; font-size: 11px; font-weight: 600;"
+                       " text-transform: uppercase; padding: 8px 10px; border: none; border-bottom: 1px solid #e5e7eb;"
+                       " border-right: 1px solid #f3f4f6; }"));
     
     // Allow manual column resizing
     tableWidget->horizontalHeader()->setStretchLastSection(true);
     tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
     // Message column can stretch to fill remaining space
+    tableWidget->horizontalHeader()->setSectionResizeMode(static_cast<int>(LogColumn::Level), QHeaderView::ResizeToContents);
+    // Message column can stretch to fill remaining space
     tableWidget->horizontalHeader()->setSectionResizeMode(static_cast<int>(LogColumn::Message), QHeaderView::Stretch);
-    
+
     // Set delegate for Message column to enable word wrap
     tableWidget->setItemDelegateForColumn(static_cast<int>(LogColumn::Message), new MessageColumnDelegate());
+    tableWidget->setItemDelegateForColumn(static_cast<int>(LogColumn::Level), new LevelBadgeDelegate());
     
     // Auto-resize rows to fit content (for word wrap in Message column)
     tableWidget->verticalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    tableWidget->verticalHeader()->setVisible(false);
     
     // Recalculate row heights when Message column is resized.
     // Do NOT call processEvents() here: it can cause reentrant paint on macOS and trigger
@@ -165,55 +238,216 @@ void QTableWidgetSpdlogSink::setupTableWidget()
         });
 }
 
-void QTableWidgetSpdlogSink::setupSearchWidget()
+void QTableWidgetSpdlogSink::setupChromeWidget()
 {
     if (!tableWidget)
         return;
 
-    // Create container widget
     containerWidget = new QWidget();
-    QVBoxLayout* layout = new QVBoxLayout(containerWidget);
-    layout->setContentsMargins(0, 0, 0, 0);
-    layout->setSpacing(5);
+    auto* outer = new QVBoxLayout(containerWidget);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(0);
 
-    // Create search line edit
-    QHBoxLayout* searchLayout = new QHBoxLayout();
-    searchLayout->setContentsMargins(5, 5, 5, 0);
-    
-    QLabel* searchLabel = new QLabel("Search:");
-    searchEdit = new QLineEdit();
-    searchEdit->setPlaceholderText("Search in logs...");
+    cardWidget = new QFrame(containerWidget);
+    cardWidget->setObjectName(QStringLiteral("logViewerCard"));
+    cardWidget->setAttribute(Qt::WA_StyledBackground, true);
+    cardWidget->setStyleSheet(
+        QStringLiteral("QFrame#logViewerCard { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; }"));
+
+    auto* cardLayout = new QVBoxLayout(cardWidget);
+    cardLayout->setContentsMargins(0, 0, 0, 0);
+    cardLayout->setSpacing(0);
+
+    auto* header = new QWidget(cardWidget);
+    auto* headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(16, 12, 16, 10);
+    headerLayout->setSpacing(10);
+
+    auto* title = new QLabel(QCoreApplication::translate("LogViewer", "Logs"), header);
+    title->setStyleSheet(
+        QStringLiteral("font-size: 16px; font-weight: 700; color: #111827; background: transparent; border: none;"));
+
+    searchEdit = new QLineEdit(header);
+    searchEdit->setPlaceholderText(QCoreApplication::translate("LogViewer", "Search in logs..."));
     searchEdit->setClearButtonEnabled(true);
-    
-    searchLayout->addWidget(searchLabel);
-    searchLayout->addWidget(searchEdit);
-    
-    layout->addLayout(searchLayout);
-    layout->addWidget(tableWidget);
+    searchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    searchEdit->setMinimumWidth(120);
+    searchEdit->setStyleSheet(
+        QStringLiteral("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; font-size: 13px;"
+                       " background: #f9fafb; color: #111827; }"
+                       "QLineEdit:focus { background: #ffffff; border-color: #93c5fd; }"));
 
-    // Connect search signal
-    QObject::connect(searchEdit, &QLineEdit::textChanged, 
-        [this](const QString& text)
-        {
-            currentFilterText = text;
-            filterTable(text);
+    const QString pillUnchecked = QStringLiteral(
+        "QPushButton { border: none; border-radius: 16px; padding: 6px 14px; font-size: 13px;"
+        " background: #f3f4f6; color: #374151; }"
+        "QPushButton:hover { background: #e5e7eb; }");
+    const QString pillChecked = QStringLiteral(
+        "QPushButton { border: none; border-radius: 16px; padding: 6px 14px; font-size: 13px;"
+        " background: #dbeafe; color: #1d4ed8; font-weight: 600; }");
+
+    filterErrBtn   = new QPushButton(QCoreApplication::translate("LogViewer", "Error"), header);
+    filterWarnBtn  = new QPushButton(QCoreApplication::translate("LogViewer", "Warning"), header);
+    filterInfoBtn  = new QPushButton(QCoreApplication::translate("LogViewer", "Info"), header);
+    filterDebugBtn = new QPushButton(QCoreApplication::translate("LogViewer", "Debug"), header);
+    for (auto* b : {filterErrBtn, filterWarnBtn, filterInfoBtn, filterDebugBtn})
+    {
+        b->setFlat(true);
+        b->setCursor(Qt::PointingHandCursor);
+        b->setCheckable(true);
+    }
+    filterErrBtn->setChecked(true);
+    filterWarnBtn->setChecked(true);
+    filterInfoBtn->setChecked(false);
+    filterDebugBtn->setChecked(false);
+    filterErrBtn->setStyleSheet(pillChecked);
+    filterWarnBtn->setStyleSheet(pillChecked);
+    filterInfoBtn->setStyleSheet(pillUnchecked);
+    filterDebugBtn->setStyleSheet(pillUnchecked);
+
+    pauseBtn = new QToolButton(header);
+    pauseBtn->setCheckable(true);
+    pauseBtn->setCursor(Qt::PointingHandCursor);
+    pauseBtn->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPause));
+    pauseBtn->setIconSize(QSize(16, 16));
+    pauseBtn->setToolTip(QCoreApplication::translate("LogViewer", "Pause incoming log lines"));
+    pauseBtn->setStyleSheet(
+        QStringLiteral("QToolButton { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; background: transparent; }"
+                       "QToolButton:hover { background: #f3f4f6; }"
+                       "QToolButton:checked { background: #fef3c7; border-color: #fcd34d; }"));
+
+    autoScrollCheck = new QCheckBox(QCoreApplication::translate("LogViewer", "Auto-scroll"), header);
+    autoScrollCheck->setChecked(true);
+    autoScrollCheck->setStyleSheet(QStringLiteral("color: #374151; font-size: 13px; spacing: 6px;"));
+
+    auto* clearBtn = new QToolButton(header);
+    clearBtn->setCursor(Qt::PointingHandCursor);
+    clearBtn->setIcon(IconProvider::instance().icon(QStringLiteral("clear")));
+    clearBtn->setIconSize(QSize(16, 16));
+    clearBtn->setToolTip(QCoreApplication::translate("LogViewer", "Clear log"));
+    clearBtn->setStyleSheet(
+        QStringLiteral("QToolButton { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; background: transparent; }"
+                       "QToolButton:hover { background: #f3f4f6; }"));
+
+    headerLayout->addWidget(title, 0);
+    headerLayout->addWidget(searchEdit, 1);
+    headerLayout->addWidget(filterErrBtn, 0);
+    headerLayout->addWidget(filterWarnBtn, 0);
+    headerLayout->addWidget(filterInfoBtn, 0);
+    headerLayout->addWidget(filterDebugBtn, 0);
+    headerLayout->addSpacing(4);
+    headerLayout->addWidget(pauseBtn, 0);
+    headerLayout->addWidget(autoScrollCheck, 0);
+    headerLayout->addWidget(clearBtn, 0);
+
+    auto syncLevelPillStyles = [this, pillChecked, pillUnchecked]() {
+        filterErrBtn->setStyleSheet(filterErrBtn->isChecked() ? pillChecked : pillUnchecked);
+        filterWarnBtn->setStyleSheet(filterWarnBtn->isChecked() ? pillChecked : pillUnchecked);
+        filterInfoBtn->setStyleSheet(filterInfoBtn->isChecked() ? pillChecked : pillUnchecked);
+        filterDebugBtn->setStyleSheet(filterDebugBtn->isChecked() ? pillChecked : pillUnchecked);
+    };
+
+    for (auto* b : {filterErrBtn, filterWarnBtn, filterInfoBtn, filterDebugBtn})
+    {
+        QObject::connect(b, &QPushButton::toggled, tableWidget, [this, syncLevelPillStyles](bool) {
+            syncLevelPillStyles();
+            applyFilters();
         });
+    }
+
+    QObject::connect(pauseBtn, &QToolButton::toggled, tableWidget, [this](bool on) {
+        paused = on;
+        pauseBtn->setIcon(QApplication::style()->standardIcon(on ? QStyle::SP_MediaPlay : QStyle::SP_MediaPause));
+        pauseBtn->setToolTip(on ? QCoreApplication::translate("LogViewer", "Resume log")
+                                : QCoreApplication::translate("LogViewer", "Pause incoming log lines"));
+    });
+
+    QObject::connect(clearBtn, &QToolButton::clicked, tableWidget, [this]() {
+        tableWidget->setRowCount(0);
+        applyFilters();
+    });
+
+    QObject::connect(searchEdit, &QLineEdit::textChanged, tableWidget, [this](const QString& text) {
+        currentFilterText = text;
+        applyFilters();
+    });
+
+    auto* headerSep = new QFrame(cardWidget);
+    headerSep->setFrameShape(QFrame::HLine);
+    headerSep->setStyleSheet(QStringLiteral("background: #e5e7eb; border: none; max-height: 1px;"));
+
+    auto* footerBar = new QWidget(cardWidget);
+    auto* footerLayout = new QHBoxLayout(footerBar);
+    footerLayout->setContentsMargins(16, 0, 16, 10);
+    footerLayout->setSpacing(0);
+    footerLabel = new QLabel(footerBar);
+    footerLabel->setStyleSheet(QStringLiteral("color: #6b7280; font-size: 12px; background: transparent; border: none;"));
+    footerLayout->addStretch(1);
+    footerLayout->addWidget(footerLabel);
+
+    cardLayout->addWidget(header);
+    cardLayout->addWidget(headerSep);
+    cardLayout->addWidget(tableWidget, 1);
+    cardLayout->addWidget(footerBar);
+
+    outer->addWidget(cardWidget, 1);
+
+    updateFooter();
 }
 
-void QTableWidgetSpdlogSink::filterTable(const QString& searchText)
+void QTableWidgetSpdlogSink::applyFilters()
 {
     if (!tableWidget)
         return;
 
-    QString searchLower = searchText.toLower();
-    
-    for (int row = 0; row < tableWidget->rowCount(); ++row) 
+    for (int row = 0; row < tableWidget->rowCount(); ++row)
     {
-        bool match = rowMatchesFilter(row, searchText);
-        
-        // Show or hide row based on match
-        tableWidget->setRowHidden(row, !match && !searchText.isEmpty());
+        const bool searchOk = currentFilterText.isEmpty() || rowMatchesFilter(row, currentFilterText);
+        const bool levelOk  = rowMatchesLevelFilter(row);
+        tableWidget->setRowHidden(row, !(searchOk && levelOk));
     }
+    updateFooter();
+}
+
+bool QTableWidgetSpdlogSink::rowMatchesLevelFilter(int row) const
+{
+    if (!tableWidget || !filterInfoBtn)
+        return true;
+
+    const bool anyOn = filterErrBtn->isChecked() || filterWarnBtn->isChecked() || filterInfoBtn->isChecked()
+        || filterDebugBtn->isChecked();
+    if (!anyOn)
+        return true;
+
+    QTableWidgetItem* item = tableWidget->item(row, static_cast<int>(LogColumn::Level));
+    if (!item)
+        return true;
+    const QString lvl = item->text();
+
+    if (filterErrBtn->isChecked() && (lvl == QStringLiteral("ERROR") || lvl == QStringLiteral("CRITICAL")))
+        return true;
+    if (filterWarnBtn->isChecked() && (lvl == QStringLiteral("WARN") || lvl == QStringLiteral("WARNING")))
+        return true;
+    if (filterInfoBtn->isChecked() && lvl == QStringLiteral("INFO"))
+        return true;
+    if (filterDebugBtn->isChecked() && (lvl == QStringLiteral("DEBUG") || lvl == QStringLiteral("TRACE")))
+        return true;
+    return false;
+}
+
+void QTableWidgetSpdlogSink::updateFooter()
+{
+    if (!tableWidget || !footerLabel)
+        return;
+
+    const int total = tableWidget->rowCount();
+    int       visible = 0;
+    for (int r = 0; r < total; ++r)
+    {
+        if (!tableWidget->isRowHidden(r))
+            ++visible;
+    }
+    footerLabel->setText(
+        QCoreApplication::translate("LogViewer", "Showing %1 of %2 log entries").arg(visible).arg(total));
 }
 
 bool QTableWidgetSpdlogSink::rowMatchesFilter(int row, const QString& searchText) const
@@ -286,27 +520,6 @@ QString QTableWidgetSpdlogSink::levelToString(spdlog::level::level_enum level) c
     }
 }
 
-QColor QTableWidgetSpdlogSink::getColorForLevel(spdlog::level::level_enum level) const
-{
-    switch (level)
-    {
-        case spdlog::level::trace:
-            return QColor(128, 128, 128); // gray
-        case spdlog::level::debug:
-            return QColor(0, 102, 204); // light blue
-        case spdlog::level::info:
-            return QColor(0, 153, 0); // green
-        case spdlog::level::warn:
-            return QColor(204, 204, 0); // dark yellow
-        case spdlog::level::err:
-            return QColor(255, 0, 0); // red
-        case spdlog::level::critical:
-            return QColor(204, 0, 0); // dark red
-        default:
-            return QColor(); // default system color
-    }
-}
-
 void QTableWidgetSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
 {
     if (!tableWidget)
@@ -324,18 +537,21 @@ void QTableWidgetSpdlogSink::sink_it_(const spdlog::details::log_msg& msg)
     // Use QTimer::singleShot to safely add log from any thread to GUI thread
     QTimer::singleShot(0, tableWidget, [this, msgData]() 
     {
+        if (paused)
+            return;
         addLogRow(*msgData);
     });
 }
 
 void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
 {
-    if (!tableWidget)
+    if (!tableWidget || paused)
         return;
 
     QScrollBar* verticalScrollBar = tableWidget->verticalScrollBar();
-    const bool shouldAutoScroll = !verticalScrollBar
-        || verticalScrollBar->value() >= verticalScrollBar->maximum();
+    const bool atBottom = !verticalScrollBar
+        || verticalScrollBar->value() >= verticalScrollBar->maximum() - 1;
+    const bool wantAutoScroll = atBottom && autoScrollCheck && autoScrollCheck->isChecked();
 
     // Remove old rows if we exceed MAX_ROWS
     int currentRowCount = tableWidget->rowCount();
@@ -348,7 +564,6 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
     QString time = formatTime(msg.time);
     QString threadId = QString::number(msg.thread_id);
     QString message = QString::fromStdString(msg.payload);
-    QColor levelColor = getColorForLevel(msg.level);
 
     // Insert new row
     int row = tableWidget->rowCount();
@@ -368,9 +583,7 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
     tableWidget->setItem(row, static_cast<int>(LogColumn::LoggerName), loggerItem);
 
     QTableWidgetItem* levelItem = new QTableWidgetItem(level);
-    levelItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
-    if (levelColor.isValid()) 
-        levelItem->setForeground(levelColor);
+    levelItem->setTextAlignment(Qt::AlignCenter | Qt::AlignVCenter);
 
     tableWidget->setItem(row, static_cast<int>(LogColumn::Level), levelItem);
 
@@ -378,18 +591,11 @@ void QTableWidgetSpdlogSink::addLogRow(const LogMsgData& msg)
     QTableWidgetItem* messageItem = new QTableWidgetItem(message);
     messageItem->setTextAlignment(Qt::AlignLeft | Qt::AlignTop);
     tableWidget->setItem(row, static_cast<int>(LogColumn::Message), messageItem);
-    
-    // Check if new row matches current filter and hide if it doesn't
-    if (!currentFilterText.isEmpty()) 
-    {
-        bool matches = rowMatchesFilter(row, currentFilterText);
-        tableWidget->setRowHidden(row, !matches);
-    }
 
-    if (shouldAutoScroll)
+    applyFilters();
+
+    if (wantAutoScroll)
         tableWidget->scrollToBottom();
-    
-    // Don't resize row immediately - do it in batch at the end for better performance
 }
 
 void QTableWidgetSpdlogSink::flush_()
@@ -441,8 +647,7 @@ daq::ErrCode QTableWidgetLoggerSink::setPattern(daq::IString* pattern)
         sink->set_pattern(toStdString(pattern));
     });
 
-    if (OPENDAQ_FAILED(errCode))
-        return DAQ_EXTEND_ERROR_INFO(errCode, "Cannot save return value to a null pointer.");
+    OPENDAQ_RETURN_IF_FAILED(errCode, "Cannot save return value to a null pointer.");
     return errCode;
 }
 
@@ -452,8 +657,7 @@ daq::ErrCode QTableWidgetLoggerSink::flush()
     {
         sink->flush();
     });
-    if (OPENDAQ_FAILED(errCode))
-        return DAQ_EXTEND_ERROR_INFO(errCode, "Failed to flush logger sink");
+    OPENDAQ_RETURN_IF_FAILED(errCode, "Failed to flush logger sink");
     return errCode;
 }
 

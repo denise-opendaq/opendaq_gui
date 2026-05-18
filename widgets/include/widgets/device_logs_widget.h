@@ -6,6 +6,7 @@
 
 class QLabel;
 class QVBoxLayout;
+class QShowEvent;
 
 class DeviceLogsWidget : public QWidget
 {
@@ -13,6 +14,9 @@ class DeviceLogsWidget : public QWidget
 
 public:
     explicit DeviceLogsWidget(const daq::DevicePtr& device, QWidget* parent = nullptr);
+
+protected:
+    void showEvent(QShowEvent* event) override;
 
 private:
     void refresh();

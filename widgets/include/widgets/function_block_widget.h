@@ -1,29 +1,30 @@
 #pragma once
 
-#include <QWidget>
-#include <QVBoxLayout>
-#include <QLabel>
+#include <QString>
 
+#include "widgets/component_widget.h"
 #include <opendaq/function_block_ptr.h>
-#include <opendaq/recorder_ptr.h>
-#include <coreobjects/core_event_args_ptr.h>
 
 class ComponentTreeWidget;
 class InputPortFolderSelector;
-class QHBoxLayout;
 class QCheckBox;
+class QHBoxLayout;
+class QVBoxLayout;
 
-// Main widget for function block with all input ports
-class FunctionBlockWidget : public QWidget
+class FunctionBlockWidget : public ComponentWidget
 {
     Q_OBJECT
 
 public:
-    explicit FunctionBlockWidget(const daq::FunctionBlockPtr& functionBlock, ComponentTreeWidget* componentTree, QWidget* parent = nullptr);
+    explicit FunctionBlockWidget(const daq::FunctionBlockPtr& functionBlock,
+                                 ComponentTreeWidget* componentTree,
+                                 QWidget* parent = nullptr,
+                                 const QString& treeIconName = {});
     ~FunctionBlockWidget() override;
 
 private:
-    void setupRecorderControls();
+    void populateTabs() override;
+    void setupRecorderControls(QWidget* page, QVBoxLayout* layout);
 
 private Q_SLOTS:
     void onRecordingToggled(bool checked);
@@ -31,12 +32,9 @@ private Q_SLOTS:
 
 private:
     daq::FunctionBlockPtr functionBlock;
-    ComponentTreeWidget* componentTree;
-    QVBoxLayout* mainLayout;
-    InputPortFolderSelector* inputPortFolderSelector;
+    ComponentTreeWidget* componentTree = nullptr;
+    InputPortFolderSelector* inputPortFolderSelector = nullptr;
 
-    // Recorder controls
-    QCheckBox* recordingToggle;
-    QHBoxLayout* recorderLayout;
+    QCheckBox* recordingToggle = nullptr;
+    QHBoxLayout* recorderLayout = nullptr;
 };
-

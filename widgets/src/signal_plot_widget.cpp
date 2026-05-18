@@ -3,8 +3,10 @@
 #include <QChart>
 #include <QChartView>
 #include <QComboBox>
+#include <QDoubleValidator>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QLineSeries>
 #include <QTimer>
 #include <QValueAxis>
@@ -26,15 +28,19 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     rangeLabel->setStyleSheet("color: #6b7280; font-size: 13px;");
 
     rangeCombo = new QComboBox(topBar);
-    rangeCombo->addItem("1 ms",   0.001);
-    rangeCombo->addItem("10 ms",  0.01);
-    rangeCombo->addItem("100 ms", 0.1);
+    rangeCombo->addItem("0.001 s",   0.001);
+    rangeCombo->addItem("0.01 s",  0.01);
+    rangeCombo->addItem("0.1 s", 0.1);
     rangeCombo->addItem("1 s",    1.0);
     rangeCombo->addItem("10 s",   10.0);
+    rangeCombo->setEditable(true);
     rangeCombo->setCurrentIndex(3);  // default: 1 s
     rangeCombo->setStyleSheet(
         "QComboBox { font-size: 13px; padding: 2px 6px; }"
     );
+    rangeCombo->lineEdit()->setPlaceholderText(tr("sec"));
+    rangeCombo->lineEdit()->setValidator(
+        new QDoubleValidator(0.0001, 86400.0, 4, rangeCombo));
 
     topLayout->addWidget(rangeLabel);
     topLayout->addWidget(rangeCombo);
@@ -148,8 +154,18 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     timer->start();
 
     connect(rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
-        timeRangeSecs = rangeCombo->itemData(idx).toDouble();
-        points.clear();
+        if (idx >= 0) {
+            timeRangeSecs = rangeCombo->itemData(idx).toDouble();
+            points.clear();
+        }
+    });
+    connect(rangeCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
+        bool ok = false;
+        const double val = rangeCombo->currentText().toDouble(&ok);
+        if (ok && val > 0.0) {
+            timeRangeSecs = val;
+            points.clear();
+        }
     });
 }
 

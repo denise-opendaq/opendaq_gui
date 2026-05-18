@@ -4,86 +4,138 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
-#include <QGroupBox>
+#include <QFrame>
+#include <QLabel>
 #include <QMessageBox>
+#include <QScrollArea>
 #include <QSignalBlocker>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 #include <opendaq/recorder_ptr.h>
 
-// FunctionBlockWidget implementation
-FunctionBlockWidget::FunctionBlockWidget(const daq::FunctionBlockPtr& functionBlock, ComponentTreeWidget* componentTree, QWidget* parent)
-    : QWidget(parent)
-    , functionBlock(functionBlock)
-    , componentTree(componentTree)
-    , mainLayout(nullptr)
-    , inputPortFolderSelector(nullptr)
-    , recordingToggle(nullptr)
-    , recorderLayout(nullptr)
+FunctionBlockWidget::FunctionBlockWidget(const daq::FunctionBlockPtr& fb,
+                                         ComponentTreeWidget* tree,
+                                         QWidget* parent,
+                                         const QString& treeIcon)
+    : ComponentWidget(fb, parent, Qt::Uninitialized, treeIcon)
+    , functionBlock(fb)
+    , componentTree(tree)
 {
-    auto layout = new QVBoxLayout(this);
-    layout->setContentsMargins(10, 10, 10, 10);
-    layout->setSpacing(10);
-    mainLayout = layout;
-
-    // Setup recorder controls first (if supported)
-    setupRecorderControls();
-
-    // Create input port folder selector
-    inputPortFolderSelector = new InputPortFolderSelector(functionBlock.getItem("IP"), componentTree, this);
-    mainLayout->addWidget(inputPortFolderSelector);
+    setupUI();
 }
 
-FunctionBlockWidget::~FunctionBlockWidget()
+FunctionBlockWidget::~FunctionBlockWidget() = default;
+
+void FunctionBlockWidget::populateTabs()
 {
+    ComponentWidget::populateTabs();
+
+    auto* signalSelectorPage = new QWidget();
+    signalSelectorPage->setAttribute(Qt::WA_StyledBackground, true);
+    signalSelectorPage->setStyleSheet(QStringLiteral("background: transparent;"));
+
+    auto* layout = new QVBoxLayout(signalSelectorPage);
+    layout->setContentsMargins(16, 16, 16, 16);
+    layout->setSpacing(12);
+
+    setupRecorderControls(signalSelectorPage, layout);
+
+    auto* sectionTitle = new QLabel(tr("Input ports"), signalSelectorPage);
+    sectionTitle->setStyleSheet(
+        QStringLiteral("color: #111827; font-size: 16px; font-weight: 600;"
+                       " background: transparent; border: none;"));
+    layout->addWidget(sectionTitle);
+
+    auto* scroll = new QScrollArea(signalSelectorPage);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setWidgetResizable(true);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; border: none; }"));
+
+    auto* scrollContent = new QWidget();
+    scrollContent->setAttribute(Qt::WA_StyledBackground, true);
+    scrollContent->setStyleSheet(QStringLiteral("background: transparent;"));
+
+    auto* scrollLayout = new QVBoxLayout(scrollContent);
+    scrollLayout->setContentsMargins(0, 0, 0, 0);
+    scrollLayout->setSpacing(12);
+
+    inputPortFolderSelector = new InputPortFolderSelector(functionBlock.getItem("IP"), componentTree, scrollContent);
+    scrollLayout->addWidget(inputPortFolderSelector);
+    scrollLayout->addStretch();
+
+    scroll->setWidget(scrollContent);
+    layout->addWidget(scroll, 1);
+
+    tabs->addTab(signalSelectorPage, tr("Signal Selector"));
 }
 
-
-void FunctionBlockWidget::setupRecorderControls()
+void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layout)
 {
     if (!functionBlock.supportsInterface<daq::IRecorder>())
         return;
 
-    // Create group box for recorder controls
-    auto* groupBox = new QGroupBox("Recording", this);
+    auto* card = new QFrame(page);
+    card->setObjectName(QStringLiteral("recordingCard"));
+    card->setAttribute(Qt::WA_StyledBackground, true);
+    card->setStyleSheet(
+        QStringLiteral("QFrame#recordingCard {"
+                       "  background: #ffffff;"
+                       "  border: 1px solid #e5e7eb;"
+                       "  border-radius: 12px;"
+                       "}"));
 
-    // Create horizontal layout for recorder controls
-    recorderLayout = new QHBoxLayout(groupBox);
-    recorderLayout->setSpacing(10);
-    recorderLayout->setContentsMargins(10, 10, 10, 10);
+    auto* cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(0, 0, 0, 0);
+    cardLayout->setSpacing(0);
 
-    // Add label
-    auto* label = new QLabel("Recording", groupBox);
+    auto* cardHeader = new QWidget(card);
+    cardHeader->setAttribute(Qt::WA_StyledBackground, true);
+    cardHeader->setStyleSheet(QStringLiteral("background: transparent; border: none;"));
+    auto* cardHeaderLayout = new QHBoxLayout(cardHeader);
+    cardHeaderLayout->setContentsMargins(16, 12, 16, 12);
 
-    // Create recording toggle checkbox (without text, just the indicator)
-    recordingToggle = new QCheckBox(groupBox);
+    auto* titleLbl = new QLabel(tr("Recording"), cardHeader);
+    titleLbl->setStyleSheet(
+        QStringLiteral("color: #111827; font-size: 13px; font-weight: 600;"
+                       " background: transparent; border: none;"));
+    cardHeaderLayout->addWidget(titleLbl);
+    cardHeaderLayout->addStretch();
 
-    // Create container widget for toggle to match combo box width
-    auto* toggleContainer = new QWidget(groupBox);
-    toggleContainer->setMinimumWidth(300);
-    toggleContainer->setMaximumWidth(300);
-    auto* toggleLayout = new QHBoxLayout(toggleContainer);
-    toggleLayout->setContentsMargins(0, 0, 0, 0);
-    toggleLayout->addStretch();
-    toggleLayout->addWidget(recordingToggle);
+    cardLayout->addWidget(cardHeader);
 
-    // Add widgets to layout: label on left, toggle container on right
+    auto* headerSep = new QFrame(card);
+    headerSep->setFrameShape(QFrame::HLine);
+    headerSep->setStyleSheet(QStringLiteral("background: #e5e7eb; border: none; max-height: 1px;"));
+    cardLayout->addWidget(headerSep);
+
+    auto* body = new QWidget(card);
+    body->setAttribute(Qt::WA_StyledBackground, true);
+    body->setStyleSheet(QStringLiteral("background: transparent; border: none;"));
+
+    recorderLayout = new QHBoxLayout(body);
+    recorderLayout->setContentsMargins(16, 12, 16, 16);
+    recorderLayout->setSpacing(12);
+
+    auto* label = new QLabel(tr("Status"), body);
+    label->setStyleSheet(
+        QStringLiteral("color: #6b7280; font-size: 12px; font-weight: 600;"
+                       " background: transparent; border: none;"));
+
+    recordingToggle = new QCheckBox(body);
+    recordingToggle->setStyleSheet(
+        QStringLiteral("QCheckBox { spacing: 8px; font-size: 13px; color: #111827; }"
+                       "QCheckBox::indicator { width: 18px; height: 18px; }"));
+
     recorderLayout->addWidget(label);
-    recorderLayout->addWidget(toggleContainer);
+    recorderLayout->addStretch();
+    recorderLayout->addWidget(recordingToggle);
 
-    // Create a separate widget container for recorder
-    auto* recorderContainer = new QWidget(this);
-    auto* containerLayout = new QVBoxLayout(recorderContainer);
-    containerLayout->setContentsMargins(0, 0, 0, 0);
-    containerLayout->addWidget(groupBox);
+    cardLayout->addWidget(body);
+    layout->addWidget(card);
 
-    // Add recorder container to main layout (before inputPortsLayout)
-    mainLayout->insertWidget(0, recorderContainer);
-
-    // Connect toggle signal
     connect(recordingToggle, &QCheckBox::toggled, this, &FunctionBlockWidget::onRecordingToggled);
 
-    // Initial status update
     updateRecordingStatus();
 }
 
@@ -110,11 +162,11 @@ void FunctionBlockWidget::onRecordingToggled(bool checked)
     }
     catch (const std::exception& e)
     {
-        // Revert checkbox state on error
         QSignalBlocker blocker(recordingToggle);
         recordingToggle->setChecked(!checked);
 
-        QMessageBox::critical(this, "Recording Error", QString("Failed to toggle recording: %1").arg(e.what()));
+        QMessageBox::critical(this, tr("Recording Error"),
+                              tr("Failed to toggle recording: %1").arg(e.what()));
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to toggle recording: {}", e.what());
     }
@@ -128,9 +180,8 @@ void FunctionBlockWidget::updateRecordingStatus()
 
     try
     {
-        bool isRecording = recorder.getIsRecording();
+        const bool isRecording = recorder.getIsRecording();
 
-        // Block signals to avoid triggering onRecordingToggled
         QSignalBlocker blocker(recordingToggle);
         recordingToggle->setChecked(isRecording);
     }
@@ -140,5 +191,3 @@ void FunctionBlockWidget::updateRecordingStatus()
         LOG_W("Failed to get recording status: {}", e.what());
     }
 }
-
-

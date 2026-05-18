@@ -49,7 +49,7 @@ void SignalValueWidget::onScheduledUpdate()
         }
 
         // Display value with unit
-        if (!unitSymbol.isEmpty() && lastValue != "N/A" && !lastValue.startsWith("Error"))
+        if (!unitSymbol.isEmpty() && lastValue != QStringLiteral("N/A") && !lastValue.startsWith(QStringLiteral("Error")))
         {
             valueLabel->setText(QString("%1 %2").arg(lastValue, unitSymbol));
         }
@@ -108,47 +108,39 @@ void SignalValueWidget::updateSignalInfo()
 {
     try
     {
-        // Update signal name
         if (signal.assigned())
         {
-            signalNameLabel->setText(QString("Name: %1").arg(QString::fromStdString(signal.getName().toStdString())));
+            signalNameLabel->setText(QString::fromStdString(signal.getName().toStdString()));
 
             auto descriptor = signal.getDescriptor();
             if (descriptor.assigned())
             {
-                // Update unit
                 auto unit = descriptor.getUnit();
                 if (unit.assigned())
                 {
-                    QString unitSymbol = QString::fromStdString(unit.getSymbol().toStdString());
-                    QString unitQuantity = QString::fromStdString(unit.getQuantity().toStdString());
-                    signalUnitLabel->setText(QString("Unit: %1 (%2)").arg(unitSymbol, unitQuantity));
+                    const QString unitSymbol   = QString::fromStdString(unit.getSymbol().toStdString());
+                    const QString unitQuantity = QString::fromStdString(unit.getQuantity().toStdString());
+                    signalUnitLabel->setText(
+                        unitQuantity.isEmpty() ? unitSymbol : QStringLiteral("%1 (%2)").arg(unitSymbol, unitQuantity));
                 }
                 else
                 {
-                    signalUnitLabel->setText("Unit: N/A");
+                    signalUnitLabel->setText(QStringLiteral("—"));
                 }
 
-                // Check if it's a time-domain signal
                 if (isTimeDomainSignal())
                 {
-                    signalTypeLabel->setText("Type: Time Domain Signal");
+                    signalTypeLabel->setText(QStringLiteral("Time domain"));
 
-                    // Show origin if available
-                    auto origin = descriptor.getOrigin();
-                    if (!origin.toStdString().empty())
-                    {
-                        signalOriginLabel->setText(QString("Origin: %1").arg(QString::fromStdString(origin.toStdString())));
-                    }
-                    else
-                    {
-                        signalOriginLabel->setText("Origin: N/A");
-                    }
+                    const auto origin = descriptor.getOrigin();
+                    signalOriginLabel->setText(origin.toStdString().empty()
+                        ? QStringLiteral("—")
+                        : QString::fromStdString(origin.toStdString()));
                 }
                 else
                 {
-                    signalTypeLabel->setText("Type: Regular Signal");
-                    signalOriginLabel->setText("");
+                    signalTypeLabel->setText(QStringLiteral("Regular"));
+                    signalOriginLabel->setText(QStringLiteral("—"));
                 }
             }
         }

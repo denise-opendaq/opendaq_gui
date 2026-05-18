@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QScrollArea>
+#include <QShowEvent>
 #include <QTime>
 #include <QToolButton>
 #include <QUrl>
@@ -59,17 +60,6 @@ DeviceLogsWidget::DeviceLogsWidget(const daq::DevicePtr& dev, QWidget* parent)
         "color: #9ca3af; font-size: 12px; background: transparent; border: none;");
     cardHeaderLayout->addWidget(updatedLbl);
 
-    auto* refreshBtn = new QToolButton(cardHeader);
-    refreshBtn->setCursor(Qt::PointingHandCursor);
-    refreshBtn->setIcon(IconProvider::instance().icon("refresh"));
-    refreshBtn->setIconSize(QSize(16, 16));
-    refreshBtn->setToolTip(tr("Refresh"));
-    refreshBtn->setStyleSheet(
-        "QToolButton { border: 1px solid #e5e7eb; border-radius: 6px;"
-        "  padding: 4px; background: transparent; }"
-        "QToolButton:hover { background: #f3f4f6; }");
-    cardHeaderLayout->addWidget(refreshBtn);
-
     cardLayout->addWidget(cardHeader);
 
     auto* headerSep = new QFrame(card);
@@ -94,9 +84,11 @@ DeviceLogsWidget::DeviceLogsWidget(const daq::DevicePtr& dev, QWidget* parent)
     cardLayout->addWidget(scroll, 1);
 
     pageLayout->addWidget(card, 1);
+}
 
-    connect(refreshBtn, &QToolButton::clicked, this, &DeviceLogsWidget::refresh);
-
+void DeviceLogsWidget::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
     refresh();
 }
 

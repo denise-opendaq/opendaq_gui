@@ -3,6 +3,7 @@
 #include "widgets/function_block_widget.h"
 #include "component/component_tree_widget.h"
 #include <qt_widget_interface/qt_widget_interface.h>
+#include <opendaq/function_block.h>
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
@@ -78,8 +79,10 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
 
 QStringList FunctionBlockTreeElement::getAvailableTabNames() const
 {
-    QStringList tabs = Super::getAvailableTabNames();
-    tabs << "Signal Selector";    
+    QStringList tabs;
+    tabs << "Attributes";
+    if (daqComponent.supportsInterface<IQTWidget>())
+        tabs << "QTWidget";
     return tabs;
 }
 
@@ -87,12 +90,13 @@ void FunctionBlockTreeElement::openTab(const QString& tabName)
 {
     if (!layoutManager)
         return;
-        
-    if (tabName == "Signal Selector")
+
+    if (tabName == "Attributes")
     {
         auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-        auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
-        addTab(functionBlockWidget, tabName);
+        auto fb = daqComponent.asPtr<daq::IFunctionBlock>(true);
+        auto* widget = new FunctionBlockWidget(fb, componentTree, nullptr, iconName);
+        addTab(widget, tabName);
     }
     else
     {

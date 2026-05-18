@@ -81,10 +81,10 @@ void AddFunctionBlockDialog::setupUI()
     rightLayout->setContentsMargins(5, 5, 5, 5);
     rightLayout->setSpacing(5);
 
-    // Config label
-    auto* configLabel = new QLabel("Configuration:", this);
-    configLabel->setStyleSheet("font-weight: bold;");
-    rightLayout->addWidget(configLabel);
+    // // Config label
+    // auto* configLabel = new QLabel("Configuration:", this);
+    // configLabel->setStyleSheet("font-weight: bold;");
+    // rightLayout->addWidget(configLabel);
 
     // Config view (will be created when function block is selected)
     // Create empty PropertyObject for initial state

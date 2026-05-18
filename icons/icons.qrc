@@ -30,5 +30,6 @@
         <file>light_refresh.png</file>
         <file>server.png</file>
         <file>light_server.png</file>
+        <file>clear.png</file>
     </qresource>
 </RCC>

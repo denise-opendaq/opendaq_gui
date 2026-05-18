@@ -15,4 +15,5 @@ target_link_libraries(logger PUBLIC
     Qt6::Widgets
     daq::opendaq
     spdlog
+    context
 )
