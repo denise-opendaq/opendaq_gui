@@ -26,9 +26,13 @@ QMenu* FunctionBlockTreeElement::onCreateRightClickMenu(QWidget* parent)
     connect(removeAction, &QAction::triggered, this, &FunctionBlockTreeElement::onRemove);
     menu->insertAction(firstAction, removeAction);
 
-    QAction* addFBAction = new QAction("Add Function Block", menu);
-    connect(addFBAction, &QAction::triggered, this, &FunctionBlockTreeElement::onAddFunctionBlock);
-    menu->insertAction(firstAction, addFBAction);
+    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>(true);
+    if (functionBlock.getAvailableFunctionBlockTypes().getCount() > 0)
+    {
+        QAction* addFBAction = new QAction("Add Function Block", menu);
+        connect(addFBAction, &QAction::triggered, this, &FunctionBlockTreeElement::onAddFunctionBlock);
+        menu->insertAction(firstAction, addFBAction);
+    }
 
     menu->insertSeparator(firstAction);
 
