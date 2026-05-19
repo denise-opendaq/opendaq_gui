@@ -12,6 +12,25 @@
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
+namespace
+{
+
+void detachFromTree(QTreeWidgetItem* item, QTreeWidget* tree)
+{
+    if (auto* parent = item->parent())
+    {
+        parent->removeChild(item);
+    }
+    else if (tree)
+    {
+        const int index = tree->indexOfTopLevelItem(item);
+        if (index >= 0)
+            tree->takeTopLevelItem(index);
+    }
+}
+
+} // namespace
+
 BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QWidget* contentHost, QObject* parent)
     : QObject(parent)
     , tree(tree)
@@ -92,35 +111,21 @@ void BaseTreeElement::updateIcon()
 
 void BaseTreeElement::showFiltered(QTreeWidgetItem* parentTreeItem)
 {
-    bool isVisible = visible();
+    const bool isVisible = visible();
 
     if (treeItem)
     {
         treeItem->setHidden(!isVisible);
-        if (isVisible && parentTreeItem)
+
+        if (isVisible && parentTreeItem && treeItem->parent() != parentTreeItem)
         {
-            QTreeWidgetItem* currentParent = treeItem->parent();
-            if (currentParent != parentTreeItem)
-            {
-                if (currentParent)
-                {
-                    int index = currentParent->indexOfChild(treeItem);
-                    if (index >= 0)
-                        currentParent->takeChild(index);
-                }
-                else if (tree)
-                {
-                    int index = tree->indexOfTopLevelItem(treeItem);
-                    if (index >= 0)
-                        tree->takeTopLevelItem(index);
-                }
-                parentTreeItem->addChild(treeItem);
-            }
+            detachFromTree(treeItem, tree);
+            parentTreeItem->addChild(treeItem);
             treeItem->setExpanded(true);
         }
     }
 
-    QTreeWidgetItem* childParent = isVisible ? treeItem : parentTreeItem;
+    QTreeWidgetItem* childParent = (isVisible && treeItem) ? treeItem : parentTreeItem;
     for (const auto& [_, child] : children)
         child->showFiltered(childParent);
 }

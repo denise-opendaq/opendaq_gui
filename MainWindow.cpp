@@ -197,13 +197,7 @@ void MainWindow::setupUI()
 
     leftLayout->addWidget(componentTreeWidget);
 
-    QWidget* leftWrapper = new QWidget();
-    QVBoxLayout* leftWrapperLayout = new QVBoxLayout(leftWrapper);
-    leftWrapperLayout->setContentsMargins(0, 0, 0, 0);
-    leftWrapperLayout->setSpacing(0);
-    leftWrapperLayout->addWidget(leftWidget);
-
-    mainSplitter->addWidget(leftWrapper);
+    mainSplitter->addWidget(leftWidget);
     mainSplitter->addWidget(verticalSplitter);
     mainSplitter->setStretchFactor(0, 0);
     mainSplitter->setStretchFactor(1, 1);
@@ -309,7 +303,6 @@ void MainWindow::onLoadModuleTriggered()
     }
 
     const auto loggerComponent = AppContext::LoggerComponent();
-    QStringList errors;
 
     for (const QString& path : paths)
     {
@@ -320,10 +313,7 @@ void MainWindow::onLoadModuleTriggered()
         }
         catch (const std::exception& e)
         {
-            errors << tr("%1:\n%2").arg(path, e.what());
+            LOG_E("Failed to load module: {}", e.what());
         }
     }
-
-    if (!errors.isEmpty())
-        QMessageBox::critical(this, tr("Load Module"), tr("Failed to load module(s):\n\n%1").arg(errors.join("\n\n")));
 }
