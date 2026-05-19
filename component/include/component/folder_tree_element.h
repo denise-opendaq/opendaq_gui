@@ -3,15 +3,14 @@
 #include <opendaq/folder_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
 
-class QTabWidget;
-BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QTabWidget* contentTabs, QObject* parent);
+BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QWidget* contentHost, QObject* parent);
 
 class FolderTreeElement : public ComponentTreeElement
 {
     Q_OBJECT
 
 public:
-    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QTabWidget* contentTabs, QObject* parent = nullptr);
+    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent = nullptr);
 
     void init(BaseTreeElement* parent = nullptr) override;
 

@@ -5,8 +5,8 @@
 #include <QMetaObject>
 #include "context/AppContext.h"
 
-FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QTabWidget* contentTabs, QObject* parent)
-    : ComponentTreeElement(tree, daqFolder, contentTabs, parent)
+FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent)
+    : ComponentTreeElement(tree, daqFolder, contentHost, parent)
 {
     this->type = "Folder";
     this->iconName = "folder";
@@ -17,8 +17,8 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 {
     ComponentTreeElement::init(parent);
 
-    if (!contentTabs && parent)
-        contentTabs = parent->getContentTabs();
+    if (!contentHost && parent)
+        contentHost = parent->getContentHost();
 
     try
     {
@@ -26,7 +26,7 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 
         for (const auto& item : folder.getItems(daq::search::Any()))
         {
-            auto childElement = createTreeElement(tree, item, contentTabs, this);
+            auto childElement = createTreeElement(tree, item, contentHost, this);
             if (childElement)
                 addChild(std::unique_ptr<BaseTreeElement>(childElement));
         }
@@ -49,8 +49,8 @@ bool FolderTreeElement::visible() const
 
 void FolderTreeElement::refresh()
 {
-    if (!contentTabs && parentElement)
-        contentTabs = parentElement->getContentTabs();
+    if (!contentHost && parentElement)
+        contentHost = parentElement->getContentHost();
 
     try
     {
@@ -63,7 +63,7 @@ void FolderTreeElement::refresh()
 
             if (children.find(itemLocalId) == children.end())
             {
-                auto childElement = createTreeElement(tree, item, contentTabs, this);
+                auto childElement = createTreeElement(tree, item, contentHost, this);
                 if (childElement)
                     addChild(std::unique_ptr<BaseTreeElement>(childElement));
             }

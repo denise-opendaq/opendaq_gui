@@ -8,7 +8,7 @@ class DevicesFolderTreeElement : public FolderTreeElement
     Q_OBJECT
 
 public:
-    DevicesFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QTabWidget* contentTabs, QObject* parent = nullptr);
+    DevicesFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent = nullptr);
 
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;

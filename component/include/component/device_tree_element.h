@@ -10,7 +10,7 @@ class DeviceTreeElement : public FolderTreeElement
     
 
 public:
-    DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QTabWidget* contentTabs, QObject* parent = nullptr);
+    DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QWidget* contentHost, QObject* parent = nullptr);
 
     void init(BaseTreeElement* parent = nullptr) override;
 
@@ -21,8 +21,7 @@ public:
 
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args) override;
 
-    QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName) override;
+    void openTab() override;
 
 public Q_SLOTS:
     void onAddDevice();

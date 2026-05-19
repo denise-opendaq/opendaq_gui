@@ -8,8 +8,7 @@ class SignalTreeElement : public ComponentTreeElement
     using Super = ComponentTreeElement;
 
 public:
-    SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QTabWidget* contentTabs, QObject* parent = nullptr);
+    SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QWidget* contentHost, QObject* parent = nullptr);
 
-    QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName) override;
+    void openTab() override;
 };

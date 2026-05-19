@@ -15,7 +15,7 @@
 #include "context/AppContext.h"
 #include <opendaq/custom_log.h>
 
-BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QTabWidget* contentTabs, QObject* parent)
+BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QWidget* contentHost, QObject* parent)
 {
     if (!component.assigned())
     {
@@ -27,36 +27,36 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
     try
     {
         if (auto dev = component.asPtrOrNull<daq::IDevice>(); dev.assigned())
-            return new DeviceTreeElement(tree, dev, contentTabs, parent);
+            return new DeviceTreeElement(tree, dev, contentHost, parent);
 
         if (auto fb = component.asPtrOrNull<daq::IFunctionBlock>(); fb.assigned())
-            return new FunctionBlockTreeElement(tree, fb, contentTabs, parent);
+            return new FunctionBlockTreeElement(tree, fb, contentHost, parent);
 
         if (auto server = component.asPtrOrNull<daq::IServer>(); server.assigned())
-            return new ServerTreeElement(tree, server, contentTabs, parent);
+            return new ServerTreeElement(tree, server, contentHost, parent);
 
         if (auto folder = component.asPtrOrNull<daq::IFolder>(); folder.assigned())
         {
             auto localId = folder.getLocalId();
             if (localId == "Dev")
-                return new DevicesFolderTreeElement(tree, folder, contentTabs, parent);
+                return new DevicesFolderTreeElement(tree, folder, contentHost, parent);
             if (localId == "FB")
-                return new FunctionBlocksFolderTreeElement(tree, folder, contentTabs, parent);
+                return new FunctionBlocksFolderTreeElement(tree, folder, contentHost, parent);
             if (localId == "Srv")
-                return new ServersFolderTreeElement(tree, folder, contentTabs, parent);
+                return new ServersFolderTreeElement(tree, folder, contentHost, parent);
             if (localId == "IP")
-                return new InputPortFolderTreeElement(tree, folder, contentTabs, parent);
+                return new InputPortFolderTreeElement(tree, folder, contentHost, parent);
 
-            return new FolderTreeElement(tree, folder, contentTabs, parent);
+            return new FolderTreeElement(tree, folder, contentHost, parent);
         }
 
         if (auto sig = component.asPtrOrNull<daq::ISignal>(); sig.assigned())
-            return new SignalTreeElement(tree, sig, contentTabs, parent);
+            return new SignalTreeElement(tree, sig, contentHost, parent);
 
         if (auto ip = component.asPtrOrNull<daq::IInputPort>(); ip.assigned())
-            return new InputPortTreeElement(tree, ip, contentTabs, parent);
+            return new InputPortTreeElement(tree, ip, contentHost, parent);
 
-        return new ComponentTreeElement(tree, component, contentTabs, parent);
+        return new ComponentTreeElement(tree, component, contentHost, parent);
     }
     catch (const std::exception& e)
     {

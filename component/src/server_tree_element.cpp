@@ -7,8 +7,8 @@
 #include <opendaq/instance_ptr.h>
 #include <opendaq/server_ptr.h>
 
-ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QTabWidget* contentTabs, QObject* parent)
-    : FolderTreeElement(tree, daqServer, contentTabs, parent)
+ServerTreeElement::ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QWidget* contentHost, QObject* parent)
+    : FolderTreeElement(tree, daqServer, contentHost, parent)
     , discoveryIsEnabled(false)
 {
     this->type = "Server";

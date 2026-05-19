@@ -5,7 +5,6 @@
 
 class BaseTreeElement;
 class AppContext;
-class QTabWidget;
 
 namespace daq
 {
@@ -18,14 +17,14 @@ class ComponentTreeWidget : public QTreeWidget
     Q_OBJECT
 
 public:
-    ComponentTreeWidget(QTabWidget* contentTabs, QWidget* parent = nullptr);
+    ComponentTreeWidget(QWidget* contentHost, QWidget* parent = nullptr);
     ~ComponentTreeWidget() override;
 
     // Load openDAQ instance into the tree
     void loadInstance(const daq::InstancePtr& instance);
 
-    // Set content tabs (for elements created after construction)
-    void setContentTabs(QTabWidget* contentTabs);
+    // Set content host (for elements created after construction)
+    void setContentHost(QWidget* contentHost);
 
     // Get the selected BaseTreeElement
     BaseTreeElement* getSelectedElement() const;
@@ -56,6 +55,6 @@ private:
     bool applySearchFilter(QTreeWidgetItem* item, const QString& filter);
 
     std::unique_ptr<BaseTreeElement> rootElement;
-    QTabWidget* contentTabs = nullptr;
+    QWidget* contentHost = nullptr;
     QString m_searchFilter;
 };

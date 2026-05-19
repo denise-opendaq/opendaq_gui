@@ -11,8 +11,6 @@
 #include <memory>
 #include <map>
 
-class QTabWidget;
-
 class BaseTreeElement;
 
 class BaseTreeElement : public QObject
@@ -20,7 +18,7 @@ class BaseTreeElement : public QObject
     Q_OBJECT
 
 public:
-    BaseTreeElement(QTreeWidget* tree, QTabWidget* contentTabs, QObject* parent = nullptr);
+    BaseTreeElement(QTreeWidget* tree, QWidget* contentHost, QObject* parent = nullptr);
     virtual ~BaseTreeElement();
 
     virtual void init(BaseTreeElement* parent = nullptr);
@@ -37,24 +35,22 @@ public:
 
     void removeChild(BaseTreeElement* child);
 
-    // Close all tabs associated with this component
-    void closeTabs();
+    // Remove the content widget associated with this element (if currently shown).
+    void clearContent();
 
     BaseTreeElement* getChild(const QString& path);
 
     // Called when this element is selected in the tree
     virtual void onSelected();
 
-    // Get list of available tab names for this component
-    virtual QStringList getAvailableTabNames() const;
+    // Build and add the element's content widget into the shared content host.
+    // Default implementation does nothing — subclasses override to populate.
+    virtual void openTab();
 
-    // Open a specific tab by name (subclasses construct the widget and call addTab)
-    virtual void openTab(const QString& tabName);
-
-    // Add a tab into the shared content tab widget. Sets the
+    // Replace the content of the shared host with `widget`. Sets the
     // "componentGlobalId" property on the widget so it can be matched later
     // (e.g. for cleanup when the component is removed).
-    void addTab(QWidget* tab, const QString& tabName);
+    void setContent(QWidget* widget);
 
     // Create right-click context menu
     virtual QMenu* onCreateRightClickMenu(QWidget* parent);
@@ -67,14 +63,14 @@ public:
     QTreeWidgetItem* getTreeItem() const { return treeItem; }
     BaseTreeElement* getParent() const { return parentElement; }
     QMap<QString, BaseTreeElement*> getChildren() const;
-    QTabWidget* getContentTabs() const { return contentTabs; }
+    QWidget* getContentHost() const { return contentHost; }
 
 protected:
     QTreeWidget* tree;
     QTreeWidgetItem* treeItem;
     BaseTreeElement* parentElement;
     std::map<QString, std::unique_ptr<BaseTreeElement>> children;
-    QPointer<QTabWidget> contentTabs;
+    QPointer<QWidget> contentHost;
 
     QString localId;
     QString globalId;

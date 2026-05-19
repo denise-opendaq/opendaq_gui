@@ -3,13 +3,12 @@
 #include "context/AppContext.h"
 #include <functional>
 #include <QMessageBox>
-#include <QTabWidget>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
-ComponentTreeWidget::ComponentTreeWidget(QTabWidget* contentTabs, QWidget* parent)
+ComponentTreeWidget::ComponentTreeWidget(QWidget* contentHost, QWidget* parent)
     : QTreeWidget(parent)
-    , contentTabs(contentTabs)
+    , contentHost(contentHost)
 {
     setupUI();
 }
@@ -31,14 +30,14 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
     try
     {
-        if (!contentTabs)
+        if (!contentHost)
         {
             const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_E("ComponentTreeWidget::loadInstance: contentTabs is null");
+            LOG_E("ComponentTreeWidget::loadInstance: contentHost is null");
             return;
         }
 
-        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), contentTabs);
+        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), contentHost);
         rootElement->init();
 
         if (rootElement->getTreeItem())
@@ -55,9 +54,9 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
     }
 }
 
-void ComponentTreeWidget::setContentTabs(QTabWidget* contentTabs)
+void ComponentTreeWidget::setContentHost(QWidget* contentHost)
 {
-    this->contentTabs = contentTabs;
+    this->contentHost = contentHost;
 }
 
 BaseTreeElement* ComponentTreeWidget::getSelectedElement() const

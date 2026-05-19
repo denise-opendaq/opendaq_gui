@@ -8,7 +8,7 @@ class ServerTreeElement : public FolderTreeElement
     Q_OBJECT
 
 public:
-    ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QTabWidget* contentTabs, QObject* parent = nullptr);
+    ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QWidget* contentHost, QObject* parent = nullptr);
 
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;

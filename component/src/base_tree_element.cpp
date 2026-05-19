@@ -3,8 +3,8 @@
 #include "context/AppContext.h"
 #include <QApplication>
 #include <QLabel>
+#include <QLayout>
 #include <QMenu>
-#include <QTabWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
@@ -12,22 +12,22 @@
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
-BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QTabWidget* contentTabs, QObject* parent)
+BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QWidget* contentHost, QObject* parent)
     : QObject(parent)
     , tree(tree)
     , treeItem(nullptr)
     , parentElement(nullptr)
-    , contentTabs(contentTabs)
+    , contentHost(contentHost)
     , localId("/")
     , globalId("/")
     , name(localId)
     , type("PropertyObject")
     , iconName("")
 {
-    if (!contentTabs)
+    if (!contentHost)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("BaseTreeElement: contentTabs is null in constructor for '{}'", name.toStdString());
+        LOG_W("BaseTreeElement: contentHost is null in constructor for '{}'", name.toStdString());
     }
 }
 
@@ -133,22 +133,31 @@ BaseTreeElement* BaseTreeElement::addChild(std::unique_ptr<BaseTreeElement> chil
     return rawPtr;
 }
 
-void BaseTreeElement::closeTabs()
+void BaseTreeElement::clearContent()
 {
-    if (!contentTabs)
+    if (!contentHost)
         return;
 
-    for (int i = contentTabs->count() - 1; i >= 0; --i)
+    QLayout* layout = contentHost->layout();
+    if (!layout)
+        return;
+
+    // Walk the host's children and drop any widget that belongs to this element.
+    // In practice there is at most one (the host is single-slot), but iterate
+    // defensively to keep the operation idempotent.
+    for (int i = layout->count() - 1; i >= 0; --i)
     {
-        QWidget* tabPage = contentTabs->widget(i);
-        if (!tabPage)
+        QLayoutItem* item = layout->itemAt(i);
+        QWidget* w = item ? item->widget() : nullptr;
+        if (!w)
             continue;
 
-        const QVariant tabGlobalId = tabPage->property("componentGlobalId");
-        if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
+        const QVariant id = w->property("componentGlobalId");
+        if (id.isValid() && id.toString() == globalId)
         {
-            contentTabs->removeTab(i);
-            tabPage->deleteLater();
+            layout->removeWidget(w);
+            w->setParent(nullptr);
+            w->deleteLater();
         }
     }
 }
@@ -157,7 +166,7 @@ void BaseTreeElement::removeChild(BaseTreeElement* child)
 {
     if (child && children.find(child->localId) != children.end())
     {
-        child->closeTabs();
+        child->clearContent();
         children.erase(child->localId);
     }
 }
@@ -212,31 +221,42 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 
 void BaseTreeElement::onSelected()
 {
-    const QStringList availableTabs = getAvailableTabNames();
-    for (const QString& tabName : availableTabs)
-        openTab(tabName);
+    openTab();
 }
 
-QStringList BaseTreeElement::getAvailableTabNames() const
+void BaseTreeElement::openTab()
 {
-    return QStringList();
 }
 
-void BaseTreeElement::openTab(const QString& tabName)
+void BaseTreeElement::setContent(QWidget* widget)
 {
-    Q_UNUSED(tabName);
-}
-
-void BaseTreeElement::addTab(QWidget* tab, const QString& tabName)
-{
-    if (!tab || !contentTabs)
+    if (!widget || !contentHost)
         return;
 
-    const QString fullTabName = name + " - " + tabName;
-    const int idx = contentTabs->addTab(tab, fullTabName);
-    contentTabs->setCurrentIndex(idx);
+    QLayout* layout = contentHost->layout();
+    if (!layout)
+    {
+        auto* vbox = new QVBoxLayout(contentHost);
+        vbox->setContentsMargins(0, 0, 0, 0);
+        vbox->setSpacing(0);
+        layout = vbox;
+    }
 
-    tab->setProperty("componentGlobalId", globalId);
+    // Drop whatever was shown previously — the host is single-slot.
+    while (QLayoutItem* item = layout->takeAt(0))
+    {
+        if (QWidget* w = item->widget())
+        {
+            w->setParent(nullptr);
+            w->deleteLater();
+        }
+        delete item;
+    }
+
+    widget->setProperty("componentGlobalId", globalId);
+    widget->setParent(contentHost);
+    layout->addWidget(widget);
+    widget->show();
 }
 
 QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)

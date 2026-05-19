@@ -16,8 +16,8 @@
 #include <QFile>
 #include <QTextStream>
 
-DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QTabWidget* contentTabs, QObject* parent)
-    : Super(tree, daqDevice, contentTabs, parent)
+DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QWidget* contentHost, QObject* parent)
+    : Super(tree, daqDevice, contentHost, parent)
 {
     this->type = "Device";
     this->iconName = "device";
@@ -286,25 +286,11 @@ void DeviceTreeElement::onSaveConfiguration()
     }
 }
 
-QStringList DeviceTreeElement::getAvailableTabNames() const
+void DeviceTreeElement::openTab()
 {
-    QStringList tabs;
-    tabs << "Attributes";
-    return tabs;
-}
-
-void DeviceTreeElement::openTab(const QString& tabName)
-{
-    if (tabName == "Attributes")
-    {
-        auto device = daqComponent.asPtr<daq::IDevice>(true);
-        auto* widget = new DeviceWidget(device, nullptr, iconName);
-        addTab(widget, tabName);
-    }
-    else
-    {
-        Super::openTab(tabName);
-    }
+    auto device = daqComponent.asPtr<daq::IDevice>(true);
+    auto* widget = new DeviceWidget(device, nullptr, iconName);
+    setContent(widget);
 }
 
 void DeviceTreeElement::onLoadConfiguration()

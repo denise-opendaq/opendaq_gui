@@ -8,8 +8,8 @@
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QTabWidget* contentTabs, QObject* parent)
-    : FolderTreeElement(tree, daqFunctionBlock, contentTabs, parent)
+FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QWidget* contentHost, QObject* parent)
+    : FolderTreeElement(tree, daqFunctionBlock, contentHost, parent)
 {
     this->type = "FunctionBlock";
     this->iconName = "function_block";
@@ -81,29 +81,15 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
     }
 }
 
-QStringList FunctionBlockTreeElement::getAvailableTabNames() const
+void FunctionBlockTreeElement::openTab()
 {
-    QStringList tabs;
-    tabs << "Attributes";
-    return tabs;
-}
-
-void FunctionBlockTreeElement::openTab(const QString& tabName)
-{
-    if (!contentTabs)
+    if (!contentHost)
         return;
 
-    if (tabName == "Attributes")
-    {
-        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-        auto fb = daqComponent.asPtr<daq::IFunctionBlock>(true);
-        auto* widget = new FunctionBlockWidget(fb, componentTree, nullptr, iconName);
-        addTab(widget, tabName);
-    }
-    else
-    {
-        Super::openTab(tabName);
-    }
+    auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+    auto fb = daqComponent.asPtr<daq::IFunctionBlock>(true);
+    auto* widget = new FunctionBlockWidget(fb, componentTree, nullptr, iconName);
+    setContent(widget);
 }
 
 daq::FunctionBlockPtr FunctionBlockTreeElement::getFunctionBlock() const

@@ -3,35 +3,21 @@
 #include "component/component_tree_widget.h"
 #include <qt_widget_interface/qt_widget_interface.h>
 
-InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, QTabWidget* contentTabs, QObject* parent)
-    : ComponentTreeElement(tree, daqInputPort, contentTabs, parent)
+InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, QWidget* contentHost, QObject* parent)
+    : ComponentTreeElement(tree, daqInputPort, contentHost, parent)
 {
     this->type = "InputPort";
     this->iconName = "input_port";
 }
 
-QStringList InputPortTreeElement::getAvailableTabNames() const
+void InputPortTreeElement::openTab()
 {
-    QStringList tabs;
-    tabs << "Attributes";
-    return tabs;
-}
-
-void InputPortTreeElement::openTab(const QString& tabName)
-{
-    if (!contentTabs)
+    if (!contentHost)
         return;
 
-    if (tabName == "Attributes")
-    {
-        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-        auto* widget = new InputPortWidget(getInputPort(), componentTree, nullptr, iconName);
-        addTab(widget, tabName);
-    }
-    else
-    {
-        Super::openTab(tabName);
-    }
+    auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+    auto* widget = new InputPortWidget(getInputPort(), componentTree, nullptr, iconName);
+    setContent(widget);
 }
 
 daq::InputPortPtr InputPortTreeElement::getInputPort() const
