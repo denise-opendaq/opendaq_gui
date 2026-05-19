@@ -8,8 +8,8 @@
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, LayoutManager* layoutManager, QObject* parent)
-    : FolderTreeElement(tree, daqFunctionBlock, layoutManager, parent)
+FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QTabWidget* contentTabs, QObject* parent)
+    : FolderTreeElement(tree, daqFunctionBlock, contentTabs, parent)
 {
     this->type = "FunctionBlock";
     this->iconName = "function_block";
@@ -85,14 +85,12 @@ QStringList FunctionBlockTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
     tabs << "Attributes";
-    if (daqComponent.supportsInterface<IQTWidget>())
-        tabs << "QTWidget";
     return tabs;
 }
 
 void FunctionBlockTreeElement::openTab(const QString& tabName)
 {
-    if (!layoutManager)
+    if (!contentTabs)
         return;
 
     if (tabName == "Attributes")

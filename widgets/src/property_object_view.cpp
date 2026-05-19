@@ -125,33 +125,34 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
         "  border: none;"
         "}"
         "QLabel#propertiesTitle {"
-        "  color: #111827;"
+        "  color: palette(text);"
         "  font-size: 16px;"
         "  font-weight: 600;"
         "}"
         "QLineEdit#propertySearch {"
-        "  background: #f9fafb;"
-        "  border: 1px solid #e5e7eb;"
+        "  background: palette(alternate-base);"
+        "  border: 1px solid palette(mid);"
         "  border-radius: 10px;"
         "  padding: 9px 12px;"
-        "  color: #111827;"
+        "  color: palette(text);"
         "}"
         "QLineEdit#propertySearch:focus {"
-        "  border-color: #cbd5e1;"
-        "  background: #ffffff;"
+        "  border-color: palette(highlight);"
+        "  background: palette(base);"
         "}"
         "QTreeWidget#propertyTree {"
         "  background: transparent;"
         "  border: none;"
         "  outline: none;"
+        "  color: palette(text);"
         "}"
         "QTreeWidget#propertyTree::item {"
         "  padding: 7px 8px;"
-        "  color: #111827;"
+        "  color: palette(text);"
         "}"
         "QTreeWidget#propertyTree::item:selected {"
-        "  background: #eff6ff;"
-        "  color: #111827;"
+        "  background: palette(midlight);"
+        "  color: palette(text);"
         "}"
         "QTreeWidget#propertyTree::branch {"
         "  background: transparent;"
@@ -159,14 +160,13 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
         "QHeaderView::section {"
         "  background: transparent;"
         "  border: none;"
-        "  border-bottom: 1px solid #e5e7eb;"
+        "  border-bottom: 1px solid palette(mid);"
         "  padding: 10px 8px 8px 8px;"
-        "  color: #6b7280;"
+        "  color: palette(placeholder-text);"
         "  font-weight: 600;"
         "}"
         "QSplitter::handle {"
         "  background: transparent;"
-        // "  width: 12px;"
         "}"
     );
 
@@ -602,7 +602,10 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         sectionFont.setBold(true);
         it->setFont(0, sectionFont);
         it->setFont(1, sectionFont);
-        const QColor sectionBackground(0xF8, 0xFA, 0xFC);
+        // Subtle tint over palette(base): mix text color with low alpha so it
+        // works in both light and dark themes.
+        QColor sectionBackground = view.palette().color(QPalette::Text);
+        sectionBackground.setAlpha(14);
         it->setBackground(0, sectionBackground);
         it->setBackground(1, sectionBackground);
         it->setFirstColumnSpanned(true);

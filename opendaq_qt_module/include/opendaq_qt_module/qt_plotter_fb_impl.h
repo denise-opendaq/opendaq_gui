@@ -148,7 +148,8 @@ public:
     // Implement IQTWidget interface
     void initWidget();
     ErrCode getWidget(struct QWidget** widget) override;
-    
+    ErrCode getName(daq::IString** name) override;
+
     // Widget initialization helpers
     void createChart();
     void createWidget();

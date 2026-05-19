@@ -5,6 +5,8 @@
 #include "widgets/signal_descriptor_widget.h"
 #include "widgets/signal_plot_widget.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/QueuedEventHandler.h"
 #include <QCheckBox>
 #include <QDateTime>
@@ -49,13 +51,7 @@ QWidget* SignalWidget::buildHeaderCard()
     auto* card = new QWidget(this);
     card->setObjectName("signalHeaderCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        "QWidget#signalHeaderCard {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
-        "  border-radius: 16px;"
-        "}"
-    );
+    card->setStyleSheet(GUIStyles::cardStyle("signalHeaderCard"));
 
     auto* cardLayout = new QHBoxLayout(card);
     cardLayout->setContentsMargins(20, 16, 20, 16);
@@ -70,14 +66,7 @@ QWidget* SignalWidget::buildHeaderCard()
     leftLayout->setSpacing(4);
 
     nameLabel = new QLabel(leftBlock);
-    nameLabel->setObjectName("signalNameLabel");
-    nameLabel->setStyleSheet(
-        "QLabel#signalNameLabel {"
-        "  font-size: 20px;"
-        "  font-weight: 700;"
-        "  color: #111827;"
-        "}"
-    );
+    nameLabel->setStyleSheet(GUIStyles::HEADER_TITLE_LABEL);
     leftLayout->addWidget(nameLabel);
 
     tagsRow = new QWidget(leftBlock);
@@ -87,13 +76,7 @@ QWidget* SignalWidget::buildHeaderCard()
     leftLayout->addWidget(tagsRow);
 
     descLabel = new QLabel(leftBlock);
-    descLabel->setObjectName("signalDescLabel");
-    descLabel->setStyleSheet(
-        "QLabel#signalDescLabel {"
-        "  font-size: 13px;"
-        "  color: #6b7280;"
-        "}"
-    );
+    descLabel->setStyleSheet(GUIStyles::DESCRIPTION_LABEL);
     leftLayout->addWidget(descLabel);
 
     // Status + Public toggle row
@@ -108,11 +91,12 @@ QWidget* SignalWidget::buildHeaderCard()
     statusLabel->installEventFilter(this);
 
     auto* publicCaption = new QLabel(tr("Public:"), statusRow);
-    publicCaption->setStyleSheet("color: #6b7280; font-size: 13px;");
+    publicCaption->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
     publicCheckBox = new QCheckBox(statusRow);
     publicCheckBox->setStyleSheet(
-        "QCheckBox { color: #1d4ed8; font-size: 13px; font-weight: 600; }"
+        QStringLiteral("QCheckBox { color: %1; font-size: 13px; font-weight: 600; }")
+            .arg(GUIConstants::Colors::ACCENT)
     );
 
     statusRowLayout->addWidget(statusLabel);
@@ -127,7 +111,7 @@ QWidget* SignalWidget::buildHeaderCard()
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
     statusSep->setFrameShadow(QFrame::Plain);
-    statusSep->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+    statusSep->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
     statusSep->setVisible(false);
     cardLayout->addWidget(statusSep);
 
@@ -145,7 +129,7 @@ QWidget* SignalWidget::buildHeaderCard()
         auto* vLine = new QFrame(card);
         vLine->setFrameShape(QFrame::VLine);
         vLine->setFrameShadow(QFrame::Plain);
-        vLine->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+        vLine->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
         cardLayout->addWidget(vLine);
     }
 
@@ -163,10 +147,10 @@ QWidget* SignalWidget::buildHeaderCard()
         rl->setSpacing(12);
 
         auto* lbl = new QLabel(caption, row);
-        lbl->setStyleSheet("color: #6b7280; font-size: 13px; min-width: 80px;");
+        lbl->setStyleSheet(QString(GUIStyles::CAPTION_LABEL) + " min-width: 80px;");
 
         valueOut = new QLabel(row);
-        valueOut->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
+        valueOut->setStyleSheet(GUIStyles::VALUE_LABEL);
         valueOut->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
         rl->addWidget(lbl);

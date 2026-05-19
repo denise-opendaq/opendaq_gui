@@ -1,8 +1,8 @@
 #include "component/signal_tree_element.h"
 #include "widgets/signal_widget.h"
 
-SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, LayoutManager* layoutManager, QObject* parent)
-    : ComponentTreeElement(tree, daqSignal, layoutManager, parent)
+SignalTreeElement::SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QTabWidget* contentTabs, QObject* parent)
+    : ComponentTreeElement(tree, daqSignal, contentTabs, parent)
 {
     this->type = "Signal";
     this->iconName = "signal";

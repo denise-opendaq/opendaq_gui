@@ -1,6 +1,7 @@
 #include "widgets/function_block_widget.h"
 #include "widgets/input_port_folder_selector.h"
 #include "context/AppContext.h"
+#include "context/gui_styles.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QCheckBox>
@@ -41,9 +42,7 @@ void FunctionBlockWidget::populateTabs()
     setupRecorderControls(signalSelectorPage, layout);
 
     auto* sectionTitle = new QLabel(tr("Input ports"), signalSelectorPage);
-    sectionTitle->setStyleSheet(
-        QStringLiteral("color: #111827; font-size: 16px; font-weight: 600;"
-                       " background: transparent; border: none;"));
+    sectionTitle->setStyleSheet(GUIStyles::SECTION_TITLE_LABEL);
     layout->addWidget(sectionTitle);
 
     auto* scroll = new QScrollArea(signalSelectorPage);
@@ -78,12 +77,7 @@ void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layo
     auto* card = new QFrame(page);
     card->setObjectName(QStringLiteral("recordingCard"));
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        QStringLiteral("QFrame#recordingCard {"
-                       "  background: #ffffff;"
-                       "  border: 1px solid #e5e7eb;"
-                       "  border-radius: 12px;"
-                       "}"));
+    card->setStyleSheet(GUIStyles::cardStyle("recordingCard", "QFrame", 12));
 
     auto* cardLayout = new QVBoxLayout(card);
     cardLayout->setContentsMargins(0, 0, 0, 0);
@@ -97,7 +91,7 @@ void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layo
 
     auto* titleLbl = new QLabel(tr("Recording"), cardHeader);
     titleLbl->setStyleSheet(
-        QStringLiteral("color: #111827; font-size: 13px; font-weight: 600;"
+        QStringLiteral("color: palette(text); font-size: 13px; font-weight: 600;"
                        " background: transparent; border: none;"));
     cardHeaderLayout->addWidget(titleLbl);
     cardHeaderLayout->addStretch();
@@ -106,7 +100,7 @@ void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layo
 
     auto* headerSep = new QFrame(card);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet(QStringLiteral("background: #e5e7eb; border: none; max-height: 1px;"));
+    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
     cardLayout->addWidget(headerSep);
 
     auto* body = new QWidget(card);
@@ -119,12 +113,12 @@ void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layo
 
     auto* label = new QLabel(tr("Status"), body);
     label->setStyleSheet(
-        QStringLiteral("color: #6b7280; font-size: 12px; font-weight: 600;"
+        QStringLiteral("color: palette(placeholder-text); font-size: 12px; font-weight: 600;"
                        " background: transparent; border: none;"));
 
     recordingToggle = new QCheckBox(body);
     recordingToggle->setStyleSheet(
-        QStringLiteral("QCheckBox { spacing: 8px; font-size: 13px; color: #111827; }"
+        QStringLiteral("QCheckBox { spacing: 8px; font-size: 13px; color: palette(text); }"
                        "QCheckBox::indicator { width: 18px; height: 18px; }"));
 
     recorderLayout->addWidget(label);

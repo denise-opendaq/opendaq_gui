@@ -1,20 +1,18 @@
 #pragma once
 
-#include <QMainWindow>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QSplitter>
 #include <QList>
-#include <QStringList>
-#include <QMap>
-#include <QEvent>
+#include <QMainWindow>
 #include <QShowEvent>
 
-#include "LayoutManager.h"
 #include "UpdateChecker.h"
 #include "context/release_asset.h"
 
-class DetachedWindow;
+class QAction;
+class QLineEdit;
+class QMenu;
+class QSplitter;
+class QTabWidget;
+
 class BaseTreeElement;
 class ComponentTreeWidget;
 
@@ -27,42 +25,37 @@ public:
     ~MainWindow() override;
 
 protected:
-    bool eventFilter(QObject* obj, QEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
-    void changeEvent(QEvent* event) override;
     void showEvent(QShowEvent* event) override;
-    void setGeometry(const QRect& rect);
 
 private:
     void setupUI();
     void setupMenuBar();
-    void stopAllAnimations();
+    void closeAllTabs();
 
 private Q_SLOTS:
     void onShowHiddenComponentsToggled(bool checked);
     void onComponentSelected(BaseTreeElement* element);
+    void onContentTabCloseRequested(int index);
     void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
                            const QList<ReleaseAsset>& assets);
     void onLoadModuleTriggered();
 
 private:
     // Main splitters
-    QSplitter* mainSplitter = nullptr;      // Horizontal: left + right
-    QSplitter* verticalSplitter = nullptr;  // Vertical: tabs + log
-    QSplitter* contentSplitter = nullptr;   // Root for split views in content area
+    QSplitter* mainSplitter = nullptr;
+    QSplitter* verticalSplitter = nullptr;
+
+    // Content area
+    QTabWidget* contentTabs = nullptr;
 
     // Left panel
     QLineEdit* searchBox = nullptr;
     ComponentTreeWidget* componentTreeWidget = nullptr;
 
-    // Layout manager for tab and window management
-    LayoutManager* layoutManager = nullptr;
-
     // Menu
     QAction* showHiddenAction = nullptr;
     QAction* expandAllPropertiesAction = nullptr;
-    QAction* resetLayoutAction = nullptr;
-    QMenu* availableTabsMenu = nullptr;
+    QAction* closeAllTabsAction = nullptr;
 
     UpdateChecker* m_updateChecker = nullptr;
 };

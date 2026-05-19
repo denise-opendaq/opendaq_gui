@@ -3,8 +3,8 @@
 #include "component/component_tree_widget.h"
 #include <qt_widget_interface/qt_widget_interface.h>
 
-InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, LayoutManager* layoutManager, QObject* parent)
-    : ComponentTreeElement(tree, daqInputPort, layoutManager, parent)
+InputPortTreeElement::InputPortTreeElement(QTreeWidget* tree, const daq::InputPortPtr& daqInputPort, QTabWidget* contentTabs, QObject* parent)
+    : ComponentTreeElement(tree, daqInputPort, contentTabs, parent)
 {
     this->type = "InputPort";
     this->iconName = "input_port";
@@ -19,7 +19,7 @@ QStringList InputPortTreeElement::getAvailableTabNames() const
 
 void InputPortTreeElement::openTab(const QString& tabName)
 {
-    if (!layoutManager)
+    if (!contentTabs)
         return;
 
     if (tabName == "Attributes")

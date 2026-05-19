@@ -3,6 +3,7 @@
 #include "opendaq/server_capability_ptr.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include <QSplitter>
 #include <QListWidgetItem>
 #include <QCheckBox>
@@ -54,12 +55,7 @@ void AddDeviceConfigDialog::setupUI()
     auto* leftPanel = new QWidget(this);
     leftPanel->setObjectName("leftPanel");
     leftPanel->setAttribute(Qt::WA_StyledBackground, true);
-    leftPanel->setStyleSheet(
-        "QWidget#leftPanel {"
-        "  background-color: #f2f2f2;"
-        "  border: 1px solid #e0e0e0;"
-        "}"
-    );
+    leftPanel->setStyleSheet(GUIStyles::sidebarPanelStyle("leftPanel"));
     auto* leftLayout = new QVBoxLayout(leftPanel);
     leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
@@ -67,57 +63,28 @@ void AddDeviceConfigDialog::setupUI()
                                    GUIConstants::DEFAULT_LAYOUT_MARGIN);
     leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    const QString sectionLabelStyle =
-        "QLabel {"
-        "  background-color: transparent;"
-        "  border: none;"
-        "  padding: 6px 8px;"
-        "  font-size: 11px;"
-        "  font-weight: 600;"
-        "  text-transform: uppercase;"
-        "  color: #6b6b6b;"
-        "}";
-
-    const QString comboStyle =
-        "QComboBox {"
-        "  background-color: #f7f7f7;"
-        "  border: 1px solid #e5e5e5;"
-        "  border-radius: 10px;"
-        "  padding: 8px 10px;"
-        "  font-size: 13px;"
-        "  color: #1f2a44;"
-        "}"
-        "QComboBox:focus {"
-        "  border: 1px solid #c8d6ff;"
-        "  background-color: #ffffff;"
-        "}"
-        "QComboBox::drop-down {"
-        "  border: none;"
-        "  width: 24px;"
-        "}";
-
     const QString checkboxStyle =
         "QCheckBox {"
         "  font-size: 13px;"
-        "  color: #1f2a44;"
+        "  color: palette(text);"
         "  spacing: 8px;"
         "  padding: 4px 0;"
         "}";
 
     auto* protocolLabel = new QLabel(tr("Configuration protocols").toUpper(), leftPanel);
-    protocolLabel->setStyleSheet(sectionLabelStyle);
+    protocolLabel->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
     leftLayout->addWidget(protocolLabel);
 
     configurationProtocolComboBox = new QComboBox(leftPanel);
     configurationProtocolComboBox->setEditable(false);
-    configurationProtocolComboBox->setStyleSheet(comboStyle);
+    configurationProtocolComboBox->setStyleSheet(GUIStyles::roundedComboBoxStyle());
     connect(configurationProtocolComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &AddDeviceConfigDialog::onProtocolSelected);
     leftLayout->addWidget(configurationProtocolComboBox);
 
     leftLayout->addSpacing(4);
     auto* streamingLabel = new QLabel(tr("Streaming protocols").toUpper(), leftPanel);
-    streamingLabel->setStyleSheet(sectionLabelStyle);
+    streamingLabel->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
     leftLayout->addWidget(streamingLabel);
 
     streamingCheckboxContainer = new QWidget(leftPanel);
@@ -133,7 +100,7 @@ void AddDeviceConfigDialog::setupUI()
     // === RIGHT PANEL ===
     auto* rightPanel = new QWidget(this);
     rightPanel->setAttribute(Qt::WA_StyledBackground, true);
-    rightPanel->setStyleSheet("QWidget { background-color: #ffffff; }");
+    rightPanel->setStyleSheet("QWidget { background-color: palette(base); }");
     auto* rightLayout = new QVBoxLayout(rightPanel);
     rightLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN,
@@ -144,40 +111,18 @@ void AddDeviceConfigDialog::setupUI()
     configTabs = new QTabWidget(rightPanel);
     configTabs->setDocumentMode(true);
     configTabs->tabBar()->setDrawBase(false);
-    configTabs->setStyleSheet(
-        "QTabWidget { background: transparent; }"
-        "QTabWidget::pane { border: none; background: transparent; }"
-        "QTabBar { background: transparent; border: none; }"
-        "QTabBar::tab {"
-        "  padding: 10px 18px;"
-        "  color: #6b7280;"
-        "  background: transparent;"
-        "  font-size: 13px;"
-        "  border: none;"
-        "  border-bottom: 2px solid transparent;"
-        "}"
-        "QTabBar::tab:selected {"
-        "  color: #1d4ed8;"
-        "  background: transparent;"
-        "  border-bottom: 2px solid #1d4ed8;"
-        "  font-weight: 600;"
-        "}"
-        "QTabBar::tab:hover:!selected {"
-        "  color: #374151;"
-        "  border-bottom: 2px solid #d1d5db;"
-        "}"
-    );
+    configTabs->setStyleSheet(GUIStyles::underlineTabBarStyle());
     rightLayout->addWidget(configTabs, 1);
 
     auto* bottomFrame = new QWidget(rightPanel);
     bottomFrame->setAttribute(Qt::WA_StyledBackground, true);
-    bottomFrame->setStyleSheet("QWidget { background-color: #ffffff; }");
+    bottomFrame->setStyleSheet("QWidget { background-color: palette(base); }");
     auto* bottomLayout = new QHBoxLayout(bottomFrame);
     bottomLayout->setContentsMargins(0, 0, 0, 0);
 
     statusLabel = new QLabel("", bottomFrame);
     statusLabel->setWordWrap(true);
-    statusLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 13px; background: transparent; }");
+    statusLabel->setStyleSheet(GUIStyles::CAPTION_LABEL);
     bottomLayout->addWidget(statusLabel, 1);
 
     addButton = new QPushButton(tr("Add device"), bottomFrame);

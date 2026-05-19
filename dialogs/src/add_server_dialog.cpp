@@ -39,8 +39,8 @@ void AddServerDialog::setupUI()
     leftPanel->setAttribute(Qt::WA_StyledBackground, true);
     leftPanel->setStyleSheet(
         "QWidget#leftPanel {"
-        "  background-color: #f2f2f2;"
-        "  border: 1px solid #e0e0e0;"
+        "  background-color: palette(window);"
+        "  border: 1px solid palette(mid);"
         "  border-radius: 14px;"
         "}"
     );

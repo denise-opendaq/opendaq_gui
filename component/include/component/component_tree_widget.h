@@ -5,10 +5,9 @@
 
 class BaseTreeElement;
 class AppContext;
-class LayoutManager;
+class QTabWidget;
 
-// Forward declarations for openDAQ
-namespace daq 
+namespace daq
 {
     class InstancePtr;
 }
@@ -19,14 +18,14 @@ class ComponentTreeWidget : public QTreeWidget
     Q_OBJECT
 
 public:
-    ComponentTreeWidget(LayoutManager* layoutManager, QWidget* parent = nullptr);
+    ComponentTreeWidget(QTabWidget* contentTabs, QWidget* parent = nullptr);
     ~ComponentTreeWidget() override;
 
     // Load openDAQ instance into the tree
     void loadInstance(const daq::InstancePtr& instance);
-    
-    // Set layout manager (for elements created after construction)
-    void setLayoutManager(LayoutManager* layoutManager);
+
+    // Set content tabs (for elements created after construction)
+    void setContentTabs(QTabWidget* contentTabs);
 
     // Get the selected BaseTreeElement
     BaseTreeElement* getSelectedElement() const;
@@ -44,7 +43,6 @@ public:
     void refreshVisibility();
 
 Q_SIGNALS:
-    // Emitted when a component is selected in the tree
     void componentSelected(BaseTreeElement* element);
 
 private:
@@ -58,6 +56,6 @@ private:
     bool applySearchFilter(QTreeWidgetItem* item, const QString& filter);
 
     std::unique_ptr<BaseTreeElement> rootElement;
-    LayoutManager* layoutManager = nullptr;
+    QTabWidget* contentTabs = nullptr;
     QString m_searchFilter;
 };

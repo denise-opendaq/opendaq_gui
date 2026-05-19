@@ -1,5 +1,6 @@
 #include "widgets/device_logs_widget.h"
 #include "context/AppContext.h"
+#include "context/gui_styles.h"
 #include "context/icon_provider.h"
 
 #include <QDesktopServices>
@@ -29,12 +30,7 @@ DeviceLogsWidget::DeviceLogsWidget(const daq::DevicePtr& dev, QWidget* parent)
     auto* card = new QFrame(this);
     card->setObjectName("logsCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        "QFrame#logsCard {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
-        "  border-radius: 12px;"
-        "}");
+    card->setStyleSheet(GUIStyles::cardStyle("logsCard", "QFrame", 12));
 
     auto* cardLayout = new QVBoxLayout(card);
     cardLayout->setContentsMargins(0, 0, 0, 0);
@@ -49,22 +45,20 @@ DeviceLogsWidget::DeviceLogsWidget(const daq::DevicePtr& dev, QWidget* parent)
     cardHeaderLayout->setSpacing(12);
 
     countLbl = new QLabel(card);
-    countLbl->setStyleSheet(
-        "color: #6b7280; font-size: 11px; font-weight: 600;"
-        " text-transform: uppercase; background: transparent; border: none;");
+    countLbl->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
     cardHeaderLayout->addWidget(countLbl);
     cardHeaderLayout->addStretch();
 
     updatedLbl = new QLabel(card);
     updatedLbl->setStyleSheet(
-        "color: #9ca3af; font-size: 12px; background: transparent; border: none;");
+        "color: palette(placeholder-text); font-size: 12px; background: transparent; border: none;");
     cardHeaderLayout->addWidget(updatedLbl);
 
     cardLayout->addWidget(cardHeader);
 
     auto* headerSep = new QFrame(card);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet("background: #e5e7eb; border: none; max-height: 1px;");
+    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
     cardLayout->addWidget(headerSep);
 
     // — Scrollable list —
@@ -110,9 +104,8 @@ void DeviceLogsWidget::refresh()
         {
             countLbl->setText(tr("No log files"));
             auto* empty = new QLabel(tr("No log files available"), listWidget);
-            empty->setStyleSheet(
-                "color: #9ca3af; font-size: 13px; padding: 20px 16px;"
-                " background: transparent; border: none;");
+            empty->setStyleSheet(QString(GUIStyles::CAPTION_LABEL) +
+                                 " padding: 20px 16px; background: transparent; border: none;");
             listLayout->addWidget(empty);
             return;
         }
@@ -127,7 +120,7 @@ void DeviceLogsWidget::refresh()
             {
                 auto* sep = new QFrame(listWidget);
                 sep->setFrameShape(QFrame::HLine);
-                sep->setStyleSheet("background: #e5e7eb; border: none; max-height: 1px;");
+                sep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
                 listLayout->addWidget(sep);
             }
             first = false;
@@ -149,7 +142,7 @@ void DeviceLogsWidget::refresh()
             row->setAttribute(Qt::WA_StyledBackground, true);
             row->setStyleSheet(
                 "QWidget { background: transparent; border: none; }"
-                "QWidget:hover { background: #f9fafb; }");
+                "QWidget:hover { background: palette(alternate-base); }");
 
             auto* rowLayout = new QHBoxLayout(row);
             rowLayout->setContentsMargins(16, 12, 12, 12);
@@ -157,12 +150,12 @@ void DeviceLogsWidget::refresh()
 
             auto* nameLbl = new QLabel(fileName, row);
             nameLbl->setStyleSheet(
-                "color: #111827; font-size: 13px; font-weight: 600;"
+                "color: palette(text); font-size: 13px; font-weight: 600;"
                 " background: transparent; border: none;");
 
             auto* sizeLbl = new QLabel(sizeStr, row);
             sizeLbl->setStyleSheet(
-                "color: #9ca3af; font-size: 12px;"
+                "color: palette(placeholder-text); font-size: 12px;"
                 " background: transparent; border: none;");
 
             auto* openBtn = new QToolButton(row);
@@ -171,9 +164,9 @@ void DeviceLogsWidget::refresh()
             openBtn->setIconSize(QSize(16, 16));
             openBtn->setToolTip(tr("Open in system editor"));
             openBtn->setStyleSheet(
-                "QToolButton { border: 1px solid #e5e7eb; border-radius: 6px;"
-                "  padding: 5px; background: #f9fafb; }"
-                "QToolButton:hover { background: #eff6ff; border-color: #1d4ed8; }");
+                "QToolButton { border: 1px solid palette(mid); border-radius: 6px;"
+                "  padding: 5px; background: palette(alternate-base); }"
+                "QToolButton:hover { background: palette(midlight); border-color: palette(highlight); }");
 
             connect(openBtn, &QToolButton::clicked, this, [this, id, fileName]()
             {

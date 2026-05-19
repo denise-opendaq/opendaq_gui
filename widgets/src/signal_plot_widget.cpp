@@ -1,5 +1,7 @@
 #include "widgets/signal_plot_widget.h"
+#include "context/gui_styles.h"
 
+#include <QApplication>
 #include <QChart>
 #include <QChartView>
 #include <QComboBox>
@@ -8,6 +10,8 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QLineSeries>
+#include <QPalette>
+#include <QPen>
 #include <QTimer>
 #include <QValueAxis>
 #include <QVBoxLayout>
@@ -25,7 +29,7 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     topLayout->setSpacing(8);
 
     auto* rangeLabel = new QLabel(tr("Window:"), topBar);
-    rangeLabel->setStyleSheet("color: #6b7280; font-size: 13px;");
+    rangeLabel->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
     rangeCombo = new QComboBox(topBar);
     rangeCombo->addItem("0.001 s",   0.001);
@@ -56,13 +60,28 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     chart->setMargins(QMargins(4, 4, 4, 4));
     chart->setBackgroundRoundness(0);
 
+    // Theme chart background / axis labels to follow current palette.
+    const QPalette pal = QApplication::palette();
+    QBrush bgBrush(pal.color(QPalette::Base));
+    chart->setBackgroundBrush(bgBrush);
+    chart->setPlotAreaBackgroundBrush(bgBrush);
+    chart->setPlotAreaBackgroundVisible(true);
+    chart->setBackgroundPen(QPen(Qt::NoPen));
+
+    const QColor axisTextColor = pal.color(QPalette::Text);
+    const QColor axisGridColor = pal.color(QPalette::Mid);
+
     axisX = new QValueAxis();
     axisX->setLabelFormat("%g s");
     axisX->setTitleText(tr("Time"));
     axisX->setTickCount(3);
+    axisX->setLabelsColor(axisTextColor);
+    axisX->setTitleBrush(axisTextColor);
+    axisX->setLinePenColor(axisGridColor);
+    axisX->setGridLineColor(axisGridColor);
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
-    
+
 
     axisY = new QValueAxis();
     {
@@ -70,6 +89,10 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
         try { signalName = QString::fromStdString(signal.getName().toStdString()); } catch (...) {}
         axisY->setTitleText(signalName.isEmpty() ? tr("Value") : signalName);
     }
+    axisY->setLabelsColor(axisTextColor);
+    axisY->setTitleBrush(axisTextColor);
+    axisY->setLinePenColor(axisGridColor);
+    axisY->setGridLineColor(axisGridColor);
     chart->addAxis(axisY, Qt::AlignLeft);
     series->attachAxis(axisY);
 
@@ -79,37 +102,32 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     // ── Error label ───────────────────────────────────────────────────────────
     errorLabel = new QLabel();
     errorLabel->setAlignment(Qt::AlignCenter);
-    errorLabel->setStyleSheet("color: #9ca3af; font-size: 14px;");
+    errorLabel->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
     errorLabel->hide();
 
     // ── Card wrapping chart + top bar ─────────────────────────────────────────
     auto* card = new QWidget(this);
     card->setObjectName("signalPlotCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        "QWidget#signalPlotCard {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
-        "  border-radius: 16px;"
-        "}"
-    );
+    card->setStyleSheet(GUIStyles::cardStyle("signalPlotCard"));
     // ── Stats row (Last / Min / Max) ─────────────────────────────────────────
     auto makeStatCard = [&](const QString& title, QLabel*& valueOut) -> QWidget* {
         auto* cell = new QWidget();
         cell->setAttribute(Qt::WA_StyledBackground, true);
+        // Soft card with the muted alt-base bg, used for inline stat cells.
         cell->setStyleSheet(
-            "QWidget { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 10px; }"
+            "QWidget { background: palette(alternate-base); border: 1px solid palette(mid); border-radius: 10px; }"
         );
         auto* cl = new QVBoxLayout(cell);
         cl->setContentsMargins(12, 8, 12, 8);
         cl->setSpacing(2);
 
         auto* titleLbl = new QLabel(title, cell);
-        titleLbl->setStyleSheet("color: #6b7280; font-size: 12px; font-weight: 600;"
+        titleLbl->setStyleSheet("color: palette(placeholder-text); font-size: 12px; font-weight: 600;"
                                 " background: transparent; border: none;");
 
         valueOut = new QLabel("—", cell);
-        valueOut->setStyleSheet("color: #111827; font-size: 15px; font-weight: 700;"
+        valueOut->setStyleSheet("color: palette(text); font-size: 15px; font-weight: 700;"
                                 " background: transparent; border: none;");
 
         cl->addWidget(titleLbl);
@@ -130,9 +148,7 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     cardLayout->setSpacing(8);
 
     auto* titleLabel = new QLabel(tr("Signal preview"), card);
-    titleLabel->setStyleSheet(
-        "font-size: 15px; font-weight: 700; color: #111827;"
-    );
+    titleLabel->setStyleSheet("font-size: 15px; font-weight: 700; color: palette(text);");
     cardLayout->addWidget(titleLabel);
     cardLayout->addWidget(topBar);
     cardLayout->addWidget(chartView, 1);

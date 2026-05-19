@@ -25,6 +25,8 @@
 #include <QCoreApplication>
 
 #include "logger/qt_text_edit_sink.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/icon_provider.h"
 #include "coretypes/ctutils.h"
 #include <spdlog/details/log_msg.h>
@@ -92,35 +94,28 @@ public:
         initStyleOption(&opt, index);
         const QString text = opt.text;
 
-        QColor bg(QStringLiteral("#f3f4f6"));
-        QColor fg(QStringLiteral("#374151"));
+        // Choose a single accent color per level; render foreground at full
+        // opacity and background as the same color with low alpha. This keeps
+        // the badges legible against both light and dark surfaces.
+        QColor accent(GUIConstants::Colors::NEUTRAL);
         if (text == QStringLiteral("INFO"))
-        {
-            bg = QColor(QStringLiteral("#dcfce7"));
-            fg = QColor(QStringLiteral("#166534"));
-        }
+            accent = QColor(GUIConstants::Colors::SUCCESS);
         else if (text == QStringLiteral("DEBUG") || text == QStringLiteral("TRACE"))
-        {
-            bg = QColor(QStringLiteral("#e0e7ff"));
-            fg = QColor(QStringLiteral("#3730a3"));
-        }
+            accent = QColor(GUIConstants::Colors::DEBUG_FG);
         else if (text == QStringLiteral("WARN") || text == QStringLiteral("WARNING"))
-        {
-            bg = QColor(QStringLiteral("#fef9c3"));
-            fg = QColor(QStringLiteral("#a16207"));
-        }
+            accent = QColor(GUIConstants::Colors::WARNING);
         else if (text == QStringLiteral("ERROR") || text == QStringLiteral("CRITICAL"))
-        {
-            bg = QColor(QStringLiteral("#fee2e2"));
-            fg = QColor(QStringLiteral("#b91c1c"));
-        }
+            accent = QColor(GUIConstants::Colors::ERROR_FG);
+
+        QColor bg = accent;
+        bg.setAlpha(50);
 
         painter->save();
         QRect r = opt.rect.adjusted(2, 3, -2, -3);
         painter->setPen(Qt::NoPen);
         painter->setBrush(bg);
         painter->drawRoundedRect(r, 6, 6);
-        painter->setPen(fg);
+        painter->setPen(accent);
         painter->setFont(opt.font);
         painter->drawText(r, Qt::AlignCenter, text);
         painter->restore();
@@ -198,12 +193,7 @@ void QTableWidgetSpdlogSink::setupTableWidget()
     tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     tableWidget->setSortingEnabled(false);
 
-    tableWidget->setStyleSheet(
-        QStringLiteral("QTableWidget { background: #ffffff; gridline-color: #f3f4f6; font-size: 13px; color: #111827; border: none; }"
-                       "QTableWidget::item { padding: 6px 8px; }"
-                       "QHeaderView::section { background: #fafafa; color: #6b7280; font-size: 11px; font-weight: 600;"
-                       " text-transform: uppercase; padding: 8px 10px; border: none; border-bottom: 1px solid #e5e7eb;"
-                       " border-right: 1px solid #f3f4f6; }"));
+    tableWidget->setStyleSheet(GUIStyles::logTableStyle());
     
     // Allow manual column resizing
     tableWidget->horizontalHeader()->setStretchLastSection(true);
@@ -251,8 +241,7 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
     cardWidget = new QFrame(containerWidget);
     cardWidget->setObjectName(QStringLiteral("logViewerCard"));
     cardWidget->setAttribute(Qt::WA_StyledBackground, true);
-    cardWidget->setStyleSheet(
-        QStringLiteral("QFrame#logViewerCard { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; }"));
+    cardWidget->setStyleSheet(GUIStyles::cardStyle("logViewerCard", "QFrame", 12));
 
     auto* cardLayout = new QVBoxLayout(cardWidget);
     cardLayout->setContentsMargins(0, 0, 0, 0);
@@ -265,25 +254,18 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
 
     auto* title = new QLabel(QCoreApplication::translate("LogViewer", "Logs"), header);
     title->setStyleSheet(
-        QStringLiteral("font-size: 16px; font-weight: 700; color: #111827; background: transparent; border: none;"));
+        "font-size: 16px; font-weight: 700; color: palette(text); background: transparent; border: none;");
 
     searchEdit = new QLineEdit(header);
     searchEdit->setPlaceholderText(QCoreApplication::translate("LogViewer", "Search in logs..."));
     searchEdit->setClearButtonEnabled(true);
     searchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     searchEdit->setMinimumWidth(120);
-    searchEdit->setStyleSheet(
-        QStringLiteral("QLineEdit { border: 1px solid #e5e7eb; border-radius: 8px; padding: 6px 10px; font-size: 13px;"
-                       " background: #f9fafb; color: #111827; }"
-                       "QLineEdit:focus { background: #ffffff; border-color: #93c5fd; }"));
+    searchEdit->setStyleSheet(GUIStyles::searchLineEditStyle());
 
-    const QString pillUnchecked = QStringLiteral(
-        "QPushButton { border: none; border-radius: 16px; padding: 6px 14px; font-size: 13px;"
-        " background: #f3f4f6; color: #374151; }"
-        "QPushButton:hover { background: #e5e7eb; }");
-    const QString pillChecked = QStringLiteral(
-        "QPushButton { border: none; border-radius: 16px; padding: 6px 14px; font-size: 13px;"
-        " background: #dbeafe; color: #1d4ed8; font-weight: 600; }");
+    const QString pillUnchecked = GUIStyles::neutralPillStyle();
+    const QString pillChecked   = GUIStyles::pillButtonStyle(
+        GUIConstants::Colors::ACCENT_SOFT_BG, GUIConstants::Colors::ACCENT, /*bold=*/true);
 
     filterErrBtn   = new QPushButton(QCoreApplication::translate("LogViewer", "Error"), header);
     filterWarnBtn  = new QPushButton(QCoreApplication::translate("LogViewer", "Warning"), header);
@@ -310,23 +292,18 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
     pauseBtn->setIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPause));
     pauseBtn->setIconSize(QSize(16, 16));
     pauseBtn->setToolTip(QCoreApplication::translate("LogViewer", "Pause incoming log lines"));
-    pauseBtn->setStyleSheet(
-        QStringLiteral("QToolButton { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; background: transparent; }"
-                       "QToolButton:hover { background: #f3f4f6; }"
-                       "QToolButton:checked { background: #fef3c7; border-color: #fcd34d; }"));
+    pauseBtn->setStyleSheet(GUIStyles::iconToolButtonStyle(/*withCheckedState=*/true));
 
     autoScrollCheck = new QCheckBox(QCoreApplication::translate("LogViewer", "Auto-scroll"), header);
     autoScrollCheck->setChecked(true);
-    autoScrollCheck->setStyleSheet(QStringLiteral("color: #374151; font-size: 13px; spacing: 6px;"));
+    autoScrollCheck->setStyleSheet(QStringLiteral("color: palette(text); font-size: 13px; spacing: 6px;"));
 
     auto* clearBtn = new QToolButton(header);
     clearBtn->setCursor(Qt::PointingHandCursor);
     clearBtn->setIcon(IconProvider::instance().icon(QStringLiteral("clear")));
     clearBtn->setIconSize(QSize(16, 16));
     clearBtn->setToolTip(QCoreApplication::translate("LogViewer", "Clear log"));
-    clearBtn->setStyleSheet(
-        QStringLiteral("QToolButton { border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px; background: transparent; }"
-                       "QToolButton:hover { background: #f3f4f6; }"));
+    clearBtn->setStyleSheet(GUIStyles::iconToolButtonStyle());
 
     headerLayout->addWidget(title, 0);
     headerLayout->addWidget(searchEdit, 1);
@@ -373,14 +350,14 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
 
     auto* headerSep = new QFrame(cardWidget);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet(QStringLiteral("background: #e5e7eb; border: none; max-height: 1px;"));
+    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
 
     auto* footerBar = new QWidget(cardWidget);
     auto* footerLayout = new QHBoxLayout(footerBar);
     footerLayout->setContentsMargins(16, 0, 16, 10);
     footerLayout->setSpacing(0);
     footerLabel = new QLabel(footerBar);
-    footerLabel->setStyleSheet(QStringLiteral("color: #6b7280; font-size: 12px; background: transparent; border: none;"));
+    footerLabel->setStyleSheet(QStringLiteral("color: palette(placeholder-text); font-size: 12px; background: transparent; border: none;"));
     footerLayout->addStretch(1);
     footerLayout->addWidget(footerLabel);
 

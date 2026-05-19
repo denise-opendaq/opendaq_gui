@@ -1,44 +1,40 @@
 #include "component/base_tree_element.h"
 #include "context/icon_provider.h"
 #include "context/AppContext.h"
-#include "DetachableTabWidget.h"
-#include "DetachedWindow.h"
-#include "LayoutManager.h"
+#include <QApplication>
+#include <QLabel>
+#include <QMenu>
+#include <QTabWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
-#include <QMenu>
-#include <QApplication>
-#include <QWidget>
 #include <QVBoxLayout>
-#include <QLabel>
+#include <QWidget>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
-BaseTreeElement::BaseTreeElement(QTreeWidget* tree, LayoutManager* layoutManager, QObject* parent)
+BaseTreeElement::BaseTreeElement(QTreeWidget* tree, QTabWidget* contentTabs, QObject* parent)
     : QObject(parent)
     , tree(tree)
     , treeItem(nullptr)
     , parentElement(nullptr)
-    , layoutManager(layoutManager)
+    , contentTabs(contentTabs)
     , localId("/")
     , globalId("/")
     , name(localId)
     , type("PropertyObject")
     , iconName("")
 {
-    if (!layoutManager)
+    if (!contentTabs)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("BaseTreeElement: layoutManager is null in constructor for '{}'", name.toStdString());
+        LOG_W("BaseTreeElement: contentTabs is null in constructor for '{}'", name.toStdString());
     }
 }
 
 BaseTreeElement::~BaseTreeElement()
 {
-    // Clean up children
     children.clear();
 
-    // Remove tree item
     if (treeItem && tree)
     {
         delete treeItem;
@@ -51,17 +47,13 @@ void BaseTreeElement::init(BaseTreeElement* parent)
     parentElement = parent;
     QTreeWidgetItem* parentTreeItem = parentElement ? parentElement->treeItem : nullptr;
 
-    // Create tree item
     treeItem = new QTreeWidgetItem(parentTreeItem);
     treeItem->setText(0, name);
 
-    // Store pointer to this element in tree item
     treeItem->setData(0, Qt::UserRole, QVariant::fromValue(static_cast<void*>(this)));
 
-    // Expand by default
     treeItem->setExpanded(true);
 
-    // Add to tree if no parent
     if (!parentTreeItem && tree)
         tree->addTopLevelItem(treeItem);
 
@@ -86,7 +78,6 @@ void BaseTreeElement::updateIcon()
     if (treeItem && !iconName.isEmpty())
     {
         QIcon icon = IconProvider::instance().icon(iconName);
-        // Check if icon has available sizes (more reliable than isNull())
         if (icon.availableSizes().size() > 0)
         {
             treeItem->setIcon(0, icon);
@@ -103,17 +94,14 @@ void BaseTreeElement::showFiltered(QTreeWidgetItem* parentTreeItem)
 {
     bool isVisible = visible();
 
-    // Show or hide this element
     if (treeItem)
     {
         treeItem->setHidden(!isVisible);
         if (isVisible && parentTreeItem)
         {
-            // Move to correct parent if needed
             QTreeWidgetItem* currentParent = treeItem->parent();
             if (currentParent != parentTreeItem)
             {
-                // Remove from current parent
                 if (currentParent)
                 {
                     int index = currentParent->indexOfChild(treeItem);
@@ -122,20 +110,16 @@ void BaseTreeElement::showFiltered(QTreeWidgetItem* parentTreeItem)
                 }
                 else if (tree)
                 {
-                    // It's a top-level item
                     int index = tree->indexOfTopLevelItem(treeItem);
                     if (index >= 0)
                         tree->takeTopLevelItem(index);
                 }
-                // Add to new parent
                 parentTreeItem->addChild(treeItem);
             }
-            // Expand when visible
             treeItem->setExpanded(true);
         }
     }
 
-    // Recursively apply to children
     QTreeWidgetItem* childParent = isVisible ? treeItem : parentTreeItem;
     for (const auto& [_, child] : children)
         child->showFiltered(childParent);
@@ -151,53 +135,20 @@ BaseTreeElement* BaseTreeElement::addChild(std::unique_ptr<BaseTreeElement> chil
 
 void BaseTreeElement::closeTabs()
 {
-    if (!layoutManager)
-        return; // No layout manager, nothing to close
-    
-    // Helper lambda to create "Component removed" widget
-    auto createRemovedWidget = [this](QWidget* parent) -> QWidget* {
-        QWidget* removedWidget = new QWidget(parent);
-        QVBoxLayout* layout = new QVBoxLayout(removedWidget);
-        layout->setContentsMargins(20, 20, 20, 20);
+    if (!contentTabs)
+        return;
 
-        QLabel* label = new QLabel(QString("Component '%1' has been removed").arg(name), removedWidget);
-        label->setAlignment(Qt::AlignCenter);
-        label->setStyleSheet("QLabel { font-size: 14pt; color: #666; }");
+    for (int i = contentTabs->count() - 1; i >= 0; --i)
+    {
+        QWidget* tabPage = contentTabs->widget(i);
+        if (!tabPage)
+            continue;
 
-        layout->addWidget(label);
-        layout->addStretch();
-        return removedWidget;
-    };
-    
-    // Close tabs in all tab widgets (including mainWidget)
-    for (DetachableTabWidget* tabWidget : layoutManager->getAllTabWidgets())
-    {
-        for (int i = tabWidget->count() - 1; i >= 0; --i)
+        const QVariant tabGlobalId = tabPage->property("componentGlobalId");
+        if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
         {
-            QWidget* tabPage = tabWidget->widget(i);
-            if (tabPage)
-            {
-                QVariant tabGlobalId = tabPage->property("componentGlobalId");
-                if (tabGlobalId.isValid() && tabGlobalId.toString() == globalId)
-                {
-                    layoutManager->removeTab(tabPage);
-                }
-            }
-        }
-    }
-    
-    // Handle detached windows
-    for (DetachedWindow* detachedWindow : layoutManager->getDetachedWindows())
-    {
-        QWidget* contentWidget = detachedWindow->contentWidget();
-        if (contentWidget)
-        {
-            QVariant contentGlobalId = contentWidget->property("componentGlobalId");
-            if (contentGlobalId.isValid() && contentGlobalId.toString() == globalId)
-            {
-                detachedWindow->setCentralWidget(createRemovedWidget(detachedWindow));
-                contentWidget->deleteLater();
-            }
+            contentTabs->removeTab(i);
+            tabPage->deleteLater();
         }
     }
 }
@@ -206,7 +157,6 @@ void BaseTreeElement::removeChild(BaseTreeElement* child)
 {
     if (child && children.find(child->localId) != children.end())
     {
-        // Close all tabs associated with this component before deleting
         child->closeTabs();
         children.erase(child->localId);
     }
@@ -261,50 +211,45 @@ BaseTreeElement* BaseTreeElement::getChild(const QString& path)
 }
 
 void BaseTreeElement::onSelected()
-{   
-    QStringList availableTabs = getAvailableTabNames();
+{
+    const QStringList availableTabs = getAvailableTabNames();
     for (const QString& tabName : availableTabs)
         openTab(tabName);
 }
 
 QStringList BaseTreeElement::getAvailableTabNames() const
 {
-    return QStringList(); // Base class returns empty list
+    return QStringList();
 }
 
 void BaseTreeElement::openTab(const QString& tabName)
 {
     Q_UNUSED(tabName);
-    // Base class does nothing
 }
 
-void BaseTreeElement::addTab(QWidget* tab, 
-                             const QString& tabName,
-                             LayoutZone zone,
-                             const QString& relativeToTabName)
+void BaseTreeElement::addTab(QWidget* tab, const QString& tabName)
 {
-    if (!layoutManager)
+    if (!tab || !contentTabs)
         return;
 
-    QString fullTabName = name + " - " + tabName;
-    QString fullRelativeName = relativeToTabName.isEmpty() ? QString() : (name + " - " + relativeToTabName);
-    layoutManager->addTab(tab, fullTabName, zone, fullRelativeName);
+    const QString fullTabName = name + " - " + tabName;
+    const int idx = contentTabs->addTab(tab, fullTabName);
+    contentTabs->setCurrentIndex(idx);
+
     tab->setProperty("componentGlobalId", globalId);
 }
 
 QMenu* BaseTreeElement::onCreateRightClickMenu(QWidget* parent)
 {
     QMenu* menu = new QMenu(parent);
-    // Override in derived classes to add menu items
     return menu;
 }
 
 QMap<QString, BaseTreeElement*> BaseTreeElement::getChildren() const
 {
     QMap<QString, BaseTreeElement*> result;
-    for (const auto& [k, v]: children)
+    for (const auto& [k, v] : children)
         result[k] = v.get();
 
     return result;
 }
-

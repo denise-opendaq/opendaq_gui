@@ -65,6 +65,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Charts
         context
         property
+        utils
         daq::coreobjects
         daq::coretypes
         daq::opendaq

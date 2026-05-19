@@ -1400,6 +1400,15 @@ ErrCode QtPlotterFbImpl::getWidget(struct QWidget** widget)
     return OPENDAQ_SUCCESS;
 }
 
+ErrCode QtPlotterFbImpl::getName(daq::IString** name)
+{
+    if (name == nullptr)
+        return OPENDAQ_ERR_ARGUMENT_NULL;
+
+    *name = String("Signal Plotter").detach();
+    return OPENDAQ_SUCCESS;
+}
+
 void QtPlotterFbImpl::initWidget()
 {
     createChart();
@@ -1633,7 +1642,8 @@ void QtPlotterFbImpl::setupButtons(QWidget* toolbarWidget)
         if (checked)
         {
             freezeBtn->setText("Unfreeze");
-            freezeBtn->setStyleSheet("background-color: #ff6b6b; color: white;");
+            // Semantic "danger/active" color; works on both light & dark themes.
+            freezeBtn->setStyleSheet("background-color: #ef4444; color: #ffffff;");
         }
         else
         {

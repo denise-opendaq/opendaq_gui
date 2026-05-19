@@ -1,15 +1,15 @@
 #include "component/component_tree_widget.h"
 #include "component/device_tree_element.h"
-#include "LayoutManager.h"
 #include "context/AppContext.h"
 #include <functional>
 #include <QMessageBox>
+#include <QTabWidget>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
-ComponentTreeWidget::ComponentTreeWidget(LayoutManager* layoutManager, QWidget* parent)
+ComponentTreeWidget::ComponentTreeWidget(QTabWidget* contentTabs, QWidget* parent)
     : QTreeWidget(parent)
-    , layoutManager(layoutManager)
+    , contentTabs(contentTabs)
 {
     setupUI();
 }
@@ -18,7 +18,6 @@ ComponentTreeWidget::~ComponentTreeWidget() = default;
 
 void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 {
-    // Clear existing tree
     clear();
     rootElement.reset();
 
@@ -32,36 +31,33 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 
     try
     {
-        if (!layoutManager)
+        if (!contentTabs)
         {
             const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_E("ComponentTreeWidget::loadInstance: layoutManager is null");
+            LOG_E("ComponentTreeWidget::loadInstance: contentTabs is null");
             return;
         }
-        
-        // Create root element
-        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), layoutManager);
+
+        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), contentTabs);
         rootElement->init();
 
-        // Expand the root
         if (rootElement->getTreeItem())
             rootElement->getTreeItem()->setExpanded(true);
-        
-        // Apply visibility filters
+
         refreshVisibility();
     }
     catch (const std::exception& e)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error loading instance: {}", e.what());
-        QMessageBox::critical(this, "Error", 
+        QMessageBox::critical(this, "Error",
             QString("Failed to load instance: %1").arg(e.what()));
     }
 }
 
-void ComponentTreeWidget::setLayoutManager(LayoutManager* layoutManager)
+void ComponentTreeWidget::setContentTabs(QTabWidget* contentTabs)
 {
-    this->layoutManager = layoutManager;
+    this->contentTabs = contentTabs;
 }
 
 BaseTreeElement* ComponentTreeWidget::getSelectedElement() const

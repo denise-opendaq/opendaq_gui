@@ -12,6 +12,7 @@ set(HEADERS
     include/context/QueuedEventHandler.h
     include/context/icon_provider.h
     include/context/gui_constants.h
+    include/context/gui_styles.h
 )
 
 # Source files
@@ -21,6 +22,7 @@ set(SOURCES
     src/QueuedEventHandler.cpp
     src/icon_provider.cpp
     src/gui_constants.cpp
+    src/gui_styles.cpp
 )
 
 # Resource files

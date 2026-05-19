@@ -15,7 +15,7 @@
 #include "context/AppContext.h"
 #include <opendaq/custom_log.h>
 
-BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, LayoutManager* layoutManager, QObject* parent)
+BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QTabWidget* contentTabs, QObject* parent)
 {
     if (!component.assigned())
     {
@@ -26,59 +26,37 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
 
     try
     {
-        // Get component type
-        auto componentType = component.getClassName().toStdString();
-        QString typeStr = QString::fromStdString(componentType);
-
-        // Check if it's a Device
         if (auto dev = component.asPtrOrNull<daq::IDevice>(); dev.assigned())
-            return new DeviceTreeElement(tree, dev, layoutManager, parent);
+            return new DeviceTreeElement(tree, dev, contentTabs, parent);
 
-        // Check if it's a Channel
-        // if (auto ch = component.asPtrOrNull<daq::IChannel>(); ch.assigned())
-        //     return new ChannelBlockTreeElement(tree, ch, layoutManager, parent);
-
-        // Check if it's a FunctionBlock
         if (auto fb = component.asPtrOrNull<daq::IFunctionBlock>(); fb.assigned())
-            return new FunctionBlockTreeElement(tree, fb, layoutManager, parent);
+            return new FunctionBlockTreeElement(tree, fb, contentTabs, parent);
 
-        // Check if it's a Server
         if (auto server = component.asPtrOrNull<daq::IServer>(); server.assigned())
-            return new ServerTreeElement(tree, server, layoutManager, parent);
+            return new ServerTreeElement(tree, server, contentTabs, parent);
 
-        // Check if it's a Folder
         if (auto folder = component.asPtrOrNull<daq::IFolder>(); folder.assigned())
         {
             auto localId = folder.getLocalId();
             if (localId == "Dev")
-            {
-                return new DevicesFolderTreeElement(tree, folder, layoutManager, parent);
-            }
+                return new DevicesFolderTreeElement(tree, folder, contentTabs, parent);
             if (localId == "FB")
-            {
-                return new FunctionBlocksFolderTreeElement(tree, folder, layoutManager, parent);
-            }
+                return new FunctionBlocksFolderTreeElement(tree, folder, contentTabs, parent);
             if (localId == "Srv")
-            {
-                return new ServersFolderTreeElement(tree, folder, layoutManager, parent);
-            }
+                return new ServersFolderTreeElement(tree, folder, contentTabs, parent);
             if (localId == "IP")
-            {
-                return new InputPortFolderTreeElement(tree, folder, layoutManager, parent);
-            }
-            return new FolderTreeElement(tree, folder, layoutManager, parent);
+                return new InputPortFolderTreeElement(tree, folder, contentTabs, parent);
+
+            return new FolderTreeElement(tree, folder, contentTabs, parent);
         }
 
-        // Check if it's a Signal
         if (auto sig = component.asPtrOrNull<daq::ISignal>(); sig.assigned())
-            return new SignalTreeElement(tree, sig, layoutManager, parent);
+            return new SignalTreeElement(tree, sig, contentTabs, parent);
 
-        // Check if it's an InputPort
         if (auto ip = component.asPtrOrNull<daq::IInputPort>(); ip.assigned())
-            return new InputPortTreeElement(tree, ip, layoutManager, parent);
+            return new InputPortTreeElement(tree, ip, contentTabs, parent);
 
-        // Default: create generic ComponentTreeElement
-        return new ComponentTreeElement(tree, component, layoutManager, parent);
+        return new ComponentTreeElement(tree, component, contentTabs, parent);
     }
     catch (const std::exception& e)
     {
@@ -87,4 +65,3 @@ BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& c
         return nullptr;
     }
 }
-

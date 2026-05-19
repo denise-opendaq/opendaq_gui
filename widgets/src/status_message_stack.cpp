@@ -1,4 +1,5 @@
 #include "widgets/status_message_stack.h"
+#include "context/gui_styles.h"
 
 #include <QFontMetrics>
 #include <QFrame>
@@ -23,10 +24,7 @@ void addStatusMessageToLayout(QVBoxLayout* layout, const QString& message, QWidg
     msgLine->setCursorMoveStyle(Qt::LogicalMoveStyle);
     msgLine->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     msgLine->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    msgLine->setStyleSheet(
-        QStringLiteral("QLineEdit { background: transparent; color: #6b7280; font-size: 13px;"
-                       " padding: 0; margin: 0; border: none;"
-                       " selection-background-color: #bfdbfe; selection-color: #111827; }"));
+    msgLine->setStyleSheet(GUIStyles::transparentInlineLineEditStyle());
     msgLine->ensurePolished();
     const QFontMetrics fm(msgLine->font());
     msgLine->setFixedHeight(fm.lineSpacing() + 2);
@@ -36,9 +34,7 @@ void addStatusMessageToLayout(QVBoxLayout* layout, const QString& message, QWidg
     auto* moreBtn = new QPushButton(parentBlock->tr("More"), block);
     moreBtn->setFlat(true);
     moreBtn->setCursor(Qt::PointingHandCursor);
-    moreBtn->setStyleSheet(
-        QStringLiteral("QPushButton { color: #2563eb; font-size: 13px; padding: 0 4px; border: none; }"
-                       "QPushButton:hover { text-decoration: underline; }"));
+    moreBtn->setStyleSheet(GUIStyles::linkButtonStyleFor(QStringLiteral("palette(link)")));
 
     auto* collapsedRow = new QWidget(block);
     auto* hCollapsed   = new QHBoxLayout(collapsedRow);
@@ -61,10 +57,7 @@ void addStatusMessageToLayout(QVBoxLayout* layout, const QString& message, QWidg
     msgFull->setTabChangesFocus(false);
     msgFull->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     msgFull->document()->setDocumentMargin(0);
-    msgFull->setStyleSheet(
-        QStringLiteral("QPlainTextEdit { background: transparent; color: #6b7280; font-size: 13px;"
-                       " padding: 0; margin: 0; border: none;"
-                       " selection-background-color: #bfdbfe; selection-color: #111827; }"));
+    msgFull->setStyleSheet(GUIStyles::transparentInlinePlainTextEditStyle());
 
     auto* expandedFoot = new QWidget(expandedBlock);
     auto* hFoot         = new QHBoxLayout(expandedFoot);

@@ -1,5 +1,7 @@
 #include "widgets/property_inspector.h"
 #include "property/base_property_item.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include <coretypes/string_ptr.h>
 
 #include <QLabel>
@@ -92,8 +94,8 @@ PropertyInspector::PropertyInspector(QWidget* parent)
     setAttribute(Qt::WA_StyledBackground, true);
     setStyleSheet(
         "QWidget#propertyInspector {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
         "  border-radius: 16px;"
         "}"
         "QWidget#inspectorHeader {"
@@ -101,7 +103,7 @@ PropertyInspector::PropertyInspector(QWidget* parent)
         "  border: none;"
         "}"
         "QLabel#inspectorTitle {"
-        "  color: #111827;"
+        "  color: palette(text);"
         "  font-size: 16px;"
         "  font-weight: 600;"
         "  border: none;"
@@ -110,25 +112,25 @@ PropertyInspector::PropertyInspector(QWidget* parent)
         "  background: transparent;"
         "  border: none;"
         "  border-radius: 10px;"
-        "  color: #6b7280;"
+        "  color: palette(placeholder-text);"
         "  font-size: 16px;"
         "  padding: 2px;"
         "}"
         "QToolButton#inspectorCloseButton:hover {"
-        "  background: #f3f4f6;"
-        "  color: #111827;"
+        "  background: palette(midlight);"
+        "  color: palette(text);"
         "}"
         "QScrollArea#inspectorScroll, QWidget#inspectorScrollContent, QWidget#inspectorContent, QWidget#advancedContent {"
         "  background: transparent;"
         "  border: none;"
         "}"
         "QLabel#inspectorEmptyState {"
-        "  color: #9ca3af;"
+        "  color: palette(placeholder-text);"
         "  border: none;"
         "  padding: 24px 8px;"
         "}"
         "QLabel#inspectorFieldLabel {"
-        "  color: #6b7280;"
+        "  color: palette(placeholder-text);"
         "  font-size: 11px;"
         "  font-weight: 600;"
         "  text-transform: uppercase;"
@@ -137,7 +139,7 @@ PropertyInspector::PropertyInspector(QWidget* parent)
         "  margin-top: 10px;"
         "}"
         "QLabel#inspectorFieldValue {"
-        "  color: #374151;"
+        "  color: palette(text);"
         "  border: none;"
         "  padding-top: 2px;"
         "  font-size: 13px;"
@@ -146,7 +148,7 @@ PropertyInspector::PropertyInspector(QWidget* parent)
         "QToolButton#advancedToggle {"
         "  background: transparent;"
         "  border: none;"
-        "  color: #111827;"
+        "  color: palette(text);"
         "  font-weight: 600;"
         "  padding: 10px 0 2px 0;"
         "}"
@@ -196,11 +198,12 @@ void PropertyInspector::setupUI()
     connect(closeButton, &QToolButton::clicked, this, &QWidget::hide);
     headerLayout->addWidget(closeButton);
 
-    // Separator line
+    // Separator line — uses the `midlight` token (slightly lighter than the
+    // default hairline used elsewhere) to match the inspector's softer look.
     auto* separator = new QFrame(this);
     separator->setFrameShape(QFrame::HLine);
     separator->setFrameShadow(QFrame::Sunken);
-    separator->setStyleSheet("border: none; background: #f3f4f6; min-height: 1px; max-height: 1px;");
+    separator->setStyleSheet("border: none; background: palette(midlight); min-height: 1px; max-height: 1px;");
 
     // Scroll area
     auto* scroll = new QScrollArea(this);
@@ -291,13 +294,13 @@ void PropertyInspector::populateAllowedBubbles(const daq::PropertyPtr& prop)
     {
         auto* bubble = new QWidget(allowedBubblesWidget);
         bubble->setAttribute(Qt::WA_StyledBackground, true);
-        bubble->setStyleSheet("QWidget { background: #dbeafe; border-radius: 10px; }");
+        bubble->setStyleSheet(GUIStyles::tagBubbleStyle(GUIConstants::Colors::ACCENT_SOFT_BG));
         auto* bl = new QHBoxLayout(bubble);
         bl->setContentsMargins(8, 3, 8, 3);
         bl->setSpacing(0);
 
         auto* lbl = new QLabel(val, bubble);
-        lbl->setStyleSheet("color: #1d4ed8; font-size: 12px; font-weight: 600; border: none;");
+        lbl->setStyleSheet(GUIStyles::tagBubbleLabelStyle(GUIConstants::Colors::ACCENT));
         bl->addWidget(lbl);
 
         allowedBubblesLayout->addWidget(bubble);
@@ -379,7 +382,9 @@ void PropertyInspector::showProperty(BasePropertyItem* item)
     auto* writableLabel = rowWritable.value;
     writableLabel->setText(readOnly ? tr("No") : tr("Yes"));
     QPalette pal = writableLabel->palette();
-    pal.setColor(QPalette::WindowText, readOnly ? QColor(0xCC, 0x44, 0x44) : QColor(0x22, 0xAA, 0x44));
+    pal.setColor(QPalette::WindowText,
+                 readOnly ? QColor(GUIConstants::Colors::ERROR_FG)
+                          : QColor(GUIConstants::Colors::SUCCESS));
     writableLabel->setPalette(pal);
     setRowVisible(rowWritable, true);
 

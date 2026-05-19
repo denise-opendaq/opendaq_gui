@@ -7,8 +7,8 @@
 #include <opendaq/custom_log.h>
 #include <qt_widget_interface/qt_widget_interface.h>
 
-ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, LayoutManager* layoutManager, QObject* parent)
-    : BaseTreeElement(tree, layoutManager, parent)
+ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QTabWidget* contentTabs, QObject* parent)
+    : BaseTreeElement(tree, contentTabs, parent)
     , daqComponent(daqComponent)
 {
     this->localId = QString::fromStdString(daqComponent.getLocalId().toStdString());
@@ -148,38 +148,22 @@ QStringList ComponentTreeElement::getAvailableTabNames() const
 {
     QStringList tabs;
     tabs << "Attributes";
-    if (daqComponent.supportsInterface<IQTWidget>())
-       tabs << "QTWidget";
     return tabs;
 }
 
 void ComponentTreeElement::openTab(const QString& tabName)
 {
-    if (!layoutManager)
+    if (!contentTabs)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("ComponentTreeElement::openTab: layoutManager is null for component '{}'", name.toStdString());
+        LOG_W("ComponentTreeElement::openTab: contentTabs is null for component '{}'", name.toStdString());
         return;
     }
-        
+
     if (tabName == "Attributes")
     {
         auto* componentWidget = new ComponentWidget(daqComponent, nullptr, iconName);
         addTab(componentWidget, tabName);
-    }
-    else if (tabName == "QTWidget")
-    {
-        const auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
-        if (widgetComponent.assigned())
-        {
-            QWidget* qtWidget;
-            widgetComponent->getWidget(&qtWidget);
-            if (qtWidget)
-            {
-                // QTWidget opens in left zone
-                addTab(qtWidget, tabName);
-            }
-        }
     }
 }
 

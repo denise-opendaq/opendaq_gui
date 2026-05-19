@@ -38,6 +38,11 @@ protected:
     void updateStatusContainer();
     void updateTags();
 
+    // Pop a tab out of `tabs` into its own top-level window. Ownership of the
+    // page widget is transferred to the new window, which auto-deletes itself
+    // (and the page) on close.
+    void detachTabToWindow(int index);
+
     bool eventFilter(QObject* obj, QEvent* event) override;
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 

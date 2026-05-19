@@ -1,15 +1,22 @@
 #include "widgets/component_widget.h"
+#include "coretypes/string_ptr.h"
 #include "widgets/property_object_view.h"
 #include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/icon_provider.h"
 #include "context/QueuedEventHandler.h"
+#include <qt_widget_interface/qt_widget_interface.h>
 
 #include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMainWindow>
+#include <QMouseEvent>
 #include <QPushButton>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -47,27 +54,14 @@ void ComponentWidget::setupUI()
 
     populateTabs();
 
-    tabs->setStyleSheet(
-        "QTabWidget { background: transparent; }"
-        "QTabWidget::pane { border: none; background: transparent; }"
-        "QTabBar::tab {"
-        "  padding: 10px 18px;"
-        "  color: #6b7280;"
-        "  background: transparent;"
-        "  font-size: 13px;"
-        "  border: none;"
-        "  border-bottom: 2px solid transparent;"
-        "}"
-        "QTabBar::tab:selected {"
-        "  color: #1d4ed8;"
-        "  border-bottom: 2px solid #1d4ed8;"
-        "  font-weight: 600;"
-        "}"
-        "QTabBar::tab:hover:!selected {"
-        "  color: #374151;"
-        "  border-bottom: 2px solid #d1d5db;"
-        "}"
-    );
+    tabs->setStyleSheet(GUIStyles::underlineTabBarStyle());
+
+    // Double-click on a tab pops it out into its own top-level window.
+    if (auto* bar = tabs->tabBar())
+    {
+        bar->setToolTip(tr("Double-click a tab to open it in a separate window"));
+        bar->installEventFilter(this);
+    }
 }
 
 void ComponentWidget::addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card)
@@ -88,13 +82,7 @@ QWidget* ComponentWidget::buildHeaderCard()
     auto* card = new QWidget(this);
     card->setObjectName("componentHeaderCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        "QWidget#componentHeaderCard {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
-        "  border-radius: 16px;"
-        "}"
-    );
+    card->setStyleSheet(GUIStyles::cardStyle("componentHeaderCard"));
 
     auto* cardLayout = new QHBoxLayout(card);
     cardLayout->setContentsMargins(20, 16, 20, 16);
@@ -109,14 +97,7 @@ QWidget* ComponentWidget::buildHeaderCard()
     leftLayout->setSpacing(4);
 
     nameLabel = new QLabel(leftBlock);
-    nameLabel->setObjectName("componentNameLabel");
-    nameLabel->setStyleSheet(
-        "QLabel#componentNameLabel {"
-        "  font-size: 20px;"
-        "  font-weight: 700;"
-        "  color: #111827;"
-        "}"
-    );
+    nameLabel->setStyleSheet(GUIStyles::HEADER_TITLE_LABEL);
     leftLayout->addWidget(nameLabel);
 
     tagsRow = new QWidget(leftBlock);
@@ -126,13 +107,7 @@ QWidget* ComponentWidget::buildHeaderCard()
     leftLayout->addWidget(tagsRow);
 
     descLabel = new QLabel(leftBlock);
-    descLabel->setObjectName("componentDescLabel");
-    descLabel->setStyleSheet(
-        "QLabel#componentDescLabel {"
-        "  font-size: 13px;"
-        "  color: #6b7280;"
-        "}"
-    );
+    descLabel->setStyleSheet(GUIStyles::DESCRIPTION_LABEL);
     leftLayout->addWidget(descLabel);
 
     auto* statusRow = new QWidget(leftBlock);
@@ -154,7 +129,7 @@ QWidget* ComponentWidget::buildHeaderCard()
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
     statusSep->setFrameShadow(QFrame::Plain);
-    statusSep->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+    statusSep->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
     statusSep->setVisible(false);
     cardLayout->addWidget(statusSep);
 
@@ -176,6 +151,17 @@ QWidget* ComponentWidget::buildHeaderCard()
 
 void ComponentWidget::populateTabs()
 {
+    const auto widgetComponent = component.asPtrOrNull<IQTWidget>(true);
+    if (widgetComponent.assigned())
+    {
+        QWidget* qtWidget;
+        widgetComponent->getWidget(&qtWidget);
+        daq::StringPtr name;
+        widgetComponent->getName(&name);
+        if (qtWidget && name.assigned())
+            tabs->addTab(qtWidget, QString::fromStdString(name.toStdString()));
+    }
+
     auto* propView = new PropertyObjectView(component, nullptr, component);
     tabs->addTab(propView, tr("Attributes"));
 }
@@ -207,12 +193,12 @@ void ComponentWidget::updateStatus()
     if (active)
     {
         statusLabel->setText(tr("● Active"));
-        statusLabel->setStyleSheet("color: #16a34a; font-size: 13px; font-weight: 600;");
+        statusLabel->setStyleSheet(GUIStyles::coloredStatusLabelStyle(GUIConstants::Colors::SUCCESS));
     }
     else
     {
         statusLabel->setText(tr("● Inactive"));
-        statusLabel->setStyleSheet("color: #9ca3af; font-size: 13px; font-weight: 600;");
+        statusLabel->setStyleSheet(GUIStyles::coloredStatusLabelStyle(GUIConstants::Colors::NEUTRAL));
     }
 }
 
@@ -248,9 +234,7 @@ void ComponentWidget::updateStatusContainer()
         }
 
         auto* title = new QLabel(tr("Status"), statusContainerBlock);
-        title->setStyleSheet(
-            "color: #6b7280; font-size: 11px; font-weight: 600;"
-            " text-transform: uppercase; letter-spacing: 0.5px;");
+        title->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
         layout->addWidget(title);
 
         for (const auto& [statusName, statusEnum] : statuses)
@@ -259,11 +243,11 @@ void ComponentWidget::updateStatusContainer()
             const QString value = QString::fromStdString(statusEnum.getValue().toStdString());
 
             QString dotColor;
-            
-            if (value == "Ok")              dotColor = "#16a34a";
-            else if (value == "Warning")    dotColor = "#f59e0b";
-            else if (value == "Error")      dotColor = "#dc2626";
-            else                            dotColor = "#9ca3af";
+
+            if (value == "Ok")              dotColor = GUIConstants::Colors::SUCCESS;
+            else if (value == "Warning")    dotColor = GUIConstants::Colors::WARNING;
+            else if (value == "Error")      dotColor = GUIConstants::Colors::ERROR_FG;
+            else                            dotColor = GUIConstants::Colors::NEUTRAL;
 
             QString statusMessage;
             try
@@ -285,13 +269,13 @@ void ComponentWidget::updateStatusContainer()
             rl->setSpacing(6);
 
             auto* nameLbl = new QLabel(name, lineRow);
-            nameLbl->setStyleSheet("color: #6b7280; font-size: 13px;");
+            nameLbl->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
             auto* dot = new QLabel("●", lineRow);
-            dot->setStyleSheet(QString("color: %1; font-size: 10px;").arg(dotColor));
+            dot->setStyleSheet(GUIStyles::statusDotStyle(dotColor));
 
             auto* valueLbl = new QLabel(value, lineRow);
-            valueLbl->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
+            valueLbl->setStyleSheet(GUIStyles::VALUE_LABEL);
 
             rl->addWidget(nameLbl);
             rl->addWidget(dot);
@@ -326,11 +310,6 @@ void ComponentWidget::updateTags()
         delete item;
     }
 
-    static const struct { const char* bg; const char* fg; } palette[] = {
-        {"#dbeafe", "#1d4ed8"}, {"#dcfce7", "#16a34a"}, {"#fef9c3", "#ca8a04"},
-        {"#fce7f3", "#be185d"}, {"#ede9fe", "#7c3aed"}, {"#ffedd5", "#ea580c"},
-    };
-
     int idx = 0;
     try
     {
@@ -338,29 +317,24 @@ void ComponentWidget::updateTags()
         for (const auto& tagObj : tags.getList())
         {
             const QString tagName = QString::fromStdString(tagObj.toStdString());
-            const auto& c = palette[idx % 6];
+            const auto& c = GUIConstants::Colors::TAG_PALETTE[idx % GUIConstants::Colors::TAG_PALETTE_SIZE];
 
             auto* bubble = new QWidget(tagsRow);
             bubble->setAttribute(Qt::WA_StyledBackground, true);
-            bubble->setStyleSheet(
-                QString("QWidget { background: %1; border-radius: 10px; }").arg(c.bg));
+            bubble->setStyleSheet(GUIStyles::tagBubbleStyle(c.bg));
 
             auto* bl = new QHBoxLayout(bubble);
             bl->setContentsMargins(8, 3, 5, 3);
             bl->setSpacing(4);
 
             auto* nameLbl = new QLabel(tagName, bubble);
-            nameLbl->setStyleSheet(
-                QString("color: %1; font-size: 12px; font-weight: 600; background: transparent;").arg(c.fg));
+            nameLbl->setStyleSheet(GUIStyles::tagBubbleLabelStyle(c.fg));
 
             auto* removeBtn = new QPushButton("×", bubble);
             removeBtn->setFlat(true);
             removeBtn->setCursor(Qt::PointingHandCursor);
             removeBtn->setFixedSize(14, 14);
-            removeBtn->setStyleSheet(
-                QString("QPushButton { color: %1; background: transparent; border: none;"
-                        " font-size: 13px; font-weight: 700; padding: 0; }"
-                        "QPushButton:hover { color: #111827; }").arg(c.fg));
+            removeBtn->setStyleSheet(GUIStyles::tagBubbleRemoveButtonStyle(c.fg));
 
             connect(removeBtn, &QPushButton::clicked, this, [this, tagName]()
             {
@@ -391,7 +365,56 @@ bool ComponentWidget::eventFilter(QObject* obj, QEvent* event)
         catch (...) {}
         return true;
     }
+
+    if (tabs && obj == tabs->tabBar() && event->type() == QEvent::MouseButtonDblClick)
+    {
+        auto* mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton)
+        {
+            const int idx = tabs->tabBar()->tabAt(mouseEvent->pos());
+            if (idx >= 0)
+            {
+                detachTabToWindow(idx);
+                return true;
+            }
+        }
+    }
+
     return QWidget::eventFilter(obj, event);
+}
+
+void ComponentWidget::detachTabToWindow(int index)
+{
+    if (!tabs || index < 0 || index >= tabs->count())
+        return;
+
+    const QString tabTitle = tabs->tabText(index);
+    QWidget* page = tabs->widget(index);
+    if (!page)
+        return;
+
+    tabs->removeTab(index);
+
+    auto* window = new QMainWindow();
+    window->setAttribute(Qt::WA_DeleteOnClose);
+
+    const QString componentName = nameLabel ? nameLabel->text() : QString();
+    window->setWindowTitle(componentName.isEmpty()
+                               ? tabTitle
+                               : QStringLiteral("%1 \u2014 %2").arg(componentName, tabTitle));
+
+    if (!treeIconName.isEmpty())
+    {
+        const QIcon ico = IconProvider::instance().icon(treeIconName);
+        if (ico.availableSizes().size() > 0)
+            window->setWindowIcon(ico);
+    }
+
+    page->setParent(window);
+    window->setCentralWidget(page);
+    page->show();
+    window->resize(800, 600);
+    window->show();
 }
 
 void ComponentWidget::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)

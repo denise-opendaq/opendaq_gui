@@ -3,6 +3,8 @@
 #include "widgets/device_logs_widget.h"
 #include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/QueuedEventHandler.h"
 #include <QComboBox>
 #include <QDateTime>
@@ -48,13 +50,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     auto* card = new QWidget(this);
     card->setObjectName("deviceHeaderCard");
     card->setAttribute(Qt::WA_StyledBackground, true);
-    card->setStyleSheet(
-        "QWidget#deviceHeaderCard {"
-        "  background: #ffffff;"
-        "  border: 1px solid #e5e7eb;"
-        "  border-radius: 16px;"
-        "}"
-    );
+    card->setStyleSheet(GUIStyles::cardStyle("deviceHeaderCard"));
 
     auto* cardLayout = new QHBoxLayout(card);
     cardLayout->setContentsMargins(20, 16, 20, 16);
@@ -69,14 +65,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     leftLayout->setSpacing(4);
 
     nameLabel = new QLabel(leftBlock);
-    nameLabel->setObjectName("deviceNameLabel");
-    nameLabel->setStyleSheet(
-        "QLabel#deviceNameLabel {"
-        "  font-size: 20px;"
-        "  font-weight: 700;"
-        "  color: #111827;"
-        "}"
-    );
+    nameLabel->setStyleSheet(GUIStyles::HEADER_TITLE_LABEL);
     leftLayout->addWidget(nameLabel);
 
     tagsRow = new QWidget(leftBlock);
@@ -86,13 +75,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     leftLayout->addWidget(tagsRow);
 
     descLabel = new QLabel(leftBlock);
-    descLabel->setObjectName("deviceDescLabel");
-    descLabel->setStyleSheet(
-        "QLabel#deviceDescLabel {"
-        "  font-size: 13px;"
-        "  color: #6b7280;"
-        "}"
-    );
+    descLabel->setStyleSheet(GUIStyles::DESCRIPTION_LABEL);
     leftLayout->addWidget(descLabel);
 
     // Status + Operation mode row
@@ -107,7 +90,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     statusLabel->installEventFilter(this);
 
     auto* opModeCaption = new QLabel(tr("Operation mode:"), statusRow);
-    opModeCaption->setStyleSheet("color: #6b7280; font-size: 13px;");
+    opModeCaption->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
     opModeCombo = new QComboBox(statusRow);
     opModeCombo->setObjectName("opModeCombo");
@@ -116,8 +99,9 @@ QWidget* DeviceWidget::buildHeaderCard()
     opModeCombo->addItem("Operation",     static_cast<int>(daq::OperationModeType::Operation));
     opModeCombo->addItem("SafeOperation", static_cast<int>(daq::OperationModeType::SafeOperation));
     opModeCombo->setStyleSheet(
+        QStringLiteral(
         "QComboBox#opModeCombo {"
-        "  color: #1d4ed8;"
+        "  color: %1;"
         "  background: transparent;"
         "  border: none;"
         "  font-size: 13px;"
@@ -125,6 +109,7 @@ QWidget* DeviceWidget::buildHeaderCard()
         "  padding: 0 4px;"
         "}"
         "QComboBox#opModeCombo::drop-down { border: none; width: 16px; }"
+        ).arg(GUIConstants::Colors::ACCENT)
     );
 
     statusRowLayout->addWidget(statusLabel);
@@ -139,7 +124,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
     statusSep->setFrameShadow(QFrame::Plain);
-    statusSep->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+    statusSep->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
     statusSep->setVisible(false);
     cardLayout->addWidget(statusSep);
 
@@ -156,7 +141,7 @@ QWidget* DeviceWidget::buildHeaderCard()
         auto* vLine = new QFrame(card);
         vLine->setFrameShape(QFrame::VLine);
         vLine->setFrameShadow(QFrame::Plain);
-        vLine->setStyleSheet("background: #e5e7eb; border: none; max-width: 1px;");
+        vLine->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
         cardLayout->addWidget(vLine);
     }
 
@@ -174,10 +159,10 @@ QWidget* DeviceWidget::buildHeaderCard()
         rowLayout->setSpacing(12);
 
         auto* lbl = new QLabel(labelText, row);
-        lbl->setStyleSheet("color: #6b7280; font-size: 13px; min-width: 110px;");
+        lbl->setStyleSheet(QString(GUIStyles::CAPTION_LABEL) + " min-width: 110px;");
 
         valueOut = new QLabel(row);
-        valueOut->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
+        valueOut->setStyleSheet(GUIStyles::VALUE_LABEL);
         valueOut->setTextInteractionFlags(Qt::TextSelectableByMouse);
 
         rowLayout->addWidget(lbl);
@@ -189,9 +174,7 @@ QWidget* DeviceWidget::buildHeaderCard()
     makeInfoRow(tr("Domain"),         domainLabel);
     makeInfoRow(tr("Tick Frequency"), tickFreqLabel);
     makeInfoRow(tr("Current Time"),   currentTimeLbl);
-    currentTimeLbl->setStyleSheet(
-        "color: #111827; font-size: 13px; font-weight: 500; font-family: monospace;"
-    );
+    currentTimeLbl->setStyleSheet(GUIStyles::MONO_VALUE_LABEL);
 
     cardLayout->addWidget(rightBlock, 0, Qt::AlignTop);
 
@@ -264,18 +247,13 @@ void DeviceWidget::populateTabs()
             auto* layout = new QVBoxLayout(page);
             layout->setAlignment(Qt::AlignCenter);
             auto* lbl = new QLabel(tr("No device info available"), page);
-            lbl->setStyleSheet("color: #9ca3af; font-size: 14px;");
+            lbl->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
             layout->addWidget(lbl);
             tabs->addTab(page, tr("Overview"));
         }
     }
 
-    // Attributes tab
-    {
-        auto* propView = new PropertyObjectView(device, nullptr, device);
-        tabs->addTab(propView, tr("Attributes"));
-        tabs->setCurrentIndex(1);
-    }
+    ComponentWidget::populateTabs();
 
     // Logs tab
     tabs->addTab(new DeviceLogsWidget(device), tr("Logs"));
@@ -317,9 +295,7 @@ void DeviceWidget::updateConnectionStatus()
         }
 
         auto* title = new QLabel(tr("Connection Status"), statusContainerBlock);
-        title->setStyleSheet(
-            "color: #6b7280; font-size: 11px; font-weight: 600;"
-            " text-transform: uppercase; letter-spacing: 0.5px;");
+        title->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
         layout->addWidget(title);
 
         for (const auto& [statusName, statusEnum] : statuses)
@@ -328,10 +304,10 @@ void DeviceWidget::updateConnectionStatus()
             const QString value = QString::fromStdString(statusEnum.getValue().toStdString());
 
             QString dotColor;
-            if (value == "Connected")          dotColor = "#16a34a";
-            else if (value == "Reconnecting")  dotColor = "#f59e0b";
-            else if (value == "Unrecoverable") dotColor = "#dc2626";
-            else                               dotColor = "#9ca3af";
+            if (value == "Connected")          dotColor = GUIConstants::Colors::SUCCESS;
+            else if (value == "Reconnecting")  dotColor = GUIConstants::Colors::WARNING;
+            else if (value == "Unrecoverable") dotColor = GUIConstants::Colors::ERROR_FG;
+            else                               dotColor = GUIConstants::Colors::NEUTRAL;
 
             QString statusMessage;
             try
@@ -353,13 +329,13 @@ void DeviceWidget::updateConnectionStatus()
             rl->setSpacing(6);
 
             auto* nameLbl = new QLabel(name, lineRow);
-            nameLbl->setStyleSheet("color: #6b7280; font-size: 13px;");
+            nameLbl->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
             auto* dot = new QLabel("●", lineRow);
-            dot->setStyleSheet(QString("color: %1; font-size: 10px;").arg(dotColor));
+            dot->setStyleSheet(GUIStyles::statusDotStyle(dotColor));
 
             auto* valueLbl = new QLabel(value, lineRow);
-            valueLbl->setStyleSheet("color: #111827; font-size: 13px; font-weight: 500;");
+            valueLbl->setStyleSheet(GUIStyles::VALUE_LABEL);
 
             rl->addWidget(nameLbl);
             rl->addWidget(dot);

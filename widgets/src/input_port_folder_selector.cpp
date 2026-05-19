@@ -1,6 +1,8 @@
 #include "widgets/input_port_folder_selector.h"
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/QueuedEventHandler.h"
 #include <QVBoxLayout>
 #include <QLabel>
@@ -92,7 +94,7 @@ void InputPortFolderSelector::updateInputPorts()
     if (!inputPortsFolder.assigned())
     {
         auto label = new QLabel(tr("Input ports folder not assigned"), this);
-        label->setStyleSheet(QStringLiteral("color: #9ca3af; font-size: 14px;"));
+        label->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
         inputPortsLayout->addWidget(label);
         return;
     }
@@ -123,7 +125,7 @@ void InputPortFolderSelector::updateInputPorts()
             if (!hasNoPortsLabel)
             {
                 auto label = new QLabel(tr("No input ports available"), this);
-                label->setStyleSheet(QStringLiteral("color: #9ca3af; font-size: 14px;"));
+                label->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
                 inputPortsLayout->addWidget(label);
             }
             inputPortsLayout->addStretch();
@@ -229,7 +231,8 @@ void InputPortFolderSelector::updateInputPorts()
     catch (const std::exception& e)
     {
         auto label = new QLabel(tr("Error getting input ports: %1").arg(e.what()), this);
-        label->setStyleSheet(QStringLiteral("color: #dc2626; font-size: 14px;"));
+        label->setStyleSheet(
+            QString(GUIStyles::ERROR_INLINE_LABEL_FMT).arg(GUIConstants::Colors::ERROR_FG));
         inputPortsLayout->addWidget(label);
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting input ports: {}", e.what());

@@ -16,8 +16,8 @@
 #include <QFile>
 #include <QTextStream>
 
-DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, LayoutManager* layoutManager, QObject* parent)
-    : Super(tree, daqDevice, layoutManager, parent)
+DeviceTreeElement::DeviceTreeElement(QTreeWidget* tree, const daq::DevicePtr& daqDevice, QTabWidget* contentTabs, QObject* parent)
+    : Super(tree, daqDevice, contentTabs, parent)
 {
     this->type = "Device";
     this->iconName = "device";

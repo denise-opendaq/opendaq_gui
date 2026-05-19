@@ -1,6 +1,7 @@
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
+#include "context/gui_styles.h"
 #include "context/icon_provider.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -11,35 +12,6 @@
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
 
-namespace
-{
-
-const char* kComboStyle =
-    "QComboBox {"
-    "  background: #f9fafb;"
-    "  border: 1px solid #e5e7eb;"
-    "  border-radius: 10px;"
-    "  padding: 9px 12px;"
-    "  color: #111827;"
-    "  font-size: 13px;"
-    "}"
-    "QComboBox:focus {"
-    "  border-color: #cbd5e1;"
-    "  background: #ffffff;"
-    "}"
-    "QComboBox::drop-down {"
-    "  border: none;"
-    "  width: 24px;"
-    "}";
-
-const char* kCardStyle =
-    "QFrame#inputPortCard {"
-    "  background: #ffffff;"
-    "  border: 1px solid #e5e7eb;"
-    "  border-radius: 12px;"
-    "}";
-
-} // namespace
 
 InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputPort, ComponentTreeWidget* componentTree, QWidget* parent)
     : QWidget(parent)
@@ -112,7 +84,7 @@ void InputPortSignalSelector::setupSignalSelection()
         cardFrame = new QFrame(this);
         cardFrame->setObjectName(QStringLiteral("inputPortCard"));
         cardFrame->setAttribute(Qt::WA_StyledBackground, true);
-        cardFrame->setStyleSheet(QLatin1String(kCardStyle));
+        cardFrame->setStyleSheet(GUIStyles::cardStyle("inputPortCard", "QFrame", 12));
         rowHost = cardFrame;
 
         auto* outerLayout = new QVBoxLayout(this);
@@ -135,15 +107,16 @@ void InputPortSignalSelector::setupSignalSelection()
         titleLbl->setMinimumWidth(120);
         titleLbl->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
         titleLbl->setStyleSheet(
-            QStringLiteral("color: #111827; font-size: 13px; font-weight: 600;"
+            QStringLiteral("color: palette(text); font-size: 13px; font-weight: 600;"
                            " background: transparent; border: none;"));
         row->addWidget(titleLbl, 0);
+
     }
 
     signalComboBox = new QComboBox(rowHost);
     signalComboBox->setEditable(false);
     signalComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    signalComboBox->setStyleSheet(QLatin1String(kComboStyle));
+    signalComboBox->setStyleSheet(GUIStyles::roundedComboBoxStyle());
     connect(signalComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &InputPortSignalSelector::onSignalSelected);
 
@@ -153,16 +126,7 @@ void InputPortSignalSelector::setupSignalSelection()
     disconnectButton->setAutoRaise(true);
     disconnectButton->setFocusPolicy(Qt::NoFocus);
     disconnectButton->setFixedSize(36, 36);
-    disconnectButton->setStyleSheet(
-        QStringLiteral("QToolButton {"
-                       "  border: 1px solid #e5e7eb;"
-                       "  border-radius: 10px;"
-                       "  background: #f9fafb;"
-                       "  padding: 6px;"
-                       "}"
-                       "QToolButton:hover { background: #f3f4f6; }"
-                       "QToolButton:pressed { background: #e5e7eb; }"
-                       "QToolButton:disabled { color: #d1d5db; background: #f9fafb; }"));
+    disconnectButton->setStyleSheet(GUIStyles::roundedToolButtonStyle());
     disconnectButton->setEnabled(false);
     connect(disconnectButton, &QToolButton::clicked, this, [this]() { disconnectSignal(); });
 

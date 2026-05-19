@@ -1,6 +1,8 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
+#include "context/gui_styles.h"
+#include <QPalette>
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
@@ -35,7 +37,13 @@ public:
             painter->save();
             painter->setRenderHint(QPainter::Antialiasing, true);
             painter->setPen(Qt::NoPen);
-            painter->setBrush(selected ? QColor("#dfe9ff") : QColor("#ececec"));
+
+            // Use system accent with alpha so it works in light & dark mode.
+            QColor selBg = opt.palette.color(QPalette::Highlight);
+            selBg.setAlpha(70);
+            QColor hoverBg = opt.palette.color(QPalette::Text);
+            hoverBg.setAlpha(20);
+            painter->setBrush(selected ? selBg : hoverBg);
 
             QRect r = opt.rect.adjusted(6, 1, -6, -1);
 
@@ -55,42 +63,6 @@ public:
         QStyledItemDelegate::paint(painter, opt, index);
     }
 };
-
-const char* kComponentTreeStyleSheet =
-    "QTreeWidget {"
-    "  background-color: #f2f2f2;"
-    "  border: none;"
-    "  font-size: 13px;"
-    "  outline: 0;"
-    "  show-decoration-selected: 1;"
-    "  selection-background-color: transparent;"
-    "  selection-color: #1f2a44;"
-    "}"
-    "QTreeWidget::item {"
-    "  padding: 6px 8px;"
-    "  border-radius: 8px;"
-    "}"
-    "QTreeWidget::item:selected, QTreeWidget::item:selected:active, QTreeWidget::item:selected:!active {"
-    "  color: #1f2a44;"
-    "}"
-    "QTreeView::branch {"
-    "  background: transparent;"
-    "}"
-    "QTreeView::branch:selected {"
-    "  background: transparent;"
-    "}"
-    "QHeaderView::section {"
-    "  background-color: #f2f2f2;"
-    "  border: none;"
-    "  padding: 6px 8px;"
-    "  font-size: 11px;"
-    "  font-weight: 600;"
-    "  text-transform: uppercase;"
-    "  color: #6b6b6b;"
-    "}"
-    "QHeaderView {"
-    "  background-color: #f2f2f2;"
-    "}";
 
 constexpr int kDescriptionRole = Qt::UserRole + 1;
 } // namespace
@@ -124,12 +96,7 @@ void AddFunctionBlockDialog::setupUI()
     auto* leftPanel = new QWidget(this);
     leftPanel->setObjectName("leftPanel");
     leftPanel->setAttribute(Qt::WA_StyledBackground, true);
-    leftPanel->setStyleSheet(
-        "QWidget#leftPanel {"
-        "  background-color: #f2f2f2;"
-        "  border: 1px solid #e0e0e0;"
-        "}"
-    );
+    leftPanel->setStyleSheet(GUIStyles::sidebarPanelStyle("leftPanel"));
     auto* leftLayout = new QVBoxLayout(leftPanel);
     leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
@@ -140,19 +107,7 @@ void AddFunctionBlockDialog::setupUI()
     searchBox = new QLineEdit(leftPanel);
     searchBox->setPlaceholderText(tr("Search function blocks..."));
     searchBox->setClearButtonEnabled(true);
-    searchBox->setStyleSheet(
-        "QLineEdit {"
-        "  background-color: #f7f7f7;"
-        "  border: 1px solid #e5e5e5;"
-        "  border-radius: 10px;"
-        "  padding: 8px 10px;"
-        "  font-size: 13px;"
-        "}"
-        "QLineEdit:focus {"
-        "  border: 1px solid #c8d6ff;"
-        "  background-color: #ffffff;"
-        "}"
-    );
+    searchBox->setStyleSheet(GUIStyles::searchLineEditStyle());
     connect(searchBox, &QLineEdit::textChanged, this, &AddFunctionBlockDialog::onSearchFilterChanged);
     leftLayout->addWidget(searchBox);
 
@@ -165,7 +120,7 @@ void AddFunctionBlockDialog::setupUI()
     functionBlockList->setSelectionMode(QAbstractItemView::SingleSelection);
     functionBlockList->setItemDelegate(new SidebarSelectionDelegate(functionBlockList));
     functionBlockList->setAttribute(Qt::WA_StyledBackground, true);
-    functionBlockList->setStyleSheet(kComponentTreeStyleSheet);
+    functionBlockList->setStyleSheet(GUIStyles::sidebarTreeStyle());
     connect(functionBlockList, &QTreeWidget::itemSelectionChanged, this, &AddFunctionBlockDialog::onFunctionBlockSelected);
     connect(functionBlockList, &QTreeWidget::itemDoubleClicked, this, &AddFunctionBlockDialog::onFunctionBlockDoubleClicked);
     leftLayout->addWidget(functionBlockList);
@@ -187,27 +142,14 @@ void AddFunctionBlockDialog::setupUI()
     headerLayout->setSpacing(4);
 
     nameLabel = new QLabel(headerBlock);
-    nameLabel->setObjectName("componentNameLabel");
-    nameLabel->setStyleSheet(
-        "QLabel#componentNameLabel {"
-        "  font-size: 20px;"
-        "  font-weight: 700;"
-        "  color: #111827;"
-        "}"
-    );
+    nameLabel->setStyleSheet(GUIStyles::HEADER_TITLE_LABEL);
     nameLabel->hide();
     headerLayout->addWidget(nameLabel);
 
     descriptionLabel = new QLabel(headerBlock);
-    descriptionLabel->setObjectName("componentDescLabel");
     descriptionLabel->setWordWrap(true);
     descriptionLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    descriptionLabel->setStyleSheet(
-        "QLabel#componentDescLabel {"
-        "  font-size: 13px;"
-        "  color: #6b7280;"
-        "}"
-    );
+    descriptionLabel->setStyleSheet(GUIStyles::DESCRIPTION_LABEL);
     descriptionLabel->hide();
     headerLayout->addWidget(descriptionLabel);
 
@@ -231,38 +173,7 @@ void AddFunctionBlockDialog::setupUI()
     addButton->setEnabled(false);
     addButton->setCursor(Qt::PointingHandCursor);
     addButton->setMinimumHeight(44);
-    addButton->setStyleSheet(
-        "QPushButton {"
-        "  border: 1.5px solid #1d4ed8;"
-        "  border-radius: 10px;"
-        "  padding: 10px 10px;"
-        // "  font-size: 14px;"
-        // "  font-weight: 600;"
-        "  color: #ffffff;"
-        "  background-color: #1d4ed8;"
-        "}"
-        "QPushButton:hover {"
-        "  background-color: #1e40af;"
-        "  border: 1.5px solid #1e40af;"
-        "  border-radius: 12px;"
-        "  color: #ffffff;"
-        "}"
-        "QPushButton:pressed {"
-        "  background-color: #1e3a8a;"
-        "  border: 1.5px solid #1e3a8a;"
-        "  border-radius: 12px;"
-        "  color: #ffffff;"
-        "}"
-        "QPushButton:disabled {"
-        "  border: 1.5px solid #e5e7eb;"
-        "  border-radius: 10px;"
-        "  padding: 10px 10px;"
-        // "  font-size: 14px;"
-        // "  font-weight: 600;"
-        "  color: #9ca3af;"
-        "  background-color: #e5e7eb;"
-        "}"
-    );
+    addButton->setStyleSheet(GUIStyles::primaryButtonStyle());
     connect(addButton, &QPushButton::clicked, this, &AddFunctionBlockDialog::onAddClicked);
     buttonRowLayout->addWidget(addButton);
     rightLayout->addLayout(buttonRowLayout);
