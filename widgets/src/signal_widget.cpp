@@ -1,7 +1,6 @@
 #include "widgets/signal_widget.h"
 #include "opendaq/signal.h"
 #include "widgets/property_object_view.h"
-#include "widgets/signal_value_widget.h"
 #include "widgets/signal_descriptor_widget.h"
 #include "widgets/signal_plot_widget.h"
 #include "context/AppContext.h"

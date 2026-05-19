@@ -11,7 +11,7 @@ class QAction;
 class QLineEdit;
 class QMenu;
 class QSplitter;
-class QTabWidget;
+class QWidget;
 
 class BaseTreeElement;
 class ComponentTreeWidget;
@@ -30,12 +30,11 @@ protected:
 private:
     void setupUI();
     void setupMenuBar();
-    void closeAllTabs();
+    void clearContent();
 
 private Q_SLOTS:
     void onShowHiddenComponentsToggled(bool checked);
     void onComponentSelected(BaseTreeElement* element);
-    void onContentTabCloseRequested(int index);
     void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
                            const QList<ReleaseAsset>& assets);
     void onLoadModuleTriggered();
@@ -45,8 +44,8 @@ private:
     QSplitter* mainSplitter = nullptr;
     QSplitter* verticalSplitter = nullptr;
 
-    // Content area
-    QTabWidget* contentTabs = nullptr;
+    // Single content slot: hosts the widget of the currently selected component
+    QWidget* contentHost = nullptr;
 
     // Left panel
     QLineEdit* searchBox = nullptr;
@@ -55,7 +54,6 @@ private:
     // Menu
     QAction* showHiddenAction = nullptr;
     QAction* expandAllPropertiesAction = nullptr;
-    QAction* closeAllTabsAction = nullptr;
 
     UpdateChecker* m_updateChecker = nullptr;
 };

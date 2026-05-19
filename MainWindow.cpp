@@ -14,7 +14,6 @@
 #include <QPainter>
 #include <QSplitter>
 #include <QStyledItemDelegate>
-#include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -126,11 +125,6 @@ void MainWindow::setupMenuBar()
         AppContext::Instance()->setExpandAllProperties(checked);
     });
 
-    viewMenu->addSeparator();
-
-    closeAllTabsAction = viewMenu->addAction("Close All Tabs");
-    connect(closeAllTabsAction, &QAction::triggered, this, &MainWindow::closeAllTabs);
-
     // Modules menu
     QMenu* modulesMenu = menuBar->addMenu("Modules");
     QAction* loadModuleAction = modulesMenu->addAction("Load Module...");
@@ -176,15 +170,15 @@ void MainWindow::setupUI()
                                              GUIConstants::DEFAULT_LAYOUT_MARGIN, 0);
     contentWrapperLayout->setSpacing(0);
 
-    contentTabs = new QTabWidget();
-    contentTabs->setTabsClosable(true);
-    connect(contentTabs, &QTabWidget::tabCloseRequested,
-            this, &MainWindow::onContentTabCloseRequested);
-    contentWrapperLayout->addWidget(contentTabs);
+    contentHost = new QWidget();
+    auto* contentHostLayout = new QVBoxLayout(contentHost);
+    contentHostLayout->setContentsMargins(0, 0, 0, 0);
+    contentHostLayout->setSpacing(0);
+    contentWrapperLayout->addWidget(contentHost);
 
     verticalSplitter->addWidget(contentWrapper);
 
-    componentTreeWidget = new ComponentTreeWidget(contentTabs);
+    componentTreeWidget = new ComponentTreeWidget(contentHost);
     componentTreeWidget->setAlternatingRowColors(false);
     componentTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     componentTreeWidget->setAllColumnsShowFocus(false);
@@ -237,17 +231,23 @@ void MainWindow::setupUI()
                             GUIConstants::DEFAULT_HORIZONTAL_SPLITTER_RIGHT});
 }
 
-void MainWindow::closeAllTabs()
+void MainWindow::clearContent()
 {
-    if (!contentTabs)
+    if (!contentHost)
         return;
 
-    while (contentTabs->count() > 0)
+    QLayout* layout = contentHost->layout();
+    if (!layout)
+        return;
+
+    while (QLayoutItem* item = layout->takeAt(0))
     {
-        QWidget* page = contentTabs->widget(0);
-        contentTabs->removeTab(0);
-        if (page)
-            page->deleteLater();
+        if (QWidget* w = item->widget())
+        {
+            w->setParent(nullptr);
+            w->deleteLater();
+        }
+        delete item;
     }
 }
 
@@ -260,24 +260,8 @@ void MainWindow::onComponentSelected(BaseTreeElement* element)
     if (!element)
         return;
 
-    closeAllTabs();
+    clearContent();
     element->onSelected();
-}
-
-void MainWindow::onContentTabCloseRequested(int index)
-{
-    if (!contentTabs || index < 0 || index >= contentTabs->count())
-        return;
-
-    const QString tabName = contentTabs->tabText(index);
-    QWidget* widget = contentTabs->widget(index);
-
-    contentTabs->removeTab(index);
-    if (widget)
-        widget->deleteLater();
-
-    const auto loggerComponent = AppContext::LoggerComponent();
-    LOG_I("Tab '{}' closed", tabName.toStdString());
 }
 
 void MainWindow::showEvent(QShowEvent* event)
