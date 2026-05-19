@@ -11,9 +11,7 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
-#include <QPainter>
 #include <QSplitter>
-#include <QStyledItemDelegate>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -25,56 +23,6 @@
 
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
-
-namespace
-{
-class SidebarSelectionDelegate final : public QStyledItemDelegate
-{
-public:
-    explicit SidebarSelectionDelegate(QObject* parent = nullptr)
-        : QStyledItemDelegate(parent)
-    {
-    }
-
-    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override
-    {
-        QStyleOptionViewItem opt(option);
-        initStyleOption(&opt, index);
-
-        const bool selected = opt.state.testFlag(QStyle::State_Selected);
-        const bool hovered = opt.state.testFlag(QStyle::State_MouseOver);
-
-        if ((selected || hovered) && opt.widget)
-        {
-            painter->save();
-            painter->setRenderHint(QPainter::Antialiasing, true);
-            painter->setPen(Qt::NoPen);
-
-            QColor selBg = opt.palette.color(QPalette::Highlight);
-            selBg.setAlpha(70);
-            QColor hoverBg = opt.palette.color(QPalette::Text);
-            hoverBg.setAlpha(20);
-            painter->setBrush(selected ? selBg : hoverBg);
-
-            QRect r = opt.rect.adjusted(6, 1, -6, -1);
-
-            if (auto* view = qobject_cast<const QAbstractItemView*>(opt.widget))
-            {
-                const int viewportW = view->viewport() ? view->viewport()->width() : r.width();
-                r.setLeft(6);
-                r.setRight(viewportW - 6);
-            }
-
-            painter->drawRoundedRect(r, 10.0, 10.0);
-            painter->restore();
-        }
-
-        opt.state &= ~QStyle::State_Selected;
-        opt.state &= ~QStyle::State_MouseOver;
-        QStyledItemDelegate::paint(painter, opt, index);
-    }
-};
-} // namespace
 
 MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
@@ -182,7 +130,6 @@ void MainWindow::setupUI()
     componentTreeWidget->setAlternatingRowColors(false);
     componentTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
     componentTreeWidget->setAllColumnsShowFocus(false);
-    componentTreeWidget->setItemDelegate(new SidebarSelectionDelegate(componentTreeWidget));
     componentTreeWidget->setAttribute(Qt::WA_StyledBackground, true);
     componentTreeWidget->setStyleSheet(GUIStyles::sidebarTreeStyle());
     auto instance = AppContext::Instance()->daqInstance();
