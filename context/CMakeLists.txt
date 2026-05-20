@@ -14,7 +14,6 @@ set(HEADERS
     include/context/gui_constants.h
     include/context/gui_styles.h
     include/context/theme.h
-    include/context/sidebar_item_delegate.h
 )
 
 # Source files

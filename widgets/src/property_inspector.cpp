@@ -297,7 +297,7 @@ void PropertyInspector::populateAllowedBubbles(const daq::PropertyPtr& prop)
     {
         auto* bubble = new QWidget(allowedBubblesWidget);
         bubble->setAttribute(Qt::WA_StyledBackground, true);
-        bubble->setStyleSheet(GUIStyles::tagBubbleStyle(GUIConstants::Colors::ACCENT_SOFT_BG));
+        bubble->setStyleSheet(GUIStyles::tagBubbleStyle(GUIConstants::Colors::ACCENT));
         auto* bl = new QHBoxLayout(bubble);
         bl->setContentsMargins(8, 3, 8, 3);
         bl->setSpacing(0);

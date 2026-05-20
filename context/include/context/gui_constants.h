@@ -87,13 +87,7 @@ namespace GUIConstants {
         inline constexpr const char* HOVER             = "palette(midlight)";        // subtle hover bg
         inline constexpr const char* HIGHLIGHT         = "palette(highlight)";       // system accent (selection)
         inline constexpr const char* LINK              = "palette(link)";
-
-        // --- Brand accent (fixed) -----------------------------------------------
-        // Tailwind blue-500 family — works against both light and dark surfaces.
         inline constexpr const char* ACCENT            = "palette(accent)";             // primary accent color
-        inline constexpr const char* ACCENT_HOVER      = "palette(highlight)";
-        inline constexpr const char* ACCENT_PRESSED    = "palette(accent)";
-        inline constexpr const char* ACCENT_SOFT_BG    = "palette(accent)";   // pill / chip
 
         // --- Semantic / status colors (fixed) ----------------------------------
         inline constexpr const char* SUCCESS           = "#22c55e";

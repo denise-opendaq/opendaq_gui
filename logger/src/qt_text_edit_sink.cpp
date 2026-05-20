@@ -263,9 +263,19 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
     searchEdit->setMinimumWidth(120);
     searchEdit->setStyleSheet(GUIStyles::searchLineEditStyle());
 
-    const QString pillUnchecked = GUIStyles::neutralPillStyle();
-    const QString pillChecked   = GUIStyles::pillButtonStyle(
-        GUIConstants::Colors::ACCENT_SOFT_BG, GUIConstants::Colors::ACCENT, /*bold=*/true);
+    const QString pillStyle = QStringLiteral(
+        "QPushButton {"
+        "  border: none;"
+        "  border-radius: 6px;"
+        "  padding: 6px 14px;"
+        "  font-size: 13px;"
+        "  color: palette(text);"
+        "}"
+        "QPushButton:checked {"
+        "  border: 1px solid palette(accent);"
+        "  color: palette(accent);"
+        "  font-weight: 600;"
+        "}");
 
     filterErrBtn   = new QPushButton(QCoreApplication::translate("LogViewer", "Error"), header);
     filterWarnBtn  = new QPushButton(QCoreApplication::translate("LogViewer", "Warning"), header);
@@ -276,15 +286,12 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
         b->setFlat(true);
         b->setCursor(Qt::PointingHandCursor);
         b->setCheckable(true);
+        b->setStyleSheet(pillStyle);
     }
     filterErrBtn->setChecked(true);
     filterWarnBtn->setChecked(true);
     filterInfoBtn->setChecked(false);
     filterDebugBtn->setChecked(false);
-    filterErrBtn->setStyleSheet(pillChecked);
-    filterWarnBtn->setStyleSheet(pillChecked);
-    filterInfoBtn->setStyleSheet(pillUnchecked);
-    filterDebugBtn->setStyleSheet(pillUnchecked);
 
     pauseBtn = new QToolButton(header);
     pauseBtn->setCheckable(true);
@@ -316,17 +323,9 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
     headerLayout->addWidget(autoScrollCheck, 0);
     headerLayout->addWidget(clearBtn, 0);
 
-    auto syncLevelPillStyles = [this, pillChecked, pillUnchecked]() {
-        filterErrBtn->setStyleSheet(filterErrBtn->isChecked() ? pillChecked : pillUnchecked);
-        filterWarnBtn->setStyleSheet(filterWarnBtn->isChecked() ? pillChecked : pillUnchecked);
-        filterInfoBtn->setStyleSheet(filterInfoBtn->isChecked() ? pillChecked : pillUnchecked);
-        filterDebugBtn->setStyleSheet(filterDebugBtn->isChecked() ? pillChecked : pillUnchecked);
-    };
-
     for (auto* b : {filterErrBtn, filterWarnBtn, filterInfoBtn, filterDebugBtn})
     {
-        QObject::connect(b, &QPushButton::toggled, tableWidget, [this, syncLevelPillStyles](bool) {
-            syncLevelPillStyles();
+        QObject::connect(b, &QPushButton::toggled, tableWidget, [this](bool) {
             applyFilters();
         });
     }

@@ -155,7 +155,7 @@ namespace GUIStyles
     /// Pill QPushButton style for log-level filters.
     ///   bg / fg are full color expressions; caller decides if the pill is
     ///   "checked" (highlighted) or "unchecked" (neutral).
-    QString pillButtonStyle(const QString& bg, const QString& fg, bool bold);
+    QString pillButtonStyle(const QString& fg, bool bold);
 
     /// Neutral (unchecked) pill style using adaptive tokens.
     QString neutralPillStyle();

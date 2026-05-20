@@ -3,7 +3,6 @@
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
 #include "context/gui_styles.h"
-#include "context/sidebar_item_delegate.h"
 #include "context/theme.h"
 #include <functional>
 #include <QAbstractItemView>
@@ -169,7 +168,7 @@ void ComponentTreeWidget::setupUI()
     m_tree->setStyleSheet(GUIStyles::sidebarTreeStyle());
     m_tree->setHeaderLabel(tr("Components"));
     m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
-    m_tree->setItemDelegate(new SidebarItemDelegate(m_tree));
+    // m_tree->setItemDelegate(new SidebarItemDelegate(m_tree));
     m_tree->viewport()->setAttribute(Qt::WA_Hover);
     layout->addWidget(m_tree, 1);
 

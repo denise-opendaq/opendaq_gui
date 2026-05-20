@@ -108,7 +108,10 @@ QString sidebarTreeStyle()
         "}"
         "QTreeWidget::item {"
         "  padding: 5px 8px;"
-        "  border-radius: 8px;"
+        "}"
+        "QTreeWidget::item:selected {"
+        "  background: palette(highlight);"
+        "  color: palette(highlighted-text);"
         "}"
         "QTreeWidget QHeaderView {"
         "  background-color: transparent;"
@@ -191,7 +194,7 @@ QString primaryButtonStyle()
                "  border-radius: 12px;"
                "}"
                "QPushButton:pressed {"
-               "  border: 1.5px solid %3;"
+               "  border: 1.5px solid %1;"
                "  border-radius: 12px;"
                "}"
                "QPushButton:disabled {"
@@ -201,8 +204,7 @@ QString primaryButtonStyle()
                "  color: palette(placeholder-text);"
                "}")
         .arg(GUIConstants::Colors::ACCENT,
-             GUIConstants::Colors::ACCENT_HOVER,
-             GUIConstants::Colors::ACCENT_PRESSED,
+             GUIConstants::Colors::HIGHLIGHT,
              borderColor());
 }
 
@@ -314,9 +316,8 @@ QString logTableStyle()
         .arg(borderColor());
 }
 
-QString pillButtonStyle(const QString& bg, const QString& fg, bool bold)
+QString pillButtonStyle(const QString& fg, bool bold)
 {
-    Q_UNUSED(bg);
     return QStringLiteral(
                "QPushButton {"
                "  border: none;"

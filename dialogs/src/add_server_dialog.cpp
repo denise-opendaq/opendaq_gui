@@ -3,7 +3,6 @@
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
 #include "context/gui_styles.h"
-#include "context/sidebar_item_delegate.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
@@ -65,7 +64,6 @@ void AddServerDialog::setupUI()
     serverList->setSelectionMode(QAbstractItemView::SingleSelection);
     serverList->setAttribute(Qt::WA_StyledBackground, true);
     serverList->setStyleSheet(GUIStyles::sidebarTreeStyle());
-    serverList->setItemDelegate(new SidebarItemDelegate(serverList));
     serverList->viewport()->setAttribute(Qt::WA_Hover);
     connect(serverList, &QTreeWidget::itemSelectionChanged, this, &AddServerDialog::onServerSelected);
     connect(serverList, &QTreeWidget::itemDoubleClicked, this, &AddServerDialog::onServerDoubleClicked);
