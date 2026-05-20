@@ -94,10 +94,17 @@ QWidget* DeviceWidget::buildHeaderCard()
 
     opModeCombo = new QComboBox(statusRow);
     opModeCombo->setObjectName("opModeCombo");
-    opModeCombo->addItem("Unknown",       static_cast<int>(daq::OperationModeType::Unknown));
-    opModeCombo->addItem("Idle",          static_cast<int>(daq::OperationModeType::Idle));
-    opModeCombo->addItem("Operation",     static_cast<int>(daq::OperationModeType::Operation));
-    opModeCombo->addItem("SafeOperation", static_cast<int>(daq::OperationModeType::SafeOperation));
+    for (const auto& mode : device.getAvailableOperationModes())
+    {
+        switch (static_cast<daq::OperationModeType>(mode))
+        {
+            case daq::OperationModeType::Unknown:      opModeCombo->addItem("Unknown",       static_cast<int>(mode)); break;
+            case daq::OperationModeType::Idle:         opModeCombo->addItem("Idle",          static_cast<int>(mode)); break;
+            case daq::OperationModeType::Operation:    opModeCombo->addItem("Operation",     static_cast<int>(mode)); break;
+            case daq::OperationModeType::SafeOperation:opModeCombo->addItem("Safe Operation",static_cast<int>(mode)); break;
+        }
+    }
+
     opModeCombo->setStyleSheet(
         QStringLiteral(
         "QComboBox#opModeCombo {"

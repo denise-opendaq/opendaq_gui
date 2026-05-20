@@ -106,6 +106,9 @@ void FolderTreeElement::refresh()
 
 void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
+    if (sender != daqComponent)
+        return;
+
     // First call parent implementation to handle AttributeChanged events
     ComponentTreeElement::onCoreEvent(sender, args);
 

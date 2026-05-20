@@ -70,6 +70,9 @@ bool ComponentTreeElement::visible() const
 
 void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
+    if (sender != daqComponent)
+        return;
+
     try
     {
         auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
