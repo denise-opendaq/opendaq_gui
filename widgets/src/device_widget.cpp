@@ -175,6 +175,10 @@ QWidget* DeviceWidget::buildHeaderCard()
     makeInfoRow(tr("Tick Frequency"), tickFreqLabel);
     makeInfoRow(tr("Current Time"),   currentTimeLbl);
     currentTimeLbl->setStyleSheet(GUIStyles::MONO_VALUE_LABEL);
+    // Reserve width for "yyyy-MM-dd HH:mm:ss.zzz" up front so the layout
+    // never shifts when the timer fires the first time.
+    currentTimeLbl->setMinimumWidth(200);
+    currentTimeLbl->setText(computeCurrentTime());
 
     cardLayout->addWidget(rightBlock, 0, Qt::AlignTop);
 

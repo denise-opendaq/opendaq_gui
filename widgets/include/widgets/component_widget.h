@@ -43,6 +43,8 @@ protected:
     // (and the page) on close.
     void detachTabToWindow(int index);
 
+    QSize minimumSizeHint() const override { return QSize(0, 0); }
+
     bool eventFilter(QObject* obj, QEvent* event) override;
     void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
