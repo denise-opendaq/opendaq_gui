@@ -151,7 +151,6 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
             "}"
             "QTreeWidget#propertyTree::item {"
             "  padding: 7px 8px;"
-            "  color: palette(text);"
             "}"
             "QHeaderView::section {"
             "  background: transparent;"
@@ -578,6 +577,12 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         PropertyObjectView::setLogic(it, logic);
     }
 
+    if (logic->hasSubtree())
+    {
+        it->setBackground(0, Theme::midlight());
+        it->setBackground(1, Theme::midlight());
+    }
+
     if (logic->isReadOnly())
     {
         QPalette palette = view.palette();
@@ -589,21 +594,6 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         it->setFlags(it->flags() |= Qt::ItemIsEditable);
     }
 
-    if (logic->hasSubtree())
-    {
-        it->setChildIndicatorPolicy(QTreeWidgetItem::ShowIndicator);
-        QFont sectionFont = it->font(0);
-        sectionFont.setBold(true);
-        it->setFont(0, sectionFont);
-        it->setFont(1, sectionFont);
-        it->setFirstColumnSpanned(true);
-        it->setSizeHint(0, QSize(0, 34));
-    }
-    else
-    {
-        it->setFirstColumnSpanned(false);
-        it->setSizeHint(0, QSize(0, 30));
-    }
 
     PropertySubtreeBuilder builder(*this);
     logic->refresh(builder);

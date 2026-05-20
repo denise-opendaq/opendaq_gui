@@ -138,7 +138,7 @@ PropertyInspector::PropertyInspector(QWidget* parent)
             "  text-transform: uppercase;"
             "  letter-spacing: 0.5px;"
             "  border: none;"
-            "  margin-top: 10px;"
+            "  margin-top: 15px;"
             "}"
             "QLabel#inspectorFieldValue {"
             "  color: palette(text);"

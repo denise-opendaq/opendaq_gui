@@ -102,7 +102,6 @@ QString sidebarTreeStyle()
         "  border: none;"
         "  font-size: 13px;"
         "  outline: 0;"
-        "  color: palette(text);"
         "  selection-background-color: transparent;"
         "  selection-color: palette(text);"
         "}"
