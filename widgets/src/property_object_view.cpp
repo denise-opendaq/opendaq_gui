@@ -261,8 +261,7 @@ void PropertyObjectView::refresh()
     {
         QSignalBlocker b(tree);
         propertyObjectToLogic[root] = nullptr;
-        PropertySubtreeBuilder builder(*this);
-        builder.buildFromPropertyObject(nullptr, root);
+        buildFromPropertyObject(nullptr, root);
         applyExpandState();
     }
 
@@ -321,11 +320,41 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         return;
 
     const auto eventId = static_cast<daq::CoreEventId>(eventArgs.getEventId());
-    if (eventId == daq::CoreEventId::PropertyValueChanged || eventId == daq::CoreEventId::PropertyAdded)
+    if (eventId == daq::CoreEventId::PropertyValueChanged)
     {
-        const auto obj = getChildObject(eventArgs.getParameters()["Path"]);
-        if (obj.assigned())
-            onPropertyValueChanged(obj, true);
+        const auto params = eventArgs.getParameters();
+        const auto obj = getChildObject(params["Path"]);
+        if (!obj.assigned())
+            return;
+        const std::string propName = daq::StringPtr(params.get("Name")).toStdString();
+        auto itemIt = items.find(PropertyKey(obj, propName));
+        if (itemIt == items.end())
+            return;
+        {
+            QSignalBlocker b(tree);
+            itemIt->second->refresh(*this);
+        }
+    }
+    else if (eventId == daq::CoreEventId::PropertyAdded)
+    {
+        const auto params = eventArgs.getParameters();
+        const auto obj = getChildObject(params["Path"]);
+        if (!obj.assigned())
+            return;
+
+        auto parentIt = propertyObjectToLogic.find(obj);
+        if (parentIt == propertyObjectToLogic.end())
+            return;
+
+        const std::string propName = daq::StringPtr(params.get("Name")).toStdString();
+        const auto prop = obj.getProperty(propName);
+        ObjectPropertyItem* objLogic = parentIt->second;
+        QTreeWidgetItem* parentWidget = objLogic ? objLogic->getWidgetItem() : nullptr;
+
+        {
+            QSignalBlocker b(tree);
+            addItem(parentWidget, createPropertyItem(obj, prop));
+        }
     }
     else if (eventId == daq::CoreEventId::PropertyRemoved)
     {
@@ -340,37 +369,11 @@ void PropertyObjectView::componentCoreEventCallback(daq::ComponentPtr& component
         const daq::StringPtr propName = eventArgs.getParameters().get("Name");
         ObjectPropertyItem* objLogic = parentIt->second;
         removeChildProperty(objLogic ? objLogic->getWidgetItem() : nullptr, propName);
-        applyFilter();
     }
     else if (eventId == daq::CoreEventId::PropertyObjectUpdateEnd)
     {
         refresh();
     }
-}
-
-void PropertyObjectView::onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force)
-{
-    if (!force && owner.assigned())
-        return;
-
-    auto it = propertyObjectToLogic.find(obj);
-    if (it == propertyObjectToLogic.end())
-        return;
-
-    ObjectPropertyItem* objLogic = it->second;
-    if (!objLogic)
-    {
-        refresh();
-        return;
-    }
-
-    {
-        QSignalBlocker blocker(tree);
-        PropertySubtreeBuilder builder(*this);
-        objLogic->refresh(builder);
-    }
-
-    applyFilter();
 }
 
 BasePropertyItem* PropertyObjectView::store(std::unique_ptr<BasePropertyItem> item)
@@ -398,8 +401,7 @@ void PropertyObjectView::onItemExpanded(QTreeWidgetItem* item)
     if (!logic || !logic->hasSubtree())
         return;
 
-    PropertySubtreeBuilder builder(*this);
-    logic->build_subtree(builder, item);
+    logic->build_subtree(*this, item);
     logic->setExpanded(true);
 }
 
@@ -446,16 +448,17 @@ void PropertyObjectView::handleEditError(QTreeWidgetItem* item, int column, Base
                          QString("Failed to update property: %1").arg(errorMsg));
 }
 
+BasePropertyItem* PropertyObjectView::getLogicWithParent(QTreeWidgetItem* item) const
+{
+    if (auto* logic = getLogic(item))
+        return logic;
+    auto* parent = item->parent();
+    return parent ? getLogic(parent) : nullptr;
+}
+
 void PropertyObjectView::onItemDoubleClicked(QTreeWidgetItem* item, int /*column*/)
 {
-    auto* logic = getLogic(item);
-    if (!logic)
-    {
-        auto* parent = item->parent();
-        if (parent)
-            logic = getLogic(parent);
-    }
-
+    auto* logic = getLogicWithParent(item);
     if (logic && !logic->isReadOnly())
         logic->handle_double_click(this, item);
 }
@@ -466,15 +469,7 @@ void PropertyObjectView::onContextMenu(const QPoint& pos)
     if (!item)
         return;
 
-    auto* logic = getLogic(item);
-    if (!logic)
-    {
-        auto* parent = item->parent();
-        if (parent)
-            logic = getLogic(parent);
-    }
-
-    if (logic)
+    if (auto* logic = getLogicWithParent(item))
         logic->handle_right_click(this, item, tree->viewport()->mapToGlobal(pos));
 }
 
@@ -550,13 +545,10 @@ void PropertyObjectView::removeChildProperty(QTreeWidgetItem* parentWidget, cons
 }
 
 // ============================================================================
-// PropertySubtreeBuilder implementation
-// ============================================================================
-
-QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
-                                                 std::unique_ptr<BasePropertyItem> item)
+QTreeWidgetItem* PropertyObjectView::addItem(QTreeWidgetItem* parent,
+                                             std::unique_ptr<BasePropertyItem> item)
 {
-    auto* logic = view.store(std::move(item));
+    auto* logic = store(std::move(item));
 
     if (!logic->isVisible() && !AppContext::Instance()->showInvisibleComponents())
     {
@@ -573,8 +565,8 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         if (parent)
             parent->addChild(it);
         else
-            view.addTopLevelItem(it);
-        PropertyObjectView::setLogic(it, logic);
+            addTopLevelItem(it);
+        setLogic(it, logic);
     }
 
     if (logic->hasSubtree())
@@ -585,7 +577,7 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
 
     if (logic->isReadOnly())
     {
-        QPalette palette = view.palette();
+        QPalette palette = this->palette();
         it->setForeground(0, palette.color(QPalette::Disabled, QPalette::Text));
         it->setForeground(1, palette.color(QPalette::Disabled, QPalette::Text));
     }
@@ -594,26 +586,24 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         it->setFlags(it->flags() |= Qt::ItemIsEditable);
     }
 
-
-    PropertySubtreeBuilder builder(*this);
-    logic->refresh(builder);
+    logic->refresh(*this);
     if (logic->hasSubtree() && logic->isExpanded())
-        view.onItemExpanded(it);
+        onItemExpanded(it);
 
     return it;
 }
 
-void PropertySubtreeBuilder::buildFromPropertyObject(QTreeWidgetItem* parent, const daq::PropertyObjectPtr& obj)
+void PropertyObjectView::buildFromPropertyObject(QTreeWidgetItem* parent, const daq::PropertyObjectPtr& obj)
 {
     if (!obj.assigned())
         return;
 
-    for (const auto& prop: obj.getAllProperties())
+    for (const auto& prop : obj.getAllProperties())
     {
         PropertyKey key(obj, prop.getName());
-        auto it = view.items.find(key);
+        auto it = items.find(key);
 
-        if (it != view.items.end())
+        if (it != items.end())
             addItem(parent, std::move(it->second));
         else
             addItem(parent, createPropertyItem(obj, prop));

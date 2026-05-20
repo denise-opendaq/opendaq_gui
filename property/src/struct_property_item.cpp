@@ -7,20 +7,15 @@
 // StructPropertyItem implementation
 // ============================================================================
 
-void StructPropertyItem::refresh(PropertySubtreeBuilder& builder)
+void StructPropertyItem::refresh(PropertyObjectView& view)
 {
-    // Refresh struct reference
     structObj = owner.getPropertyValue(getName());
-
-    // Call base refresh to update name and value display
-    BasePropertyItem::refresh(builder);
-
-    // If expanded, rebuild the subtree
+    BasePropertyItem::refresh(view);
     if (widgetItem)
-        build_subtree(builder, widgetItem, true);
+        build_subtree(view, widgetItem, true);
 }
 
-void StructPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
+void StructPropertyItem::build_subtree(PropertyObjectView& view, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !structObj.assigned()))
         return;
@@ -117,7 +112,7 @@ void StructPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidg
                 auto structBuilder = daq::StructBuilder(structObj);
                 structObj = structBuilder.set(fieldKey, newValue).build();
                 owner.setPropertyValue(getName(), structObj);
-                view->onPropertyValueChanged(owner, true);
+                this->refresh(*view);
             });
         }
     }

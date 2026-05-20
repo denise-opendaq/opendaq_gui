@@ -46,19 +46,12 @@ daq::StringPtr BasePropertyItem::getName() const
 
 QString BasePropertyItem::showValue() const
 {
-    try
+    if (hasSelectionValues())
     {
-        if (hasSelectionValues())
-            return QString::fromStdString(owner.getPropertySelectionValue(getName()));
-
-        const auto value = owner.getPropertyValue(prop.getName());
-        return QString::fromStdString(value);
+        try { return QString::fromStdString(owner.getPropertySelectionValue(getName())); }
+        catch (...) {}
     }
-    catch (...)
-    {
-        const auto value = owner.getPropertyValue(prop.getName());
-        return QString::fromStdString(value);
-    }
+    return QString::fromStdString(owner.getPropertyValue(prop.getName()));
 }
 
 QString BasePropertyItem::showDisplayValue() const
@@ -251,21 +244,11 @@ QString BasePropertyItem::getMetadataValue(const QString& key) const
 void BasePropertyItem::setWidgetItem(QTreeWidgetItem* item)
 {
     if (widgetItem && widgetItem != item)
-    {
-        // Remove from parent and delete old widget
-        if (auto* parent = widgetItem->parent())
-            parent->removeChild(widgetItem);
-        else
-        {
-            // If it's a top-level item, we need to find the tree and remove it
-            // But we don't have access to the tree here, so just delete it
-            delete widgetItem;
-        }
-    }
+        delete widgetItem;
     widgetItem = item;
 }
 
-void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
+void BasePropertyItem::refresh(PropertyObjectView& builder)
 {
     if (!widgetItem)
         return;
@@ -278,7 +261,7 @@ void BasePropertyItem::refresh(PropertySubtreeBuilder& builder)
     widgetItem->setText(1, displayValueStr);
 }
 
-void BasePropertyItem::build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool)
+void BasePropertyItem::build_subtree(PropertyObjectView&, QTreeWidgetItem*, bool)
 {
 }
 
@@ -314,7 +297,7 @@ void BasePropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
         try
         {
             setBySelectionValue(selected->text());
-            view->onPropertyValueChanged(owner);
+            this->refresh(*view);
         }
         catch (const std::exception& e)
         {

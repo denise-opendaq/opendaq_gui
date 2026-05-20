@@ -8,7 +8,6 @@
 
 // Forward declarations
 class PropertyObjectView;
-class PropertySubtreeBuilder;
 
 // ============================================================================
 // BasePropertyItem — логика одного свойства (render/edit/subtree/events)
@@ -54,9 +53,9 @@ public:
     virtual QString getMetadataValue(const QString& key) const;
 
     // Refresh property value (update internal state if needed)
-    virtual void refresh(PropertySubtreeBuilder&);
+    virtual void refresh(PropertyObjectView&);
 
-    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool force = false);
+    virtual void build_subtree(PropertyObjectView&, QTreeWidgetItem*, bool force = false);
 
     // Events
     virtual void handle_double_click(PropertyObjectView*, QTreeWidgetItem*);

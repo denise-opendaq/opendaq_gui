@@ -303,7 +303,7 @@ void PropertyInspector::populateAllowedBubbles(const daq::PropertyPtr& prop)
         bl->setSpacing(0);
 
         auto* lbl = new QLabel(val, bubble);
-        lbl->setStyleSheet(GUIStyles::tagBubbleLabelStyle(GUIConstants::Colors::ACCENT));
+        lbl->setStyleSheet(GUIStyles::tagBubbleLabelStyle(GUIConstants::Colors::TEXT_ON_HIGHLIGHT));
         bl->addWidget(lbl);
 
         allowedBubblesLayout->addWidget(bubble);

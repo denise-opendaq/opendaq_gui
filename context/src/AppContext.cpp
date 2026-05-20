@@ -14,7 +14,7 @@ class AppContext::Private
 public:
     daq::InstancePtr daqInstance;
     bool showInvisible = false;
-    bool expandAllProperties = true;
+    bool expandAllProperties = false;
     daq::LoggerSinkPtr loggerSink;
     UpdateScheduler* scheduler = nullptr;
     EventQueue eventQueue;

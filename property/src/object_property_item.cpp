@@ -26,16 +26,15 @@ bool ObjectPropertyItem::hasSubtree() const
     return true;
 }
 
-void ObjectPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
+void ObjectPropertyItem::build_subtree(PropertyObjectView& view, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !nested.assigned()))
         return;
 
     expanded = true;
 
-    // Register this nested PropertyObject with this ObjectPropertyItem
-    builder.view.propertyObjectToLogic.insert_or_assign(nested,this);
-    builder.buildFromPropertyObject(self, nested);
+    view.propertyObjectToLogic.insert_or_assign(nested, this);
+    view.buildFromPropertyObject(self, nested);
 }
 
 void ObjectPropertyItem::commitEdit(QTreeWidgetItem*, int)
@@ -43,10 +42,10 @@ void ObjectPropertyItem::commitEdit(QTreeWidgetItem*, int)
     // not editable
 }
 
-void ObjectPropertyItem::refresh(PropertySubtreeBuilder& builder)
+void ObjectPropertyItem::refresh(PropertyObjectView& view)
 {
-    BasePropertyItem::refresh(builder);
+    BasePropertyItem::refresh(view);
     if (widgetItem)
-        build_subtree(builder, widgetItem, true);
+        build_subtree(view, widgetItem, true);
 }
 

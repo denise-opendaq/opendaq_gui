@@ -11,7 +11,7 @@ class PropertyInspector;
 class QLineEdit;
 class QString;
 
-// Custom hash function for PropertyObjectPtr that uses the object's address
+// Custom hash for PropertyObjectPtr — part of the public propertyObjectToLogic type.
 struct PropertyObjectPtrHash
 {
     std::size_t operator()(const daq::PropertyObjectPtr& ptr) const noexcept
@@ -20,10 +20,10 @@ struct PropertyObjectPtrHash
     }
 };
 
-// Key for items map: (PropertyObject owner, property name)
+// Key and hash for the private items map: (owner pointer, property name)
 struct PropertyKey
 {
-    void* ownerPtr;  // Raw pointer for comparison
+    void* ownerPtr;
     std::string name;
 
     PropertyKey(const daq::PropertyObjectPtr& owner, const std::string& propName)
@@ -36,7 +36,6 @@ struct PropertyKey
     }
 };
 
-// Hash function for PropertyKey
 struct PropertyKeyHash
 {
     std::size_t operator()(const PropertyKey& key) const noexcept
@@ -45,23 +44,6 @@ struct PropertyKeyHash
         std::size_t h2 = std::hash<std::string>{}(key.name);
         return h1 ^ (h2 << 1);
     }
-};
-
-// ============================================================================
-// PropertySubtreeBuilder — строит дерево в существующем QTreeWidget
-// ============================================================================
-
-class PropertySubtreeBuilder
-{
-public:
-    explicit PropertySubtreeBuilder(PropertyObjectView& view)
-        : view(view)
-    {}
-
-    QTreeWidgetItem* addItem(QTreeWidgetItem* parent, std::unique_ptr<BasePropertyItem> item);
-    void buildFromPropertyObject(QTreeWidgetItem* parent, const daq::PropertyObjectPtr& obj);
-
-    PropertyObjectView& view;
 };
 
 // ============================================================================
@@ -85,12 +67,8 @@ public Q_SLOTS:
     void refresh();
 
 public:
-    // Used by PropertySubtreeBuilder
-    BasePropertyItem* store(std::unique_ptr<BasePropertyItem> item);
-    void addTopLevelItem(QTreeWidgetItem* item);
-
-    // Notify that a property value has changed
-    void onPropertyValueChanged(const daq::PropertyObjectPtr& obj, bool force = false);
+    // Build tree items for a property object into the given parent widget item
+    void buildFromPropertyObject(QTreeWidgetItem* parent, const daq::PropertyObjectPtr& obj);
 
     // QTreeWidget forwarding methods used by property items
     QRect visualItemRect(QTreeWidgetItem* item) const;
@@ -104,7 +82,18 @@ public:
     static void setLogic(QTreeWidgetItem* it, BasePropertyItem* logic);
 
 private:
-    friend class PropertySubtreeBuilder;
+    BasePropertyItem* store(std::unique_ptr<BasePropertyItem> item);
+    void addTopLevelItem(QTreeWidgetItem* item);
+    QTreeWidgetItem* addItem(QTreeWidgetItem* parent, std::unique_ptr<BasePropertyItem> item);
+
+    void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
+    BasePropertyItem* getLogicWithParent(QTreeWidgetItem* item) const;
+    daq::PropertyObjectPtr getChildObject(std::string path);
+    void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
+    void applyExpandState();
+    void applyFilter();
+    bool updateItemFilter(QTreeWidgetItem* item, const QString& text);
+    void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
 
 private Q_SLOTS:
     void onItemExpanded(QTreeWidgetItem* item);
@@ -115,14 +104,6 @@ private Q_SLOTS:
     void onSearchTextChanged(const QString& text);
 
 private:
-    void handleEditError(QTreeWidgetItem* item, int column, BasePropertyItem* logic, const char* errorMsg);
-    daq::PropertyObjectPtr getChildObject(std::string path);
-    void removeChildProperty(QTreeWidgetItem* parentWidget, const std::string& propName);
-    void applyExpandState();
-    void applyFilter();
-    bool updateItemFilter(QTreeWidgetItem* item, const QString& text);
-    void componentCoreEventCallback(daq::ComponentPtr& component, daq::CoreEventArgsPtr& eventArgs);
-
     daq::ComponentPtr owner;
     daq::PropertyObjectPtr root;
     std::string rootPath;

@@ -32,7 +32,7 @@ void BoolPropertyItem::handle_double_click(PropertyObjectView* view, QTreeWidget
         handler.handleDoubleClick(view, item, currentValue, [this, view](const daq::BaseObjectPtr& newValue) 
         {
             owner.setPropertyValue(getName(), newValue);
-            view->onPropertyValueChanged(owner, true);
+            this->refresh(*view);
         });
     }
     catch (const std::exception& e)
