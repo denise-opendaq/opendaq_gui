@@ -99,8 +99,6 @@ void AddDeviceConfigDialog::setupUI()
 
     // === RIGHT PANEL ===
     auto* rightPanel = new QWidget(this);
-    rightPanel->setAttribute(Qt::WA_StyledBackground, true);
-    rightPanel->setStyleSheet("QWidget { background-color: palette(base); }");
     auto* rightLayout = new QVBoxLayout(rightPanel);
     rightLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN,
@@ -115,8 +113,6 @@ void AddDeviceConfigDialog::setupUI()
     rightLayout->addWidget(configTabs, 1);
 
     auto* bottomFrame = new QWidget(rightPanel);
-    bottomFrame->setAttribute(Qt::WA_StyledBackground, true);
-    bottomFrame->setStyleSheet("QWidget { background-color: palette(base); }");
     auto* bottomLayout = new QHBoxLayout(bottomFrame);
     bottomLayout->setContentsMargins(0, 0, 0, 0);
 

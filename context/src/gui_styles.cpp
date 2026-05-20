@@ -151,7 +151,7 @@ QString searchLineEditStyle()
         "  color: palette(text);"
         "}"
         "QLineEdit:focus {"
-        "  border: 1px solid palette(mid);"
+        "  border: 2px solid palette(highlight);"
         "}")
         .arg(borderColor());
 }

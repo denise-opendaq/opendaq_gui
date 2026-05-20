@@ -90,11 +90,10 @@ namespace GUIConstants {
 
         // --- Brand accent (fixed) -----------------------------------------------
         // Tailwind blue-500 family — works against both light and dark surfaces.
-        inline constexpr const char* ACCENT            = "#3b82f6";
-        inline constexpr const char* ACCENT_HOVER      = "#2563eb";
-        inline constexpr const char* ACCENT_PRESSED    = "#1d4ed8";
-        inline constexpr const char* ACCENT_SOFT_BG    = "rgba(59, 130, 246, 38)";   // pill / chip
-        inline constexpr const char* ACCENT_SOFT_BORDER= "rgba(59, 130, 246, 90)";
+        inline constexpr const char* ACCENT            = "palette(accent)";             // primary accent color
+        inline constexpr const char* ACCENT_HOVER      = "palette(highlight)";
+        inline constexpr const char* ACCENT_PRESSED    = "palette(accent)";
+        inline constexpr const char* ACCENT_SOFT_BG    = "palette(accent)";   // pill / chip
 
         // --- Semantic / status colors (fixed) ----------------------------------
         inline constexpr const char* SUCCESS           = "#22c55e";

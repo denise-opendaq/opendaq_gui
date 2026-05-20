@@ -139,7 +139,7 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
             "  color: palette(text);"
             "}"
             "QLineEdit#propertySearch:focus {"
-            "  border-color: palette(mid);"
+            "  border: 2px solid palette(highlight);"
             "}"
             "QTreeWidget#propertyTree {"
             "  background: transparent;"
