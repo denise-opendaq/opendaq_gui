@@ -1,5 +1,6 @@
 #include "dialogs/add_device_dialog.h"
 #include "dialogs/add_device_config_dialog.h"
+#include "dialogs/configure_tcp_ip_dialog.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
 #include <QHeaderView>
@@ -16,6 +17,7 @@ AddDeviceDialog::AddDeviceDialog(const daq::DevicePtr& parentDevice, QWidget* pa
     , contextMenu(nullptr)
     , addAction(nullptr)
     , addWithConfigAction(nullptr)
+    , configureTcpIpAction(nullptr)
     , refreshTimer(nullptr)
 {
     setWindowTitle("Add Device");
@@ -73,6 +75,8 @@ void AddDeviceDialog::setupUI()
     contextMenu->addSeparator();
     auto* showDeviceInfoAction = contextMenu->addAction("Show Device Info");
     connect(showDeviceInfoAction, &QAction::triggered, this, &AddDeviceDialog::onShowDeviceInfo);
+    configureTcpIpAction = contextMenu->addAction("Configure TCP/IP");
+    connect(configureTcpIpAction, &QAction::triggered, this, &AddDeviceDialog::onConfigureTcpIp);
     
     // Add F5 shortcut for refresh
     auto* refreshShortcut = new QShortcut(QKeySequence(Qt::Key_F5), this);
@@ -257,6 +261,12 @@ void AddDeviceDialog::onDeviceTreeContextMenu(const QPoint& pos)
         QString connectionString = item->data(1, Qt::UserRole).toString();
         connectionStringEdit->setText(connectionString);
         updateConnectionString();
+
+        daq::DeviceInfoPtr info;
+        const auto cacheIt = deviceInfoCache.find(connectionString.toStdString());
+        if (cacheIt != deviceInfoCache.end())
+            info = cacheIt->second;
+        configureTcpIpAction->setEnabled(ConfigureTcpIpDialog::deviceHasNetworkInterfaces(info));
         
         // Show context menu
         contextMenu->exec(deviceTree->mapToGlobal(pos));
@@ -372,5 +382,38 @@ void AddDeviceDialog::onShowDeviceInfo()
     layout->addWidget(buttonBox);
 
     infoDialog.exec();
+}
+
+void AddDeviceDialog::onConfigureTcpIp()
+{
+    auto* selectedItem = deviceTree->currentItem();
+    if (!selectedItem)
+        return;
+
+    const daq::StringPtr connectionString = selectedItem->data(1, Qt::UserRole).toString().toStdString();
+    if (!connectionString.getLength())
+        return;
+
+    daq::DeviceInfoPtr info;
+    const auto it = deviceInfoCache.find(connectionString.toStdString());
+    if (it != deviceInfoCache.end())
+        info = it->second;
+
+    if (!info.assigned())
+    {
+        QMessageBox::warning(this, "Configure TCP/IP", "Device info not found.");
+        return;
+    }
+
+    if (!ConfigureTcpIpDialog::deviceHasNetworkInterfaces(info))
+    {
+        QMessageBox::information(this, "Configure TCP/IP", "This device has no configurable network interfaces.");
+        return;
+    }
+
+    refreshTimer->stop();
+    ConfigureTcpIpDialog dialog(info, this);
+    dialog.exec();
+    refreshTimer->start();
 }
 

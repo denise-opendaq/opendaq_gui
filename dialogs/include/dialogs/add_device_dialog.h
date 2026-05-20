@@ -34,6 +34,7 @@ private Q_SLOTS:
     void onAddFromContextMenu();
     void onAddWithConfigFromContextMenu();
     void onShowDeviceInfo();
+    void onConfigureTcpIp();
 
 private:
     void setupUI();
@@ -52,6 +53,7 @@ private:
     QMenu* contextMenu;
     QAction* addAction;
     QAction* addWithConfigAction;
+    QAction* configureTcpIpAction;
     QTimer* refreshTimer;
 };
 
