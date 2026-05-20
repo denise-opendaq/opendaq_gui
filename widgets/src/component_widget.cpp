@@ -324,30 +324,13 @@ void ComponentWidget::updateTags()
             bubble->setStyleSheet(GUIStyles::tagBubbleStyle(c.bg));
 
             auto* bl = new QHBoxLayout(bubble);
-            bl->setContentsMargins(8, 3, 5, 3);
+            bl->setContentsMargins(8, 3, 8, 3);
             bl->setSpacing(4);
 
             auto* nameLbl = new QLabel(tagName, bubble);
             nameLbl->setStyleSheet(GUIStyles::tagBubbleLabelStyle(c.fg));
 
-            auto* removeBtn = new QPushButton("×", bubble);
-            removeBtn->setFlat(true);
-            removeBtn->setCursor(Qt::PointingHandCursor);
-            removeBtn->setFixedSize(14, 14);
-            removeBtn->setStyleSheet(GUIStyles::tagBubbleRemoveButtonStyle(c.fg));
-
-            connect(removeBtn, &QPushButton::clicked, this, [this, tagName]()
-            {
-                try
-                {
-                    component.getTags().asPtr<daq::ITagsPrivate>(true).remove(tagName.toStdString());
-                }
-                catch (...) {}
-                updateTags();
-            });
-
             bl->addWidget(nameLbl);
-            bl->addWidget(removeBtn);
             layout->addWidget(bubble);
             ++idx;
         }

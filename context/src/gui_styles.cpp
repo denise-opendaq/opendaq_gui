@@ -269,7 +269,7 @@ QString tagBubbleLabelStyle(const QString& fg)
 {
     return QStringLiteral(
                "color: %1; font-size: 12px; font-weight: 600;"
-               " border: none;")
+               " border: none; background: transparent;")
         .arg(fg);
 }
 
