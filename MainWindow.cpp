@@ -5,9 +5,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QFileDialog>
-#include <QHBoxLayout>
 #include <QHeaderView>
-#include <QLineEdit>
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -17,7 +15,7 @@
 #include <QWidget>
 
 #include "context/gui_constants.h"
-#include "context/gui_styles.h"
+#include "context/theme.h"
 #include "component/base_tree_element.h"
 #include "component/component_tree_widget.h"
 
@@ -93,21 +91,13 @@ void MainWindow::setupUI()
 
     // === LEFT PANEL (Tree) ===
     QWidget* leftWidget = new QWidget();
-    leftWidget->setObjectName("leftPanel");
-    leftWidget->setAttribute(Qt::WA_StyledBackground, true);
-    leftWidget->setStyleSheet(GUIStyles::sidebarPanelStyle("leftPanel"));
+    Theme::styleSidebarPanel(leftWidget, QStringLiteral("leftPanel"));
     QVBoxLayout* leftLayout = new QVBoxLayout(leftWidget);
     leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN,
                                     GUIConstants::DEFAULT_LAYOUT_MARGIN);
     leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
-
-    searchBox = new QLineEdit();
-    searchBox->setPlaceholderText(tr("Search components..."));
-    searchBox->setClearButtonEnabled(true);
-    searchBox->setStyleSheet(GUIStyles::searchLineEditStyle());
-    leftLayout->addWidget(searchBox);
 
     // === RIGHT PANEL (Content) ===
     verticalSplitter = new QSplitter(Qt::Vertical);
@@ -126,12 +116,7 @@ void MainWindow::setupUI()
 
     verticalSplitter->addWidget(contentWrapper);
 
-    componentTreeWidget = new ComponentTreeWidget(contentHost);
-    componentTreeWidget->setAlternatingRowColors(false);
-    componentTreeWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    componentTreeWidget->setAllColumnsShowFocus(false);
-    componentTreeWidget->setAttribute(Qt::WA_StyledBackground, true);
-    componentTreeWidget->setStyleSheet(GUIStyles::sidebarTreeStyle());
+    componentTreeWidget = new ComponentTreeWidget(contentHost, leftWidget);
     auto instance = AppContext::Instance()->daqInstance();
     if (instance.assigned())
         componentTreeWidget->loadInstance(instance);
@@ -139,10 +124,7 @@ void MainWindow::setupUI()
     connect(componentTreeWidget, &ComponentTreeWidget::componentSelected,
             this, &MainWindow::onComponentSelected);
 
-    connect(searchBox, &QLineEdit::textChanged,
-            componentTreeWidget, &ComponentTreeWidget::setSearchFilter);
-
-    leftLayout->addWidget(componentTreeWidget);
+    leftLayout->addWidget(componentTreeWidget, 1);
 
     mainSplitter->addWidget(leftWidget);
     mainSplitter->addWidget(verticalSplitter);

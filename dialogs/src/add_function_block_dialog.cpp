@@ -2,6 +2,7 @@
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
 #include "context/gui_styles.h"
+#include "context/sidebar_item_delegate.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
@@ -68,6 +69,8 @@ void AddFunctionBlockDialog::setupUI()
     functionBlockList->setSelectionMode(QAbstractItemView::SingleSelection);
     functionBlockList->setAttribute(Qt::WA_StyledBackground, true);
     functionBlockList->setStyleSheet(GUIStyles::sidebarTreeStyle());
+    functionBlockList->setItemDelegate(new SidebarItemDelegate(functionBlockList));
+    functionBlockList->viewport()->setAttribute(Qt::WA_Hover);
     connect(functionBlockList, &QTreeWidget::itemSelectionChanged, this, &AddFunctionBlockDialog::onFunctionBlockSelected);
     connect(functionBlockList, &QTreeWidget::itemDoubleClicked, this, &AddFunctionBlockDialog::onFunctionBlockDoubleClicked);
     leftLayout->addWidget(functionBlockList);

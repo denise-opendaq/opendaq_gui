@@ -1,8 +1,12 @@
 #pragma once
-#include <QTreeWidget>
+
+#include <QWidget>
 #include <QString>
 #include <memory>
 
+class QLineEdit;
+class QTreeWidget;
+class QTreeWidgetItem;
 class BaseTreeElement;
 class AppContext;
 
@@ -11,8 +15,8 @@ namespace daq
     class InstancePtr;
 }
 
-// Main widget that wraps QTreeWidget for openDAQ components
-class ComponentTreeWidget : public QTreeWidget
+// Sidebar widget: search field + component tree.
+class ComponentTreeWidget : public QWidget
 {
     Q_OBJECT
 
@@ -20,25 +24,22 @@ public:
     ComponentTreeWidget(QWidget* contentHost, QWidget* parent = nullptr);
     ~ComponentTreeWidget() override;
 
-    // Load openDAQ instance into the tree
+    QTreeWidget* treeWidget() const { return m_tree; }
+
+    static ComponentTreeWidget* fromTreeWidget(QTreeWidget* tree);
+
     void loadInstance(const daq::InstancePtr& instance);
 
-    // Set content host (for elements created after construction)
     void setContentHost(QWidget* contentHost);
 
-    // Get the selected BaseTreeElement
     BaseTreeElement* getSelectedElement() const;
 
-    // Find element by globalId
     BaseTreeElement* findElementByGlobalId(const QString& globalId) const;
 
-    // Set whether to show hidden components
     void setShowHidden(bool show);
 
-    // Set text search filter (empty string clears search)
     void setSearchFilter(const QString& text);
 
-    // Refresh visibility based on current filters
     void refreshVisibility();
 
 Q_SIGNALS:
@@ -54,6 +55,8 @@ private Q_SLOTS:
 private:
     bool applySearchFilter(QTreeWidgetItem* item, const QString& filter);
 
+    QLineEdit* m_searchBox = nullptr;
+    QTreeWidget* m_tree = nullptr;
     std::unique_ptr<BaseTreeElement> rootElement;
     QWidget* contentHost = nullptr;
     QString m_searchFilter;

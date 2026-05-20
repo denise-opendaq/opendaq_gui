@@ -5,6 +5,7 @@
 #include "MainWindow.h"
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
+#include "context/theme.h"
 
 #include <opendaq/instance_factory.h>
 #include <opendaq/logger_sink_ptr.h>
@@ -15,7 +16,8 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    
+    Theme::install(&app);
+
     // Disable all UI animations globally to prevent crashes during resize/zoom on macOS
     // This is a workaround for Qt bug where animations can access invalid memory
     app.setEffectEnabled(Qt::UI_AnimateMenu, false);

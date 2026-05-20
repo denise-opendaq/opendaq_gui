@@ -100,7 +100,7 @@ void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layo
 
     auto* headerSep = new QFrame(card);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
+    headerSep->setStyleSheet(GUIStyles::hairlineHorizontalStyle());
     cardLayout->addWidget(headerSep);
 
     auto* body = new QWidget(card);

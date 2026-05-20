@@ -111,7 +111,7 @@ void AddDeviceConfigDialog::setupUI()
     configTabs = new QTabWidget(rightPanel);
     configTabs->setDocumentMode(true);
     configTabs->tabBar()->setDrawBase(false);
-    configTabs->setStyleSheet(GUIStyles::underlineTabBarStyle());
+    configTabs->setStyleSheet(GUIStyles::underlineTabBarAccentStyle());
     rightLayout->addWidget(configTabs, 1);
 
     auto* bottomFrame = new QWidget(rightPanel);

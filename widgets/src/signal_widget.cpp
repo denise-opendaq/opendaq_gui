@@ -110,7 +110,7 @@ QWidget* SignalWidget::buildHeaderCard()
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
     statusSep->setFrameShadow(QFrame::Plain);
-    statusSep->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
+    statusSep->setStyleSheet(GUIStyles::hairlineVerticalStyle());
     statusSep->setVisible(false);
     cardLayout->addWidget(statusSep);
 
@@ -128,7 +128,7 @@ QWidget* SignalWidget::buildHeaderCard()
         auto* vLine = new QFrame(card);
         vLine->setFrameShape(QFrame::VLine);
         vLine->setFrameShadow(QFrame::Plain);
-        vLine->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
+        vLine->setStyleSheet(GUIStyles::hairlineVerticalStyle());
         cardLayout->addWidget(vLine);
     }
 

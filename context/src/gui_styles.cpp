@@ -1,17 +1,39 @@
 #include "context/gui_styles.h"
 #include "context/gui_constants.h"
+#include "context/theme.h"
+#include <QPalette>
 
 namespace GUIStyles
 {
+
+QString midlightColor()
+{
+    return Theme::midlight().name(QColor::HexRgb);
+}
+
+QString borderColor()
+{
+    return Theme::border().name(QColor::HexRgb);
+}
+
+QString hairlineHorizontalStyle()
+{
+    return QStringLiteral("background: %1; border: none; max-height: 1px;").arg(borderColor());
+}
+
+QString hairlineVerticalStyle()
+{
+    return QStringLiteral("background: %1; border: none; max-width: 1px;").arg(borderColor());
+}
 
 QString cardStyle(const QString& objectName, const QString& qssClass, int radius)
 {
     return QStringLiteral(
                "%1#%2 {"
-               "  border: 1px solid palette(mid);"
-               "  border-radius: %3px;"
+               "  border: 1px solid %3;"
+               "  border-radius: %4px;"
                "}")
-        .arg(qssClass, objectName)
+        .arg(qssClass, objectName, borderColor())
         .arg(radius);
 }
 
@@ -19,9 +41,20 @@ QString sidebarPanelStyle(const QString& objectName)
 {
     return QStringLiteral(
                "QWidget#%1 {"
+               "  background: palette(alternate-base);"
+               "  border: 1px solid %2;"
+               "}")
+        .arg(objectName, borderColor());
+}
+
+QString sidebarPanelStyle(const QString& objectName, const QColor& background)
+{
+    return QStringLiteral(
+               "QWidget#%1 {"
+               "  background-color: %2;"
                "  border: none;"
                "}")
-        .arg(objectName);
+        .arg(objectName, background.name(QColor::HexRgb));
 }
 
 QString underlineTabBarStyle()
@@ -38,6 +71,29 @@ QString underlineTabBarStyle()
         "}");
 }
 
+QString underlineTabBarAccentStyle()
+{
+    const QString accent = QString::fromUtf8(GUIConstants::Colors::ACCENT);
+    return QStringLiteral(
+               "QTabWidget::pane { border: none; }"
+               "QTabBar { border: none; }"
+               "QTabBar::tab {"
+               "  padding: 10px 18px;"
+               "  color: palette(placeholder-text);"
+               "  font-size: 13px;"
+               "  border: none;"
+               "  border-bottom: 2px solid transparent;"
+               "}"
+               "QTabBar::tab:hover {"
+               "  border-bottom: 2px solid %1;"
+               "}"
+               "QTabBar::tab:selected {"
+               "  color: %1;"
+               "  border-bottom: 2px solid %1;"
+               "}")
+        .arg(accent);
+}
+
 QString sidebarTreeStyle()
 {
     return QStringLiteral(
@@ -51,17 +107,35 @@ QString sidebarTreeStyle()
         "  selection-color: palette(text);"
         "}"
         "QTreeWidget::item {"
-        "  padding: 6px 8px;"
+        "  padding: 5px 8px;"
         "  border-radius: 8px;"
         "}"
-        "QHeaderView::section {"
-        "  background: transparent;"
+        "QTreeWidget QHeaderView {"
+        "  background-color: transparent;"
         "  border: none;"
-        "  padding: 6px 8px;"
+        "}"
+        "QTreeWidget QHeaderView::section {"
+        "  background-color: transparent;"
+        "  border: none;"
+        "  padding: 8px 8px 4px 8px;"
         "  font-size: 11px;"
         "  font-weight: 600;"
         "  text-transform: uppercase;"
+        "  letter-spacing: 0.5px;"
         "  color: palette(placeholder-text);"
+        "}"
+        "QScrollBar:vertical {"
+        "  width: 6px;"
+        "  background: transparent;"
+        "  margin: 0;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "  background: palette(mid);"
+        "  border-radius: 3px;"
+        "  min-height: 24px;"
+        "}"
+        "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
+        "  height: 0;"
         "}");
 }
 
@@ -70,15 +144,16 @@ QString searchLineEditStyle()
     return QStringLiteral(
         "QLineEdit {"
         "  background: transparent;"
-        "  border: 1px solid palette(mid);"
+        "  border: 1px solid %1;"
         "  border-radius: 10px;"
         "  padding: 8px 10px;"
         "  font-size: 13px;"
         "  color: palette(text);"
         "}"
         "QLineEdit:focus {"
-        "  border: 1px solid palette(highlight);"
-        "}");
+        "  border: 1px solid palette(mid);"
+        "}")
+        .arg(borderColor());
 }
 
 QString roundedComboBoxStyle()
@@ -86,7 +161,7 @@ QString roundedComboBoxStyle()
     return QStringLiteral(
         "QComboBox {"
         "  background: transparent;"
-        "  border: 1px solid palette(mid);"
+        "  border: 1px solid %1;"
         "  border-radius: 10px;"
         "  padding: 9px 12px;"
         "  font-size: 13px;"
@@ -98,7 +173,8 @@ QString roundedComboBoxStyle()
         "QComboBox::drop-down {"
         "  border: none;"
         "  width: 24px;"
-        "}");
+        "}")
+        .arg(borderColor());
 }
 
 QString primaryButtonStyle()
@@ -119,24 +195,25 @@ QString primaryButtonStyle()
                "  border-radius: 12px;"
                "}"
                "QPushButton:disabled {"
-               "  border: 1.5px solid palette(mid);"
+               "  border: 1.5px solid %4;"
                "  border-radius: 10px;"
                "  padding: 10px 10px;"
                "  color: palette(placeholder-text);"
                "}")
         .arg(GUIConstants::Colors::ACCENT,
              GUIConstants::Colors::ACCENT_HOVER,
-             GUIConstants::Colors::ACCENT_PRESSED);
+             GUIConstants::Colors::ACCENT_PRESSED,
+             borderColor());
 }
 
 QString iconToolButtonStyle(bool withCheckedState)
 {
     QString s = QStringLiteral(
         "QToolButton {"
-        "  border: 1px solid palette(mid);"
+        "  border: 1px solid %1;"
         "  border-radius: 6px;"
         "  padding: 4px;"
-        "}");
+        "}").arg(borderColor());
 
     if (withCheckedState)
     {
@@ -152,11 +229,12 @@ QString roundedToolButtonStyle()
 {
     return QStringLiteral(
         "QToolButton {"
-        "  border: 1px solid palette(mid);"
+        "  border: 1px solid %1;"
         "  border-radius: 10px;"
         "  padding: 6px;"
         "}"
-        "QToolButton:disabled { color: palette(placeholder-text); }");
+        "QToolButton:disabled { color: palette(placeholder-text); }")
+        .arg(borderColor());
 }
 
 QString linkButtonStyleFor(const QString& accent)
@@ -230,9 +308,10 @@ QString logTableStyle()
         "  text-transform: uppercase;"
         "  padding: 8px 10px;"
         "  border: none;"
-        "  border-bottom: 1px solid palette(mid);"
+        "  border-bottom: 1px solid %1;"
         "  border-right: 1px solid palette(midlight);"
-        "}");
+        "}")
+        .arg(borderColor());
 }
 
 QString pillButtonStyle(const QString& bg, const QString& fg, bool bold)

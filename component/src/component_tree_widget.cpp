@@ -1,13 +1,21 @@
 #include "component/component_tree_widget.h"
 #include "component/device_tree_element.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
+#include "context/sidebar_item_delegate.h"
+#include "context/theme.h"
 #include <functional>
+#include <QAbstractItemView>
+#include <QLineEdit>
 #include <QMessageBox>
+#include <QTreeWidget>
+#include <QVBoxLayout>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 
 ComponentTreeWidget::ComponentTreeWidget(QWidget* contentHost, QWidget* parent)
-    : QTreeWidget(parent)
+    : QWidget(parent)
     , contentHost(contentHost)
 {
     setupUI();
@@ -15,9 +23,14 @@ ComponentTreeWidget::ComponentTreeWidget(QWidget* contentHost, QWidget* parent)
 
 ComponentTreeWidget::~ComponentTreeWidget() = default;
 
+ComponentTreeWidget* ComponentTreeWidget::fromTreeWidget(QTreeWidget* tree)
+{
+    return qobject_cast<ComponentTreeWidget*>(tree ? tree->parentWidget() : nullptr);
+}
+
 void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
 {
-    clear();
+    m_tree->clear();
     rootElement.reset();
 
     if (!instance.assigned())
@@ -37,7 +50,7 @@ void ComponentTreeWidget::loadInstance(const daq::InstancePtr& instance)
             return;
         }
 
-        rootElement = std::make_unique<DeviceTreeElement>(this, instance.getRootDevice(), contentHost);
+        rootElement = std::make_unique<DeviceTreeElement>(m_tree, instance.getRootDevice(), contentHost);
         rootElement->init();
 
         if (rootElement->getTreeItem())
@@ -61,12 +74,12 @@ void ComponentTreeWidget::setContentHost(QWidget* contentHost)
 
 BaseTreeElement* ComponentTreeWidget::getSelectedElement() const
 {
-    auto selectedItems = this->selectedItems();
+    const auto selectedItems = m_tree->selectedItems();
     if (selectedItems.isEmpty())
         return nullptr;
 
-    auto item = selectedItems.first();
-    auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
+    const auto item = selectedItems.first();
+    const auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
     return static_cast<BaseTreeElement*>(elementPtr);
 }
 
@@ -75,7 +88,6 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
     if (!rootElement)
         return nullptr;
 
-    // Helper lambda to recursively search
     std::function<BaseTreeElement*(BaseTreeElement*)> search = [&](BaseTreeElement* element) -> BaseTreeElement* 
     {
         if (!element)
@@ -84,7 +96,6 @@ BaseTreeElement* ComponentTreeWidget::findElementByGlobalId(const QString& globa
         if (element->getGlobalId() == globalId)
             return element;
 
-        // Search in children
         for (auto* child : element->getChildren().values()) 
         {
             if (auto* found = search(child))
@@ -102,7 +113,6 @@ void ComponentTreeWidget::setShowHidden(bool show)
     AppContext::Instance()->setShowInvisibleComponents(show);
     refreshVisibility();
 }
-
 
 void ComponentTreeWidget::setSearchFilter(const QString& text)
 {
@@ -134,18 +144,38 @@ void ComponentTreeWidget::refreshVisibility()
         return;
     }
 
-    for (int i = 0; i < topLevelItemCount(); ++i)
-        applySearchFilter(topLevelItem(i), m_searchFilter);
+    for (int i = 0; i < m_tree->topLevelItemCount(); ++i)
+        applySearchFilter(m_tree->topLevelItem(i), m_searchFilter);
 }
 
 void ComponentTreeWidget::setupUI()
 {
-    setHeaderLabel("Components");
-    setContextMenuPolicy(Qt::CustomContextMenu);
+    auto* layout = new QVBoxLayout(this);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    connect(this, &QTreeWidget::itemSelectionChanged,
+    m_searchBox = new QLineEdit(this);
+    m_searchBox->setPlaceholderText(tr("Search components..."));
+    m_searchBox->setClearButtonEnabled(true);
+    Theme::bindStyle(m_searchBox, [] { return GUIStyles::searchLineEditStyle(); });
+    connect(m_searchBox, &QLineEdit::textChanged, this, &ComponentTreeWidget::setSearchFilter);
+    layout->addWidget(m_searchBox);
+
+    m_tree = new QTreeWidget(this);
+    m_tree->setAlternatingRowColors(false);
+    m_tree->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_tree->setAllColumnsShowFocus(false);
+    m_tree->setAttribute(Qt::WA_StyledBackground, true);
+    m_tree->setStyleSheet(GUIStyles::sidebarTreeStyle());
+    m_tree->setHeaderLabel(tr("Components"));
+    m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_tree->setItemDelegate(new SidebarItemDelegate(m_tree));
+    m_tree->viewport()->setAttribute(Qt::WA_Hover);
+    layout->addWidget(m_tree, 1);
+
+    connect(m_tree, &QTreeWidget::itemSelectionChanged,
             this, &ComponentTreeWidget::onSelectionChanged);
-    connect(this, &QTreeWidget::customContextMenuRequested,
+    connect(m_tree, &QTreeWidget::customContextMenuRequested,
             this, &ComponentTreeWidget::onContextMenuRequested);
     connect(AppContext::Instance(), &AppContext::showInvisibleChanged,
             this, &ComponentTreeWidget::refreshVisibility);
@@ -153,25 +183,24 @@ void ComponentTreeWidget::setupUI()
 
 void ComponentTreeWidget::onSelectionChanged()
 {
-    auto element = getSelectedElement();
+    const auto element = getSelectedElement();
     if (element)
         Q_EMIT componentSelected(element);
 }
 
 void ComponentTreeWidget::onContextMenuRequested(const QPoint& pos)
 {
-    auto item = itemAt(pos);
+    const auto item = m_tree->itemAt(pos);
     if (!item)
         return;
 
-    auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
+    const auto elementPtr = item->data(0, Qt::UserRole).value<void*>();
     if (elementPtr)
     {
-        auto element = static_cast<BaseTreeElement*>(elementPtr);
+        const auto element = static_cast<BaseTreeElement*>(elementPtr);
         auto menu = element->onCreateRightClickMenu(this);
         if (menu && menu->actions().count() > 0)
-            menu->exec(mapToGlobal(pos));
+            menu->exec(m_tree->mapToGlobal(pos));
         delete menu;
     }
 }
-

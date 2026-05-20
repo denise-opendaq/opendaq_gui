@@ -54,7 +54,7 @@ void ComponentWidget::setupUI()
 
     populateTabs();
 
-    tabs->setStyleSheet(GUIStyles::underlineTabBarStyle());
+    tabs->setStyleSheet(GUIStyles::underlineTabBarAccentStyle());
 
     // Double-click on a tab pops it out into its own top-level window.
     if (auto* bar = tabs->tabBar())
@@ -129,7 +129,7 @@ QWidget* ComponentWidget::buildHeaderCard()
     statusSep = new QFrame(card);
     statusSep->setFrameShape(QFrame::VLine);
     statusSep->setFrameShadow(QFrame::Plain);
-    statusSep->setStyleSheet(GUIStyles::HAIRLINE_VERTICAL);
+    statusSep->setStyleSheet(GUIStyles::hairlineVerticalStyle());
     statusSep->setVisible(false);
     cardLayout->addWidget(statusSep);
 

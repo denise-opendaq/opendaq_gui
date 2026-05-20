@@ -8,7 +8,6 @@
 #include "context/release_asset.h"
 
 class QAction;
-class QLineEdit;
 class QMenu;
 class QSplitter;
 class QWidget;
@@ -48,7 +47,6 @@ private:
     QWidget* contentHost = nullptr;
 
     // Left panel
-    QLineEdit* searchBox = nullptr;
     ComponentTreeWidget* componentTreeWidget = nullptr;
 
     // Menu

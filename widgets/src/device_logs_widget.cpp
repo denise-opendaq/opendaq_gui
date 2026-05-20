@@ -58,7 +58,7 @@ DeviceLogsWidget::DeviceLogsWidget(const daq::DevicePtr& dev, QWidget* parent)
 
     auto* headerSep = new QFrame(card);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
+    headerSep->setStyleSheet(GUIStyles::hairlineHorizontalStyle());
     cardLayout->addWidget(headerSep);
 
     // — Scrollable list —
@@ -120,7 +120,7 @@ void DeviceLogsWidget::refresh()
             {
                 auto* sep = new QFrame(listWidget);
                 sep->setFrameShape(QFrame::HLine);
-                sep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
+                sep->setStyleSheet(GUIStyles::hairlineHorizontalStyle());
                 listLayout->addWidget(sep);
             }
             first = false;
@@ -164,9 +164,11 @@ void DeviceLogsWidget::refresh()
             openBtn->setIconSize(QSize(16, 16));
             openBtn->setToolTip(tr("Open in system editor"));
             openBtn->setStyleSheet(
-                "QToolButton { border: 1px solid palette(mid); border-radius: 6px;"
-                "  padding: 5px; background: palette(alternate-base); }"
-                "QToolButton:hover { background: palette(midlight); border-color: palette(highlight); }");
+                QStringLiteral(
+                    "QToolButton { border: 1px solid %1; border-radius: 6px;"
+                    "  padding: 5px; background: palette(alternate-base); }"
+                    "QToolButton:hover { background: palette(midlight); border-color: palette(highlight); }")
+                    .arg(GUIStyles::borderColor()));
 
             connect(openBtn, &QToolButton::clicked, this, [this, id, fileName]()
             {

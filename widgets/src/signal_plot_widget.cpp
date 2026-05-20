@@ -116,8 +116,9 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
         cell->setAttribute(Qt::WA_StyledBackground, true);
         // Soft card with the muted alt-base bg, used for inline stat cells.
         cell->setStyleSheet(
-            "QWidget { background: palette(alternate-base); border: 1px solid palette(mid); border-radius: 10px; }"
-        );
+            QStringLiteral(
+                "QWidget { background: palette(alternate-base); border: 1px solid %1; border-radius: 10px; }")
+                .arg(GUIStyles::borderColor()));
         auto* cl = new QVBoxLayout(cell);
         cl->setContentsMargins(12, 8, 12, 8);
         cl->setSpacing(2);

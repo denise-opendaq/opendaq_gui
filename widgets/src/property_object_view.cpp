@@ -4,6 +4,8 @@
 #include "property/base_property_item.h"
 #include "context/AppContext.h"
 #include "context/QueuedEventHandler.h"
+#include "context/gui_styles.h"
+#include "context/theme.h"
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
@@ -42,7 +44,8 @@ public:
     {
         if (auto* lineEdit = qobject_cast<QLineEdit*>(editor))
         {
-            // Store edited value as raw in UserRole; display formatting is restored by BasePropertyItem::commitEdit
+            // Store edited value as raw in UserRole; display formatting is
+            // restored by BasePropertyItem::commitEdit.
             model->setData(index, lineEdit->text(), Qt::UserRole);
             return;
         }
@@ -118,46 +121,48 @@ PropertyObjectView::PropertyObjectView(const daq::PropertyObjectPtr& root,
     , root(root)
 {
     setAttribute(Qt::WA_StyledBackground, true);
-    setStyleSheet(
-        "QWidget#propertyPanel {"
-        "  border: none;"
-        "}"
-        "QLabel#propertiesTitle {"
-        "  color: palette(text);"
-        "  font-size: 16px;"
-        "  font-weight: 600;"
-        "}"
-        "QLineEdit#propertySearch {"
-        "  background: transparent;"
-        "  border: 1px solid palette(mid);"
-        "  border-radius: 10px;"
-        "  padding: 9px 12px;"
-        "  color: palette(text);"
-        "}"
-        "QLineEdit#propertySearch:focus {"
-        "  border-color: palette(highlight);"
-        "}"
-        "QTreeWidget#propertyTree {"
-        "  background: transparent;"
-        "  border: none;"
-        "  outline: none;"
-        "  color: palette(text);"
-        "  selection-background-color: transparent;"
-        "  selection-color: palette(text);"
-        "}"
-        "QTreeWidget#propertyTree::item {"
-        "  padding: 7px 8px;"
-        "  color: palette(text);"
-        "}"
-        "QHeaderView::section {"
-        "  background: transparent;"
-        "  border: none;"
-        "  border-bottom: 1px solid palette(mid);"
-        "  padding: 10px 8px 8px 8px;"
-        "  color: palette(placeholder-text);"
-        "  font-weight: 600;"
-        "}"
-    );
+    Theme::bindStyle(this, [] {
+        return QStringLiteral(
+            "QWidget#propertyPanel {"
+            "  border: none;"
+            "}"
+            "QLabel#propertiesTitle {"
+            "  color: palette(text);"
+            "  font-size: 16px;"
+            "  font-weight: 600;"
+            "}"
+            "QLineEdit#propertySearch {"
+            "  background: %2;"
+            "  border: 1px solid %1;"
+            "  border-radius: 10px;"
+            "  padding: 9px 12px;"
+            "  color: palette(text);"
+            "}"
+            "QLineEdit#propertySearch:focus {"
+            "  border-color: palette(mid);"
+            "}"
+            "QTreeWidget#propertyTree {"
+            "  background: transparent;"
+            "  border: none;"
+            "  outline: none;"
+            "  color: palette(text);"
+            "  selection-background-color: rgba(59, 130, 246, 45);"
+            "  selection-color: palette(text);"
+            "}"
+            "QTreeWidget#propertyTree::item {"
+            "  padding: 7px 8px;"
+            "  color: palette(text);"
+            "}"
+            "QHeaderView::section {"
+            "  background: transparent;"
+            "  border: none;"
+            "  border-bottom: 1px solid %1;"
+            "  padding: 10px 8px 8px 8px;"
+            "  color: palette(placeholder-text);"
+            "  font-weight: 600;"
+            "}"
+        ).arg(GUIStyles::borderColor(), GUIStyles::midlightColor());
+    });
 
     if (const auto internal = root.asPtrOrNull<daq::IPropertyObjectInternal>(true); internal.assigned())
     {
@@ -591,12 +596,6 @@ QTreeWidgetItem* PropertySubtreeBuilder::addItem(QTreeWidgetItem* parent,
         sectionFont.setBold(true);
         it->setFont(0, sectionFont);
         it->setFont(1, sectionFont);
-        // Subtle tint over palette(base): mix text color with low alpha so it
-        // works in both light and dark themes.
-        QColor sectionBackground = view.palette().color(QPalette::Text);
-        sectionBackground.setAlpha(14);
-        it->setBackground(0, sectionBackground);
-        it->setBackground(1, sectionBackground);
         it->setFirstColumnSpanned(true);
         it->setSizeHint(0, QSize(0, 34));
     }

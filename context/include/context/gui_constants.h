@@ -82,7 +82,7 @@ namespace GUIConstants {
         inline constexpr const char* TEXT_ON_WINDOW    = "palette(window-text)";
         inline constexpr const char* TEXT_MUTED        = "palette(placeholder-text)";// secondary / muted text
         inline constexpr const char* TEXT_ON_HIGHLIGHT = "palette(highlighted-text)";
-        inline constexpr const char* BORDER            = "palette(mid)";             // default borders
+        inline constexpr const char* BORDER            = "palette(mid)";             // prefer GUIStyles::borderColor()
         inline constexpr const char* SEPARATOR         = "palette(midlight)";        // hairline separators
         inline constexpr const char* HOVER             = "palette(midlight)";        // subtle hover bg
         inline constexpr const char* HIGHLIGHT         = "palette(highlight)";       // system accent (selection)

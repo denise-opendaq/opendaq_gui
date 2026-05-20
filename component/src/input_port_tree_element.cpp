@@ -15,7 +15,7 @@ void InputPortTreeElement::openTab()
     if (!contentHost)
         return;
 
-    auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+    auto componentTree = ComponentTreeWidget::fromTreeWidget(tree);
     auto* widget = new InputPortWidget(getInputPort(), componentTree, nullptr, iconName);
     setContent(widget);
 }

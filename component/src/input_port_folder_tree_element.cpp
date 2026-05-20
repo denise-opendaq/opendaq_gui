@@ -15,7 +15,7 @@ void InputPortFolderTreeElement::openTab()
         return;
 
     auto folder = daqComponent.asPtr<daq::IFolder>(true);
-    auto* componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+    auto* componentTree = ComponentTreeWidget::fromTreeWidget(tree);
     auto* widget = new InputPortFolderWidget(folder, componentTree, nullptr, iconName);
     setContent(widget);
 }

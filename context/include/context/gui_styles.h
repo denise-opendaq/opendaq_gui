@@ -2,6 +2,8 @@
 
 #include <QString>
 
+#include <QColor>
+
 // ============================================================================
 // GUIStyles
 //
@@ -68,17 +70,10 @@ namespace GUIStyles
 
     // ------------------------------------------------------------------------
     // Hairline separators (QFrame::HLine / VLine)
-    // ------------------------------------------------------------------------
-
-    inline constexpr const char* HAIRLINE_HORIZONTAL =
-        "background: palette(mid); border: none; max-height: 1px;";
-
-    inline constexpr const char* HAIRLINE_VERTICAL =
-        "background: palette(mid); border: none; max-width: 1px;";
-
-    // ------------------------------------------------------------------------
-    // Multi-selector / parameterized stylesheets
-    // ------------------------------------------------------------------------
+    QString midlightColor();
+    QString borderColor();
+    QString hairlineHorizontalStyle();
+    QString hairlineVerticalStyle();
 
     /// Adaptive "card" container — light surface with subtle border + rounded
     /// corners. Caller must `setObjectName(objectName)` on the widget and set
@@ -91,13 +86,18 @@ namespace GUIStyles
                       const QString& qssClass = QStringLiteral("QWidget"),
                       int radius = 16);
 
-    /// Sidebar panel (left rail in dialogs): adaptive `palette(window)` bg with
-    /// thin border. Caller must `setObjectName(objectName)`.
+    /// Sidebar panel (left rail in dialogs): adaptive background with thin border.
+    /// Caller must `setObjectName(objectName)`.
     QString sidebarPanelStyle(const QString& objectName);
+    QString sidebarPanelStyle(const QString& objectName, const QColor& background);
 
     /// Underline-style QTabBar used by the main component view, dialog tab
     /// strips, etc. Selected tab gets the system accent underline.
     QString underlineTabBarStyle();
+
+    /// Underline tab bar for the component view: brand-blue selected label +
+    /// underline; blue bottom line on hover for other tabs.
+    QString underlineTabBarAccentStyle();
 
     /// Sidebar QTreeWidget style (component-like, transparent selection — visual
     /// selection state is painted by the delegate, not the stylesheet).

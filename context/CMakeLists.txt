@@ -13,6 +13,8 @@ set(HEADERS
     include/context/icon_provider.h
     include/context/gui_constants.h
     include/context/gui_styles.h
+    include/context/theme.h
+    include/context/sidebar_item_delegate.h
 )
 
 # Source files
@@ -23,6 +25,7 @@ set(SOURCES
     src/icon_provider.cpp
     src/gui_constants.cpp
     src/gui_styles.cpp
+    src/theme.cpp
 )
 
 # Resource files
@@ -49,6 +52,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
         Qt6::Core
+        Qt6::Gui
         Qt6::Widgets
         logger
         daq::coreobjects

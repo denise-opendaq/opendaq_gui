@@ -350,7 +350,7 @@ void QTableWidgetSpdlogSink::setupChromeWidget()
 
     auto* headerSep = new QFrame(cardWidget);
     headerSep->setFrameShape(QFrame::HLine);
-    headerSep->setStyleSheet(GUIStyles::HAIRLINE_HORIZONTAL);
+    headerSep->setStyleSheet(GUIStyles::hairlineHorizontalStyle());
 
     auto* footerBar = new QWidget(cardWidget);
     auto* footerLayout = new QHBoxLayout(footerBar);

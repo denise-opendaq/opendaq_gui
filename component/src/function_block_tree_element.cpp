@@ -86,7 +86,7 @@ void FunctionBlockTreeElement::openTab()
     if (!contentHost)
         return;
 
-    auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
+    auto componentTree = ComponentTreeWidget::fromTreeWidget(tree);
     auto fb = daqComponent.asPtr<daq::IFunctionBlock>(true);
     auto* widget = new FunctionBlockWidget(fb, componentTree, nullptr, iconName);
     setContent(widget);
