@@ -99,7 +99,7 @@ elseif(UNIX)
         endif()
 
         # Qt plugins
-        foreach(_plugin_dir platforms platformthemes imageformats iconengines)
+        foreach(_plugin_dir platforms platformthemes imageformats iconengines tls)
             if(EXISTS "${_qt_plugins_dir}/${_plugin_dir}")
                 install(DIRECTORY "${_qt_plugins_dir}/${_plugin_dir}"
                         DESTINATION "lib/${_app_name}/qt6/plugins"
