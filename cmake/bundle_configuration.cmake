@@ -82,7 +82,7 @@ elseif(UNIX)
                 PATTERN "*.so.*")
 
         # Qt libs — glob catches both the .so.6 symlink and the versioned .so.6.x.y file
-        foreach(_qt_lib Core Gui Widgets DBus Network XcbQpa)
+        foreach(_qt_lib Core Gui Widgets DBus Network Charts XcbQpa)
             file(GLOB _qt_lib_files "${_qt_lib_dir}/libQt6${_qt_lib}.so.6*")
             if(_qt_lib_files)
                 install(FILES ${_qt_lib_files}
