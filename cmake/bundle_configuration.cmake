@@ -113,6 +113,7 @@ elseif(UNIX)
         install(FILES "${CMAKE_BINARY_DIR}/qt.conf"
                 DESTINATION "bin"
                 COMPONENT app)
+
     endif()
 
     # Desktop integration (icon + .desktop)

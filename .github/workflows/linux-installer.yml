@@ -41,6 +41,7 @@ jobs:
           libfontconfig1-dev \
           dpkg-dev \
           fakeroot \
+          patchelf \
           mono-complete \
           libx11-dev \
           libxrandr-dev \
@@ -70,6 +71,18 @@ jobs:
 
     - name: Build (Release)
       run: cmake --build --preset opendaq-qt-gui --config Release
+
+    - name: Patch Qt library and plugin RPATHs
+      run: |
+        QT_LIB_DIR=$(qmake6 -query QT_INSTALL_LIBS)
+        QT_PLUGINS_DIR=$(qmake6 -query QT_INSTALL_PLUGINS)
+        # Qt libs: RPATH = $ORIGIN so they find each other in the same qt6/ dir
+        find "${QT_LIB_DIR}" -maxdepth 1 -name "libQt6*.so.6*" -type f \
+          -exec patchelf --set-rpath '$ORIGIN' {} \;
+        # Qt plugins sit two levels deep (plugins/<type>/lib.so),
+        # so $ORIGIN/../../ resolves to qt6/ where the Qt libs live
+        find "${QT_PLUGINS_DIR}" -name "*.so" \
+          -exec patchelf --set-rpath '$ORIGIN/../../' {} \;
 
     - name: Package with CPack (DEB)
       run: |
