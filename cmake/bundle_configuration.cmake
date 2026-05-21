@@ -81,29 +81,21 @@ elseif(UNIX)
                 PATTERN "*.so"
                 PATTERN "*.so.*")
 
-        # Qt libs — FOLLOW_SYMLINK_CHAIN copies both the versioned file and the .so.6 symlink
-        foreach(_qt_lib Core Gui Widgets DBus Network)
-            if(EXISTS "${_qt_lib_dir}/libQt6${_qt_lib}.so.6")
-                install(FILES "${_qt_lib_dir}/libQt6${_qt_lib}.so.6"
+        # Qt libs — glob catches both the .so.6 symlink and the versioned .so.6.x.y file
+        foreach(_qt_lib Core Gui Widgets DBus Network XcbQpa)
+            file(GLOB _qt_lib_files "${_qt_lib_dir}/libQt6${_qt_lib}.so.6*")
+            if(_qt_lib_files)
+                install(FILES ${_qt_lib_files}
                         DESTINATION "lib/${_app_name}/qt6"
-                        COMPONENT app
-                        FOLLOW_SYMLINK_CHAIN)
+                        COMPONENT app)
             endif()
         endforeach()
-
-        if(EXISTS "${_qt_lib_dir}/libQt6XcbQpa.so.6")
-            install(FILES "${_qt_lib_dir}/libQt6XcbQpa.so.6"
-                    DESTINATION "lib/${_app_name}/qt6"
-                    COMPONENT app
-                    FOLLOW_SYMLINK_CHAIN)
-        endif()
 
         file(GLOB _icu_libs "${_qt_lib_dir}/libicu*.so.*")
         if(_icu_libs)
             install(FILES ${_icu_libs}
                     DESTINATION "lib/${_app_name}/qt6"
-                    COMPONENT app
-                    FOLLOW_SYMLINK_CHAIN)
+                    COMPONENT app)
         endif()
 
         # Qt plugins
