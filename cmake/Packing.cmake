@@ -60,6 +60,8 @@ elseif(WIN32)
     set(CPACK_NSIS_DISPLAY_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_PACKAGE_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_MODIFY_PATH OFF)
+    # Start menu shortcut — required for Windows Search to find the app
+    set(CPACK_NSIS_MENU_LINKS "bin/opendaq_qt_gui.exe" "OpenDAQ Qt GUI")
     # CPACK_NSIS_MUI_ICON / INSTALLED_ICON_NAME set in bundle_configuration.cmake
 endif()
 

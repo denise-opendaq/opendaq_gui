@@ -71,22 +71,56 @@ elseif(UNIX)
             OUTPUT_STRIP_TRAILING_WHITESPACE
         )
 
-        set(_LINUX_INSTALL_SCRIPT "${CMAKE_BINARY_DIR}/cmake/packaging/linux/install_linux_bundle.cmake")
-        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/cmake/packaging/linux")
+        set(_app_name "opendaq-qt-gui")
 
-        set(APP_NAME "opendaq-qt-gui")
-        set(PROJECT_BINARY_NAME "opendaq_qt_gui")
-        set(QT_LIB_DIR "${_qt_lib_dir}")
-        set(QT_PLUGINS_DIR "${_qt_plugins_dir}")
-        set(BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
+        # openDAQ runtime libs produced next to the executable
+        install(DIRECTORY "${CMAKE_BINARY_DIR}/bin/"
+                DESTINATION "lib/${_app_name}"
+                COMPONENT app
+                FILES_MATCHING
+                PATTERN "*.so"
+                PATTERN "*.so.*")
 
-        configure_file(
-            "${CMAKE_CURRENT_LIST_DIR}/packaging/linux/install_linux_bundle.cmake.in"
-            "${_LINUX_INSTALL_SCRIPT}"
-            @ONLY
-        )
+        # Qt libs — FOLLOW_SYMLINK_CHAIN copies both the versioned file and the .so.6 symlink
+        foreach(_qt_lib Core Gui Widgets DBus Network)
+            if(EXISTS "${_qt_lib_dir}/libQt6${_qt_lib}.so.6")
+                install(FILES "${_qt_lib_dir}/libQt6${_qt_lib}.so.6"
+                        DESTINATION "lib/${_app_name}/qt6"
+                        COMPONENT app
+                        FOLLOW_SYMLINK_CHAIN)
+            endif()
+        endforeach()
 
-        install(SCRIPT "${_LINUX_INSTALL_SCRIPT}" COMPONENT app)
+        if(EXISTS "${_qt_lib_dir}/libQt6XcbQpa.so.6")
+            install(FILES "${_qt_lib_dir}/libQt6XcbQpa.so.6"
+                    DESTINATION "lib/${_app_name}/qt6"
+                    COMPONENT app
+                    FOLLOW_SYMLINK_CHAIN)
+        endif()
+
+        file(GLOB _icu_libs "${_qt_lib_dir}/libicu*.so.*")
+        if(_icu_libs)
+            install(FILES ${_icu_libs}
+                    DESTINATION "lib/${_app_name}/qt6"
+                    COMPONENT app
+                    FOLLOW_SYMLINK_CHAIN)
+        endif()
+
+        # Qt plugins
+        foreach(_plugin_dir platforms platformthemes imageformats iconengines)
+            if(EXISTS "${_qt_plugins_dir}/${_plugin_dir}")
+                install(DIRECTORY "${_qt_plugins_dir}/${_plugin_dir}"
+                        DESTINATION "lib/${_app_name}/qt6/plugins"
+                        COMPONENT app)
+            endif()
+        endforeach()
+
+        # qt.conf — tells Qt where to find bundled plugins relative to the binary
+        file(WRITE "${CMAKE_BINARY_DIR}/qt.conf"
+             "[Paths]\nPlugins = ../lib/${_app_name}/qt6/plugins\n")
+        install(FILES "${CMAKE_BINARY_DIR}/qt.conf"
+                DESTINATION "bin"
+                COMPONENT app)
     endif()
 
     # Desktop integration (icon + .desktop)
