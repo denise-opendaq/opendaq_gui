@@ -306,9 +306,17 @@ bool ChartEventFilter::eventFilter(QObject* obj, QEvent* event)
         {
             if (m_isDraggingMarker)
             {
+                const int draggedMarkerIndex = m_draggedMarkerIndex;
                 m_isDraggingMarker = false;
                 m_draggedMarkerIndex = -1;
                 m_chartView->setCursor(Qt::ArrowCursor);
+
+                if (draggedMarkerIndex >= 0 && draggedMarkerIndex < m_plotter->markers.size())
+                {
+                    const auto& marker = m_plotter->markers[draggedMarkerIndex];
+                    m_plotter->logMarkerSummary("moved", marker.timeMsec, marker.valueLabels);
+                }
+
                 return true;
             }
             else if (m_isPanning)
@@ -952,6 +960,20 @@ QPointF QtPlotterFbImpl::constrainLabelPosition(const QPointF& pos, const QRectF
     return constrainedPos;
 }
 
+void QtPlotterFbImpl::logMarkerSummary(const char* action, qint64 timeMsec, const QList<QString>& valueLabels) const
+{
+    const QString timeText = QDateTime::fromMSecsSinceEpoch(timeMsec).toString("HH:mm:ss.zzz");
+    const QString valuesText = valueLabels.isEmpty()
+        ? QStringLiteral("no values")
+        : valueLabels.join(QStringLiteral(", "));
+
+    LOG_W("Marker {} at {} ({} ms), values: {}",
+          action,
+          timeText.toStdString(),
+          timeMsec,
+          valuesText.toStdString());
+}
+
 void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
 {
     if (!chart || !axisX || !axisY)
@@ -1084,6 +1106,8 @@ void QtPlotterFbImpl::addMarkerAtTime(qint64 timeMsec)
     marker.valueLabelsItems = valueLabelsItems;
     marker.deleteButton = nullptr;  // Will be created on hover
     markers.append(marker);
+
+    logMarkerSummary("set", timeMsec, valueLabels);
     
     // Update markers to refresh display
     updateMarkers();

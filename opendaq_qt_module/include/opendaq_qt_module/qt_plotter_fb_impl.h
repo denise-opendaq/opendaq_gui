@@ -180,6 +180,7 @@ private:
     void hideDeleteButtons();
     double getSignalValueAtTime(QLineSeries* series, qint64 timeMsec);
     QPointF constrainLabelPosition(const QPointF& pos, const QRectF& labelRect, const QRectF& plotArea);
+    void logMarkerSummary(const char* action, qint64 timeMsec, const QList<QString>& valueLabels) const;
 
     // Lazy rendering methods - work with visible points only
     std::pair<int, int> getVisibleRange(const SignalContext& sigCtx, qint64 visibleMin, qint64 visibleMax) const;
