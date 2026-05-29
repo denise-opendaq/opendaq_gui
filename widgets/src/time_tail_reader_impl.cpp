@@ -23,18 +23,6 @@ struct TimeTailReaderInfo
 namespace
 {
 
-Float secondsPerTickFromDescriptor(const DataDescriptorPtr& desc)
-{
-    if (!desc.assigned())
-        return 0.001f;
-
-    const auto res = desc.getTickResolution();
-    if (!res.assigned())
-        return 0.001f;
-
-    return static_cast<Float>(res.getNumerator()) / static_cast<Float>(res.getDenominator());
-}
-
 TimeTailReaderImpl* asTimeTailReaderImpl(const TailReaderPtr& reader)
 {
     if (!reader.assigned())
@@ -150,20 +138,22 @@ std::optional<Float> TimeTailReaderImpl::getPacketStartSeconds(const PacketPtr& 
         return std::nullopt;
 
     const auto desc = domainPacket.getDataDescriptor();
-    const Float secondsPerTick = secondsPerTickFromDescriptor(desc);
+    auto tickResolution = desc.getTickResolution();
+    if (!tickResolution.assigned())
+        tickResolution = Ratio(1, 1);
 
     const auto rule = desc.getRule();
     if (rule.assigned() && rule.getType() == DataRuleType::Explicit)
     {
         Float tick = domainPacket.getValueByIndex(0);
-        return tick * secondsPerTick;
+        return Ratio(tick, 1) * tickResolution;
     }
-
+    
     const auto offset = domainPacket.getOffset();
     if (!offset.assigned())
         return std::nullopt;
 
-    return static_cast<Float>(offset.getIntValue()) * secondsPerTick;
+    return Ratio(offset.getIntValue(), 1) * tickResolution;
 }
 
 void TimeTailReaderImpl::trimOldPackets()
@@ -172,6 +162,8 @@ void TimeTailReaderImpl::trimOldPackets()
         return;
 
     const auto tLatest = getPacketStartSeconds(packets.back());
+    const auto tFirst = getPacketStartSeconds(packets.front());
+
     if (!tLatest.has_value())
         return;
 
@@ -358,7 +350,6 @@ ErrCode TimeTailReaderImpl::readWithDomain(void* values, void* domain, SizeT* co
 ErrCode TimeTailReaderImpl::packetReceived(IInputPort* port)
 {
     std::unique_lock lock(mutex);
-    bool hasEventPacket = false;
 
     const auto incoming = connection.dequeueAll();
     if (incoming.assigned() && incoming.getCount() > 0)
@@ -400,9 +391,6 @@ ErrCode TimeTailReaderImpl::packetReceived(IInputPort* port)
                 }
                 case PacketType::Event:
                 {
-                    hasEventPacket = true;
-                    packets.clear();
-
                     const auto eventPacket = packet.asPtr<IEventPacket>(true);
                     if (eventPacket.assigned()
                         && eventPacket.getEventId() == event_packet_id::DATA_DESCRIPTOR_CHANGED)
@@ -410,7 +398,6 @@ ErrCode TimeTailReaderImpl::packetReceived(IInputPort* port)
                         pendingDescriptorEvent = eventPacket;
                         descriptorDirty = true;
                     }
-                    done = true;
                     break;
                 }
                 case PacketType::None:
@@ -429,7 +416,7 @@ ErrCode TimeTailReaderImpl::packetReceived(IInputPort* port)
     const Bool sufficientHistory = hasSufficientHistory();
     lock.unlock();
 
-    if (callback.assigned() && (hasEventPacket || sufficientHistory))
+    if (callback.assigned() && sufficientHistory)
         OPENDAQ_RETURN_IF_FAILED(wrapHandler(callback));
 
     if (externalListener.assigned() && externalListener.getRef().assigned())
