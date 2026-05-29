@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
                                          .addLoggerSink(daq::StdOutLoggerSink())
                                          .addDiscoveryServer("mdns")
                                          .setDefaultRootDeviceInfo(deviceInfo)
+                                         .setSchedulerWorkerNum(1)
                                          .setUsingSchedulerMainLoop(true);
 
     // Add extra module path if defined (for bundle packaging)

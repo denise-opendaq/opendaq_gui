@@ -12,6 +12,9 @@ set(HEADERS
     include/widgets/signal_widget.h
     include/widgets/signal_descriptor_widget.h
     include/widgets/signal_plot_widget.h
+    include/widgets/time_tail_reader/time_tail_reader_impl.h
+    include/widgets/time_tail_reader/time_tail_reader_ptr.h
+    include/widgets/time_tail_reader/time_tail_reader_factory.h
     include/widgets/property_object_view.h
     include/widgets/property_inspector.h
     include/widgets/input_port_widget.h
@@ -30,6 +33,7 @@ set(SOURCES
     src/signal_widget.cpp
     src/signal_descriptor_widget.cpp
     src/signal_plot_widget.cpp
+    src/time_tail_reader_impl.cpp
     src/property_object_view.cpp
     src/property_inspector.cpp
     src/input_port_widget.cpp

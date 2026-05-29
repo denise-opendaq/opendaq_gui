@@ -14,9 +14,12 @@
 #include <QPen>
 #include <QTimer>
 #include <QValueAxis>
+#include <QVector>
+#include <QPointF>
 #include <QVBoxLayout>
 
 #include <opendaq/reader_factory.h>
+#include <widgets/time_tail_reader/time_tail_reader_factory.h>
 
 SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     : QWidget(parent)
@@ -173,7 +176,8 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     connect(rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
         if (idx >= 0) {
             timeRangeSecs = rangeCombo->itemData(idx).toDouble();
-            points.clear();
+            if (reader.assigned())
+                reader.setHistoryDuration(timeRangeSecs);
         }
     });
     connect(rangeCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
@@ -181,7 +185,8 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
         const double val = rangeCombo->currentText().toDouble(&ok);
         if (ok && val > 0.0) {
             timeRangeSecs = val;
-            points.clear();
+            if (reader.assigned())
+                reader.setHistoryDuration(timeRangeSecs);
         }
     });
 }
@@ -190,22 +195,22 @@ SignalPlotWidget::~SignalPlotWidget() = default;
 
 void SignalPlotWidget::setupReader()
 {
-    reader  = nullptr;
+    reader = daq::TimeTailReaderPtr();
     tickToMs = 1.0;
 
     try
     {
-        reader = daq::StreamReader(signal, daq::SampleType::Float64, daq::SampleType::Int64);
+        reader = daq::TimeTailReader(signal, timeRangeSecs);
 
         try
         {
-            auto domain = signal.getDomainSignal();
+            const auto domain = signal.getDomainSignal();
             if (domain.assigned())
             {
-                auto desc = domain.getDescriptor();
+                const auto desc = domain.getDescriptor();
                 if (desc.assigned())
                 {
-                    auto res = desc.getTickResolution();
+                    const auto res = desc.getTickResolution();
                     if (res.assigned())
                         tickToMs = 1000.0 * res.getNumerator()
                                    / static_cast<double>(res.getDenominator());
@@ -219,6 +224,7 @@ void SignalPlotWidget::setupReader()
     }
     catch (const std::exception& e)
     {
+        reader = daq::TimeTailReaderPtr();
         chartView->hide();
         errorLabel->setText(tr("Cannot read signal: %1").arg(e.what()));
         errorLabel->show();
@@ -230,25 +236,18 @@ void SignalPlotWidget::updatePlot()
     if (!reader.assigned())
         return;
 
+    size_t count = 0;
     try
     {
         const size_t available = reader.getAvailableCount();
-        size_t count = available;
-        if (available > 0)
-        {
-            valBuf.resize(available);
-            domainBuf.resize(available);
+        count = available;
+        if (available == 0)
+            return;
 
-            reader.readWithDomain(valBuf.data(), domainBuf.data(), &count, 0);
+        valBuf.resize(available);
+        domainBuf.resize(available);
 
-            for (size_t i = 0; i < count; ++i)
-                points.append({domainBuf[i] * tickToMs, valBuf[i]});
-        }
-        else
-        {
-            auto status = reader.read(nullptr, &count);
-            
-        }
+        reader.readWithDomain(valBuf.data(), domainBuf.data(), &count);
     }
     catch (...)
     {
@@ -256,42 +255,34 @@ void SignalPlotWidget::updatePlot()
         return;
     }
 
-    if (points.isEmpty())
+    if (count == 0)
         return;
 
-    // Anchor window to latest data timestamp, not wall clock
-    const qint64 latestMs = static_cast<qint64>(points.last().x());
-    const qint64 windowMs = static_cast<qint64>(timeRangeSecs * 1000.0);
-    const qint64 cutoffMs = latestMs - windowMs;
-
-    // Trim old points
-    int trimTo = 0;
-    while (trimTo < points.size() && static_cast<qint64>(points[trimTo].x()) < cutoffMs)
-        ++trimTo;
-    if (trimTo > 0)
-        points.remove(0, trimTo);
-
-    // Convert to relative seconds for display (0 = latest point)
+    const qint64 latestMs = static_cast<qint64>(domainBuf[count - 1] * tickToMs);
     const double latestSec = latestMs / 1000.0;
+
     QVector<QPointF> displayPoints;
-    displayPoints.reserve(points.size());
-    for (const auto& p : points)
-        displayPoints.append({p.x() / 1000.0 - latestSec, p.y()});
+    displayPoints.reserve(static_cast<int>(count));
+    for (size_t i = 0; i < count; ++i)
+    {
+        const double timeSec = domainBuf[i] * tickToMs / 1000.0;
+        displayPoints.append({timeSec - latestSec, valBuf[i]});
+    }
 
     series->replace(displayPoints);
     axisX->setRange(-timeRangeSecs, 0.0);
 
-    double yMin = points[0].y(), yMax = points[0].y();
-    for (const auto& p : points)
+    double yMin = valBuf[0], yMax = valBuf[0];
+    for (size_t i = 0; i < count; ++i)
     {
-        if (p.y() < yMin) yMin = p.y();
-        if (p.y() > yMax) yMax = p.y();
+        if (valBuf[i] < yMin) yMin = valBuf[i];
+        if (valBuf[i] > yMax) yMax = valBuf[i];
     }
     const double margin = (yMax - yMin) * 0.1 + 1e-9;
     axisY->setRange(yMin - margin, yMax + margin);
 
     auto fmt = [](double v) { return QString::number(v, 'g', 6); };
-    if (statLastLabel) statLastLabel->setText(fmt(points.last().y()));
+    if (statLastLabel) statLastLabel->setText(fmt(valBuf[count - 1]));
     if (statMinLabel)  statMinLabel->setText(fmt(yMin));
     if (statMaxLabel)  statMaxLabel->setText(fmt(yMax));
 }

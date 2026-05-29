@@ -1,11 +1,9 @@
 #pragma once
 
-#include <QVector>
-#include <QPointF>
 #include <QWidget>
 
 #include <opendaq/signal_ptr.h>
-#include <opendaq/stream_reader_ptr.h>
+#include <widgets/time_tail_reader/time_tail_reader_ptr.h>
 
 QT_BEGIN_NAMESPACE
 class QChart;
@@ -29,9 +27,8 @@ private:
     void setupReader();
     void updatePlot();
 
-    daq::SignalPtr       signal;
-    daq::StreamReaderPtr reader;
-    double               tickToMs = 1.0;
+    daq::SignalPtr         signal;
+    daq::TimeTailReaderPtr reader;
 
     QChart*        chart      = nullptr;
     QChartView*    chartView  = nullptr;
@@ -46,9 +43,9 @@ private:
     QLabel*        statMinLabel  = nullptr;
     QLabel*        statMaxLabel  = nullptr;
 
-    double          timeRangeSecs = 1.0;
-    QVector<QPointF> points;
+    double tickToMs = 1.0;
+    double timeRangeSecs = 1.0;
 
-    std::vector<double>   valBuf;
-    std::vector<int64_t>  domainBuf;
+    std::vector<double>  valBuf;
+    std::vector<int64_t> domainBuf;
 };
