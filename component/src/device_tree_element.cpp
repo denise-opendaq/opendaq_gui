@@ -34,7 +34,6 @@ bool DeviceTreeElement::visible() const
     return true;
 }
 
-
 void DeviceTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
     if (sender != daqComponent)

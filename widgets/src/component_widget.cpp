@@ -23,12 +23,11 @@
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
-ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
-    : ComponentWidget(comp, parent, Qt::Uninitialized, treeIcon)
+ComponentWidget* ComponentWidget::Сreate(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
 {
-    setupUI();
-    if (component.assigned())
-        *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::onCoreEvent);
+    auto* widget = new ComponentWidget(comp, parent, Qt::Uninitialized, treeIcon);
+    widget->setupUI();
+    return widget;
 }
 
 ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent, Qt::Initialization, const QString& treeIcon)
@@ -40,7 +39,7 @@ ComponentWidget::ComponentWidget(const daq::ComponentPtr& comp, QWidget* parent,
 ComponentWidget::~ComponentWidget()
 {
     if (component.assigned())
-        *AppContext::DaqEvent() -= daq::event(this, &ComponentWidget::onCoreEvent);
+        *AppContext::DaqEvent() -= daq::event(this, &ComponentWidget::dispatchCoreEvent);
 }
 
 void ComponentWidget::setupUI()
@@ -62,6 +61,14 @@ void ComponentWidget::setupUI()
         bar->setToolTip(tr("Double-click a tab to open it in a separate window"));
         bar->installEventFilter(this);
     }
+
+    if (component.assigned())
+        *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::dispatchCoreEvent);
+}
+
+void ComponentWidget::dispatchCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
+{
+    onCoreEvent(sender, args);
 }
 
 void ComponentWidget::addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card)

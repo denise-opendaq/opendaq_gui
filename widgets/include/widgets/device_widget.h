@@ -19,7 +19,9 @@ public:
     explicit DeviceWidget(const daq::DevicePtr& device,
                           QWidget* parent = nullptr,
                           const QString& treeIconName = {});
-    ~DeviceWidget() override;
+
+protected:
+    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args) override;
 
 private:
     QWidget* buildHeaderCard() override;
@@ -33,7 +35,6 @@ private:
     QString computeCurrentTime() const;
 
     void onOpModeChanged(int index);
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     daq::DevicePtr device;
     std::atomic<int> updatingFromDevice{0};

@@ -16,9 +16,9 @@ class ComponentWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit ComponentWidget(const daq::ComponentPtr& component,
-                             QWidget* parent = nullptr,
-                             const QString& treeIconName = {});
+    static ComponentWidget* Сreate(const daq::ComponentPtr& component,
+                                   QWidget* parent = nullptr,
+                                   const QString& treeIconName = {});
     ~ComponentWidget() override;
 
 protected:
@@ -46,7 +46,8 @@ protected:
     QSize minimumSizeHint() const override { return QSize(0, 0); }
 
     bool eventFilter(QObject* obj, QEvent* event) override;
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+
+    virtual void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     daq::ComponentPtr component;
     QString           treeIconName;
@@ -58,4 +59,7 @@ protected:
     QWidget*    statusContainerBlock = nullptr;
     QWidget*    tagsRow              = nullptr;
     QTabWidget* tabs                 = nullptr;
+
+private:
+    void dispatchCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 };

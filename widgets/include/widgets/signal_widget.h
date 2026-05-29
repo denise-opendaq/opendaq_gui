@@ -19,9 +19,12 @@ public:
     explicit SignalWidget(const daq::SignalPtr& signal,
                           QWidget* parent = nullptr,
                           const QString& treeIconName = {});
-    ~SignalWidget() override;
+
+protected:
+    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args) override;
 
 private:
+
     QWidget* buildHeaderCard() override;
     void populateTabs() override;
 
@@ -29,7 +32,6 @@ private:
     void updateLastValue();
     QString formatSignalValue(const daq::SignalPtr& sig) const;
 
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     daq::SignalPtr signal;
     std::atomic<int> updatingFromSignal{0};

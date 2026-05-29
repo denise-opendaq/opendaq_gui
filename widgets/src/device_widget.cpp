@@ -5,7 +5,6 @@
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
 #include "context/gui_styles.h"
-#include "context/QueuedEventHandler.h"
 #include <QComboBox>
 #include <QDateTime>
 #include <QFrame>
@@ -30,15 +29,6 @@ DeviceWidget::DeviceWidget(const daq::DevicePtr& dev, QWidget* parent, const QSt
     timer->setInterval(500);
     connect(timer, &QTimer::timeout, this, &DeviceWidget::updateCurrentTime);
     timer->start();
-
-    if (device.assigned())
-        *AppContext::DaqEvent() += daq::event(this, &DeviceWidget::onCoreEvent);
-}
-
-DeviceWidget::~DeviceWidget()
-{
-    if (device.assigned())
-        *AppContext::DaqEvent() -= daq::event(this, &DeviceWidget::onCoreEvent);
 }
 
 // ============================================================================

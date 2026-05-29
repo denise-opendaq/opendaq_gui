@@ -6,7 +6,6 @@
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
 #include "context/gui_styles.h"
-#include "context/QueuedEventHandler.h"
 #include <QCheckBox>
 #include <QDateTime>
 #include <QFrame>
@@ -30,15 +29,6 @@ SignalWidget::SignalWidget(const daq::SignalPtr& sig, QWidget* parent, const QSt
     timer->setInterval(500);
     connect(timer, &QTimer::timeout, this, &SignalWidget::updateLastValue);
     timer->start();
-
-    if (signal.assigned())
-        *AppContext::DaqEvent() += daq::event(this, &SignalWidget::onCoreEvent);
-}
-
-SignalWidget::~SignalWidget()
-{
-    if (signal.assigned())
-        *AppContext::DaqEvent() -= daq::event(this, &SignalWidget::onCoreEvent);
 }
 
 // ============================================================================
