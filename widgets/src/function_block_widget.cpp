@@ -27,11 +27,24 @@ FunctionBlockWidget::FunctionBlockWidget(const daq::FunctionBlockPtr& fb,
 
 FunctionBlockWidget::~FunctionBlockWidget() = default;
 
-void FunctionBlockWidget::populateTabs()
+QStringList FunctionBlockWidget::availableTabs() const
 {
-    ComponentWidget::populateTabs();
+    auto result = ComponentWidget::availableTabs();
+    result << tr("Signal Selector");
+    return result;
+}
 
-    auto* signalSelectorPage = new QWidget();
+QWidget* FunctionBlockWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Signal Selector"))
+        return createSignalSelectorPage(parent);
+
+    return ComponentWidget::openTab(title, parent);
+}
+
+QWidget* FunctionBlockWidget::createSignalSelectorPage(QWidget* parent)
+{
+    auto* signalSelectorPage = new QWidget(parent);
     signalSelectorPage->setAttribute(Qt::WA_StyledBackground, true);
     signalSelectorPage->setStyleSheet(QStringLiteral("background: transparent;"));
 
@@ -66,7 +79,7 @@ void FunctionBlockWidget::populateTabs()
     scroll->setWidget(scrollContent);
     layout->addWidget(scroll, 1);
 
-    tabs->addTab(signalSelectorPage, tr("Signal Selector"));
+    return signalSelectorPage;
 }
 
 void FunctionBlockWidget::setupRecorderControls(QWidget* page, QVBoxLayout* layout)

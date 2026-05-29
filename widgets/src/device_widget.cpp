@@ -232,32 +232,39 @@ QWidget* DeviceWidget::buildHeaderCard()
     return card;
 }
 
-void DeviceWidget::populateTabs()
+QStringList DeviceWidget::availableTabs() const
 {
-    // Overview — PropertyObjectView of device.getInfo()
+    QStringList result = ComponentWidget::availableTabs();
+    result << tr("Overview");
+    result << tr("Logs");
+    return result;
+}
+
+QWidget* DeviceWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Overview"))
     {
         try
         {
             auto info = device.getInfo();
-            auto* propView = new PropertyObjectView(info);
-            tabs->addTab(propView, tr("Overview"));
+            return new PropertyObjectView(info, parent);
         }
         catch (...)
         {
-            auto* page = new QWidget();
+            auto* page = new QWidget(parent);
             auto* layout = new QVBoxLayout(page);
             layout->setAlignment(Qt::AlignCenter);
             auto* lbl = new QLabel(tr("No device info available"), page);
             lbl->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
             layout->addWidget(lbl);
-            tabs->addTab(page, tr("Overview"));
+            return page;
         }
     }
 
-    ComponentWidget::populateTabs();
+    if (title == tr("Logs"))
+        return new DeviceLogsWidget(device, parent);
 
-    // Logs tab
-    tabs->addTab(new DeviceLogsWidget(device), tr("Logs"));
+    return ComponentWidget::openTab(title, parent);
 }
 
 // ============================================================================

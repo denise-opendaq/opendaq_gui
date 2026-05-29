@@ -156,7 +156,7 @@ void ComponentTreeElement::openTab()
         return;
     }
 
-    auto* componentWidget = ComponentWidget::Сreate(daqComponent, nullptr, iconName);
+    auto* componentWidget = ComponentWidget::create(daqComponent, nullptr, iconName);
     setContent(componentWidget);
 }
 

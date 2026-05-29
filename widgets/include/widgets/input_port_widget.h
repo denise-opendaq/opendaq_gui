@@ -20,7 +20,8 @@ public:
     ~InputPortWidget() override;
 
 private:
-    void populateTabs() override;
+    QStringList availableTabs() const override;
+    QWidget* openTab(const QString& title, QWidget* parent) override;
 
     daq::InputPortPtr inputPort;
     ComponentTreeWidget* componentTree = nullptr;

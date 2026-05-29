@@ -1,7 +1,6 @@
 #include "widgets/input_port_folder_widget.h"
 #include "widgets/input_port_folder_selector.h"
 
-#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -18,16 +17,26 @@ InputPortFolderWidget::InputPortFolderWidget(const daq::FolderPtr& folder,
 
 InputPortFolderWidget::~InputPortFolderWidget() = default;
 
-void InputPortFolderWidget::populateTabs()
+QStringList InputPortFolderWidget::availableTabs() const
 {
-    ComponentWidget::populateTabs();
+    auto result = ComponentWidget::availableTabs();
+    result << tr("Signal Selector");
+    return result;
+}
 
-    auto* selector = new InputPortFolderSelector(folder, componentTree);
+QWidget* InputPortFolderWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Signal Selector"))
+    {
+        auto* selector = new InputPortFolderSelector(folder, componentTree);
 
-    auto* container = new QWidget();
-    auto* containerLayout = new QVBoxLayout(container);
-    containerLayout->setContentsMargins(10, 10, 10, 10);
-    containerLayout->addWidget(selector);
+        auto* container = new QWidget(parent);
+        auto* containerLayout = new QVBoxLayout(container);
+        containerLayout->setContentsMargins(10, 10, 10, 10);
+        containerLayout->addWidget(selector);
 
-    tabs->addTab(container, tr("Signal Selector"));
+        return container;
+    }
+
+    return ComponentWidget::openTab(title, parent);
 }

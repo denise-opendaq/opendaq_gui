@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
+#include <vector>
 #include <QWidget>
 
 #include <opendaq/component_ptr.h>
@@ -16,7 +18,7 @@ class ComponentWidget : public QWidget
     Q_OBJECT
 
 public:
-    static ComponentWidget* Сreate(const daq::ComponentPtr& component,
+    static ComponentWidget* create(const daq::ComponentPtr& component,
                                    QWidget* parent = nullptr,
                                    const QString& treeIconName = {});
     ~ComponentWidget() override;
@@ -29,7 +31,9 @@ protected:
 
     void setupUI();
     virtual QWidget* buildHeaderCard();
-    virtual void populateTabs();
+
+    virtual QStringList availableTabs() const;
+    virtual QWidget* openTab(const QString& title, QWidget* parent);
 
     // Prepends the 64×64 tree icon column (uses treeIconName + IconProvider).
     void addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card);
@@ -62,4 +66,11 @@ protected:
 
 private:
     void dispatchCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+    void initTabs();
+    void ensureTabLoaded(int index);
+    QString qtWidgetTabTitle() const;
+
+    QStringList tabTitles;
+    std::vector<bool> tabLoaded;
+    bool loadingTab = false;
 };

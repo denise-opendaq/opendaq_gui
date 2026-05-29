@@ -15,21 +15,31 @@ InputPortWidget::InputPortWidget(const daq::InputPortPtr& port,
 
 InputPortWidget::~InputPortWidget() = default;
 
-void InputPortWidget::populateTabs()
+QStringList InputPortWidget::availableTabs() const
 {
-    ComponentWidget::populateTabs();
+    auto result = ComponentWidget::availableTabs();
+    result << tr("Signal Selector");
+    return result;
+}
 
-    auto* page = new QWidget();
-    page->setAttribute(Qt::WA_StyledBackground, true);
-    page->setStyleSheet(QStringLiteral("background: transparent;"));
+QWidget* InputPortWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Signal Selector"))
+    {
+        auto* page = new QWidget(parent);
+        page->setAttribute(Qt::WA_StyledBackground, true);
+        page->setStyleSheet(QStringLiteral("background: transparent;"));
 
-    auto* layout = new QVBoxLayout(page);
-    layout->setContentsMargins(16, 16, 16, 16);
-    layout->setSpacing(12);
+        auto* layout = new QVBoxLayout(page);
+        layout->setContentsMargins(16, 16, 16, 16);
+        layout->setSpacing(12);
 
-    signalSelector = new InputPortSignalSelector(inputPort, componentTree, page);
-    layout->addWidget(signalSelector);
-    layout->addStretch();
+        signalSelector = new InputPortSignalSelector(inputPort, componentTree, page);
+        layout->addWidget(signalSelector);
+        layout->addStretch();
 
-    tabs->addTab(page, tr("Signal Selector"));
+        return page;
+    }
+
+    return ComponentWidget::openTab(title, parent);
 }

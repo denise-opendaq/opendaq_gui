@@ -18,12 +18,14 @@
 #include <QPushButton>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTimer>
 #include <QVBoxLayout>
+#include <QSignalBlocker>
 
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 
-ComponentWidget* ComponentWidget::Сreate(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
+ComponentWidget* ComponentWidget::create(const daq::ComponentPtr& comp, QWidget* parent, const QString& treeIcon)
 {
     auto* widget = new ComponentWidget(comp, parent, Qt::Uninitialized, treeIcon);
     widget->setupUI();
@@ -51,7 +53,11 @@ void ComponentWidget::setupUI()
     root->addWidget(buildHeaderCard());
     root->addWidget(tabs = new QTabWidget(this), 1);
 
-    populateTabs();
+    initTabs();
+
+    connect(tabs, &QTabWidget::currentChanged, this, [this](int index) {
+        ensureTabLoaded(index);
+    });
 
     tabs->setStyleSheet(GUIStyles::underlineTabBarAccentStyle());
 
@@ -64,6 +70,10 @@ void ComponentWidget::setupUI()
 
     if (component.assigned())
         *AppContext::DaqEvent() += daq::event(this, &ComponentWidget::dispatchCoreEvent);
+
+    QTimer::singleShot(0, this, [this]() {
+        ensureTabLoaded(tabs->currentIndex());
+    });
 }
 
 void ComponentWidget::dispatchCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
@@ -156,21 +166,96 @@ QWidget* ComponentWidget::buildHeaderCard()
     return card;
 }
 
-void ComponentWidget::populateTabs()
+void ComponentWidget::initTabs()
+{
+    tabTitles = availableTabs();
+    tabLoaded.assign(tabTitles.size(), false);
+
+    for (const auto& title : tabTitles)
+        tabs->addTab(new QWidget(tabs), title);
+}
+
+void ComponentWidget::ensureTabLoaded(int index)
+{
+    if (!tabs || index < 0 || index >= tabTitles.size() || loadingTab)
+        return;
+
+    if (tabLoaded[static_cast<size_t>(index)])
+        return;
+
+    loadingTab = true;
+    struct LoadingGuard
+    {
+        bool& flag;
+        explicit LoadingGuard(bool& f) : flag(f) {}
+        ~LoadingGuard() { flag = false; }
+    } loadingGuard(loadingTab);
+
+    QWidget* placeholder = tabs->widget(index);
+    const QString title = tabs->tabText(index);
+    const int current = tabs->currentIndex();
+
+    QWidget* content = openTab(tabTitles.at(index), tabs);
+    if (!content)
+        content = new QWidget(tabs);
+
+    {
+        QSignalBlocker blocker(tabs);
+        tabs->removeTab(index);
+        delete placeholder;
+        tabs->insertTab(index, content, title);
+        tabLoaded[static_cast<size_t>(index)] = true;
+        if (current >= 0)
+            tabs->setCurrentIndex(current);
+    }
+}
+
+QString ComponentWidget::qtWidgetTabTitle() const
 {
     const auto widgetComponent = component.asPtrOrNull<IQTWidget>(true);
-    if (widgetComponent.assigned())
+    if (!widgetComponent.assigned())
+        return {};
+
+    daq::StringPtr name;
+    widgetComponent->getName(&name);
+    if (!name.assigned())
+        return {};
+
+    return QString::fromStdString(name.toStdString());
+}
+
+QStringList ComponentWidget::availableTabs() const
+{
+    QStringList result;
+
+    const QString qtTitle = qtWidgetTabTitle();
+    if (!qtTitle.isEmpty())
+        result << qtTitle;
+
+    result << tr("Attributes");
+    return result;
+}
+
+QWidget* ComponentWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Attributes"))
+        return new PropertyObjectView(component, parent, component);
+
+    const QString qtTitle = qtWidgetTabTitle();
+    if (!qtTitle.isEmpty() && title == qtTitle)
     {
-        QWidget* qtWidget;
-        widgetComponent->getWidget(&qtWidget);
-        daq::StringPtr name;
-        widgetComponent->getName(&name);
-        if (qtWidget && name.assigned())
-            tabs->addTab(qtWidget, QString::fromStdString(name.toStdString()));
+        const auto widgetComponent = component.asPtrOrNull<IQTWidget>(true);
+        if (widgetComponent.assigned())
+        {
+            QWidget* qtWidget = nullptr;
+            widgetComponent->getWidget(&qtWidget);
+            if (qtWidget)
+                return qtWidget;
+        }
+        return new QWidget(parent);
     }
 
-    auto* propView = new PropertyObjectView(component, nullptr, component);
-    tabs->addTab(propView, tr("Attributes"));
+    return nullptr;
 }
 
 void ComponentWidget::updateStatus()
@@ -378,12 +463,16 @@ void ComponentWidget::detachTabToWindow(int index)
     if (!tabs || index < 0 || index >= tabs->count())
         return;
 
+    ensureTabLoaded(index);
+
     const QString tabTitle = tabs->tabText(index);
     QWidget* page = tabs->widget(index);
     if (!page)
         return;
 
     tabs->removeTab(index);
+    tabTitles.removeAt(index);
+    tabLoaded.erase(tabLoaded.begin() + index);
 
     auto* window = new QMainWindow();
     window->setAttribute(Qt::WA_DeleteOnClose);

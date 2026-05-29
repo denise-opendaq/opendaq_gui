@@ -23,7 +23,9 @@ public:
     ~FunctionBlockWidget() override;
 
 private:
-    void populateTabs() override;
+    QStringList availableTabs() const override;
+    QWidget* openTab(const QString& title, QWidget* parent) override;
+    QWidget* createSignalSelectorPage(QWidget* parent);
     void setupRecorderControls(QWidget* page, QVBoxLayout* layout);
 
 private Q_SLOTS:

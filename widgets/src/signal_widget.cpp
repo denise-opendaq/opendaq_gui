@@ -178,14 +178,31 @@ QWidget* SignalWidget::buildHeaderCard()
     return card;
 }
 
-void SignalWidget::populateTabs()
+QStringList SignalWidget::availableTabs() const
 {
-    auto* propView = new PropertyObjectView(signal, nullptr, signal);
-    if (signal.asPtr<daq::ISignal>(true).getDomainSignal().assigned())
-        tabs->addTab(new SignalPlotWidget(signal), tr("Overview"));
-    tabs->addTab(propView, tr("Attributes"));
+    QStringList result;
 
-    tabs->addTab(new SignalDescriptorWidget(signal), tr("Descriptor"));
+    if (signal.asPtr<daq::ISignal>(true).getDomainSignal().assigned())
+        result << tr("Overview");
+
+    result << tr("Attributes");
+    result << tr("Descriptor");
+
+    return result;
+}
+
+QWidget* SignalWidget::openTab(const QString& title, QWidget* parent)
+{
+    if (title == tr("Overview"))
+        return new SignalPlotWidget(signal, parent);
+
+    if (title == tr("Attributes"))
+        return new PropertyObjectView(signal, parent, signal);
+
+    if (title == tr("Descriptor"))
+        return new SignalDescriptorWidget(signal, parent);
+
+    return nullptr;
 }
 
 // ============================================================================

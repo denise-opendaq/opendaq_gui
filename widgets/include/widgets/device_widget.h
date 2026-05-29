@@ -25,7 +25,8 @@ protected:
 
 private:
     QWidget* buildHeaderCard() override;
-    void populateTabs() override;
+    QStringList availableTabs() const override;
+    QWidget* openTab(const QString& title, QWidget* parent) override;
 
     void updateConnectionStatus();
     void updateOpModeCombo();
