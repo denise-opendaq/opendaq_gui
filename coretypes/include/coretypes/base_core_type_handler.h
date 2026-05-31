@@ -31,6 +31,12 @@ public:
     // Check if this type is editable via text input
     virtual bool isEditable() const = 0;
 
+    // Whether the value should show nested tree children (e.g. dict entries)
+    virtual bool hasSubtree(const daq::BaseObjectPtr& value) const;
+
+    // Populate nested tree children under parent
+    virtual void buildSubtree(QTreeWidgetItem* parent, const daq::BaseObjectPtr& value) const;
+
     // Handle double-click for selection-based types
     // Returns true if handled, false if should use default behavior
     virtual bool handleDoubleClick(PropertyObjectView* view,

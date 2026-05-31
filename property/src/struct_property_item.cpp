@@ -49,6 +49,7 @@ void StructPropertyItem::build_subtree(PropertyObjectView& view, QTreeWidgetItem
             treeChild->setFlags(treeChild->flags() | Qt::ItemIsEditable);
 
         self->addChild(treeChild);
+        valueHandler->buildSubtree(treeChild, value);
 
         // Map tree item to original key
         itemToKeyMap[treeChild] = key;

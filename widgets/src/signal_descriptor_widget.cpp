@@ -25,6 +25,7 @@ static constexpr const char* K_NAME         = "Name";
 static constexpr const char* K_SAMPLE_TYPE  = "Sample Type";
 static constexpr const char* K_SAMPLE_SIZE  = "Sample Size";
 static constexpr const char* K_RULE         = "Rule";
+static constexpr const char* K_RULE_PARAMS  = "Rule Parameters";
 static constexpr const char* K_UNIT         = "Unit";
 static constexpr const char* K_RESOLUTION   = "Tick Resolution";
 static constexpr const char* K_ORIGIN       = "Origin";
@@ -78,6 +79,7 @@ static daq::PropertyObjectPtr createDescriptorObject()
     obj.addProperty(daq::SparseSelectionPropertyBuilder(K_SAMPLE_TYPE, sampleTypeValues, static_cast<int>(daq::SampleType::Undefined)).setReadOnly(true).build());
     obj.addProperty(daq::IntPropertyBuilder(K_SAMPLE_SIZE, 0).setUnit(daq::Unit("B")).setReadOnly(true).build());
     obj.addProperty(daq::SparseSelectionPropertyBuilder(K_RULE, ruleValues, static_cast<int>(daq::DataRuleType::Other)).setReadOnly(true).build());
+    obj.addProperty(daq::StructPropertyBuilder(K_RULE_PARAMS, DataRule(daq::DataRuleType::Other, daq::Dict<daq::IString, daq::IBaseObject>())).setReadOnly(true).build());
     obj.addProperty(daq::ObjectPropertyBuilder(K_UNIT, unit).setReadOnly(true).build());
     obj.addProperty(daq::StringPropertyBuilder(K_RESOLUTION, "—").setReadOnly(true).build());
     obj.addProperty(daq::StringPropertyBuilder(K_ORIGIN, "—").setReadOnly(true).build());
@@ -142,7 +144,10 @@ void SignalDescriptorWidget::update()
     prot.setProtectedPropertyValue(K_SAMPLE_SIZE, d.getSampleSize());
 
     if (const auto rule = d.getRule(); rule.assigned())
+    {
         prot.setProtectedPropertyValue(K_RULE, static_cast<int>(rule.getType()));
+        prot.setProtectedPropertyValue(K_RULE_PARAMS, rule);
+    }
 
     if (const auto unit = d.getUnit(); unit.assigned())
     {

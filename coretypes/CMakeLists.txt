@@ -12,6 +12,7 @@ set(HEADERS
     include/coretypes/default_core_type_handler.h
     include/coretypes/enumeration_core_type_handler.h
     include/coretypes/list_core_type_handler.h
+    include/coretypes/dict_core_type_handler.h
     include/coretypes/core_type_factory.h
     include/coretypes/default_core_type.h
 )
@@ -23,6 +24,7 @@ set(SOURCES
     src/default_core_type_handler.cpp
     src/enumeration_core_type_handler.cpp
     src/list_core_type_handler.cpp
+    src/dict_core_type_handler.cpp
     src/core_type_factory.cpp
 )
 
