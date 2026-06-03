@@ -39,9 +39,10 @@ private:
     QLabel*        errorLabel    = nullptr;
     QTimer*        timer         = nullptr;
 
-    QLabel*        statLastLabel = nullptr;
-    QLabel*        statMinLabel  = nullptr;
-    QLabel*        statMaxLabel  = nullptr;
+    QLabel*        statSamplesLabel = nullptr;
+    QLabel*        statLastLabel    = nullptr;
+    QLabel*        statMinLabel     = nullptr;
+    QLabel*        statMaxLabel     = nullptr;
 
     double tickToMs = 1.0;
     double timeRangeSecs = 1.0;

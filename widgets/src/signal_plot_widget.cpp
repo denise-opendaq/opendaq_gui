@@ -35,22 +35,26 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     rangeLabel->setStyleSheet(GUIStyles::CAPTION_LABEL);
 
     rangeCombo = new QComboBox(topBar);
-    rangeCombo->addItem("0.001 s",   0.001);
-    rangeCombo->addItem("0.01 s",  0.01);
-    rangeCombo->addItem("0.1 s", 0.1);
-    rangeCombo->addItem("1 s",    1.0);
-    rangeCombo->addItem("10 s",   10.0);
+    rangeCombo->addItem("0.001");
+    rangeCombo->addItem("0.01");
+    rangeCombo->addItem("0.1");
+    rangeCombo->addItem("1");
+    rangeCombo->addItem("10");
     rangeCombo->setEditable(true);
-    rangeCombo->setCurrentIndex(3);  // default: 1 s
+    rangeCombo->setInsertPolicy(QComboBox::NoInsert);
+    rangeCombo->setCurrentIndex(3);
     rangeCombo->setStyleSheet(
         "QComboBox { font-size: 13px; padding: 2px 6px; }"
     );
-    rangeCombo->lineEdit()->setPlaceholderText(tr("sec"));
     rangeCombo->lineEdit()->setValidator(
         new QDoubleValidator(0.0001, 86400.0, 4, rangeCombo));
 
+    auto* secLabel = new QLabel(tr("sec"), topBar);
+    secLabel->setStyleSheet(GUIStyles::CAPTION_LABEL);
+
     topLayout->addWidget(rangeLabel);
     topLayout->addWidget(rangeCombo);
+    topLayout->addWidget(secLabel);
     topLayout->addStretch();
 
     // ── Chart ────────────────────────────────────────────────────────────────
@@ -85,11 +89,16 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     chart->addAxis(axisX, Qt::AlignBottom);
     series->attachAxis(axisX);
 
-
     axisY = new QValueAxis();
     {
         QString signalName;
-        try { signalName = QString::fromStdString(signal.getName().toStdString()); } catch (...) {}
+        try 
+        { 
+            signalName = QString::fromStdString(signal.getName().toStdString()); 
+        } 
+        catch (...) 
+        {
+        }
         axisY->setTitleText(signalName.isEmpty() ? tr("Value") : signalName);
     }
     axisY->setLabelsColor(axisTextColor);
@@ -114,7 +123,8 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     card->setAttribute(Qt::WA_StyledBackground, true);
     card->setStyleSheet(GUIStyles::cardStyle("signalPlotCard"));
     // ── Stats row (Last / Min / Max) ─────────────────────────────────────────
-    auto makeStatCard = [&](const QString& title, QLabel*& valueOut) -> QWidget* {
+    auto makeStatCard = [&](const QString& title, QLabel*& valueOut) -> QWidget* 
+    {
         auto* cell = new QWidget();
         cell->setAttribute(Qt::WA_StyledBackground, true);
         // Soft card with the muted alt-base bg, used for inline stat cells.
@@ -143,6 +153,7 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     auto* statsLayout = new QHBoxLayout(statsRow);
     statsLayout->setContentsMargins(0, 0, 0, 0);
     statsLayout->setSpacing(8);
+    statsLayout->addWidget(makeStatCard(tr("Samples"), statSamplesLabel), 1);
     statsLayout->addWidget(makeStatCard(tr("Current"), statLastLabel), 1);
     statsLayout->addWidget(makeStatCard(tr("Min"),     statMinLabel),  1);
     statsLayout->addWidget(makeStatCard(tr("Max"),     statMaxLabel),  1);
@@ -173,17 +184,27 @@ SignalPlotWidget::SignalPlotWidget(const daq::SignalPtr& sig, QWidget* parent)
     connect(timer, &QTimer::timeout, this, &SignalPlotWidget::updatePlot);
     timer->start();
 
-    connect(rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
-        if (idx >= 0) {
-            timeRangeSecs = rangeCombo->itemData(idx).toDouble();
+    connect(rangeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) 
+    {
+        if (idx < 0)
+            return;
+
+        bool ok = false;
+        const double val = rangeCombo->currentText().toDouble(&ok);
+        if (ok && val > 0.0)
+        {
+            timeRangeSecs = val;
             if (reader.assigned())
                 reader.setHistoryDuration(timeRangeSecs);
         }
     });
-    connect(rangeCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() {
+
+    connect(rangeCombo->lineEdit(), &QLineEdit::editingFinished, this, [this]() 
+    {
         bool ok = false;
         const double val = rangeCombo->currentText().toDouble(&ok);
-        if (ok && val > 0.0) {
+        if (ok && val > 0.0) 
+        {
             timeRangeSecs = val;
             if (reader.assigned())
                 reader.setHistoryDuration(timeRangeSecs);
@@ -217,7 +238,9 @@ void SignalPlotWidget::setupReader()
                 }
             }
         }
-        catch (...) {}
+        catch (...) 
+        {
+        }
 
         chartView->show();
         errorLabel->hide();
@@ -281,7 +304,11 @@ void SignalPlotWidget::updatePlot()
     const double margin = (yMax - yMin) * 0.1 + 1e-9;
     axisY->setRange(yMin - margin, yMax + margin);
 
-    auto fmt = [](double v) { return QString::number(v, 'g', 6); };
+    auto fmt = [](double v) 
+    { 
+        return QString::number(v, 'g', 6); 
+    };
+    if (statSamplesLabel) statSamplesLabel->setText(QString::number(count));
     if (statLastLabel) statLastLabel->setText(fmt(valBuf[count - 1]));
     if (statMinLabel)  statMinLabel->setText(fmt(yMin));
     if (statMaxLabel)  statMaxLabel->setText(fmt(yMax));
