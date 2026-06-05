@@ -404,10 +404,7 @@ QString DeviceWidget::computeCurrentTime() const
         if (!res.assigned())
             return tr("—");
 
-        const int64_t num = res.getNumerator();
-        const int64_t den = res.getDenominator();
-        if (num <= 0 || den <= 0)
-            return tr("—");
+        auto ratio = (res / daq::Ratio(1, 1'000)).simplify();
 
         const int64_t ticks = device.getTicksSinceOrigin();
 
@@ -437,12 +434,7 @@ QString DeviceWidget::computeCurrentTime() const
         if (isUtc)
             originDt.setTimeZone(QTimeZone::UTC);
 
-        const int64_t wholeSeconds = (ticks / den) * num + (ticks % den) * num / den;
-        const int64_t nsNum = ((ticks % den) * num % den) * 1'000'000'000LL;
-        const int64_t ns    = nsNum / den;
-
-        QDateTime current = originDt.addSecs(wholeSeconds);
-        current = current.addMSecs(static_cast<int>(ns / 1'000'000));
+        QDateTime current = originDt.addMSecs((daq::Ratio(ticks, 1) * ratio).simplify());
 
         return current.toString("yyyy-MM-dd HH:mm:ss.zzz");
     }
