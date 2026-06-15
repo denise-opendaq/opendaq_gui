@@ -5,9 +5,9 @@
 #include <QLabel>
 #include <QFrame>
 #include <QToolButton>
+#include <QEvent>
 
 #include <opendaq/input_port_ptr.h>
-#include <coreobjects/core_event_args_ptr.h>
 
 class ComponentTreeWidget;
 
@@ -26,8 +26,10 @@ public:
     // Set group box title (if showGroupBox is true)
     void setGroupBoxTitle(const QString& title);
 
+protected:
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
 private:
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
     void setupSignalSelection();
     QString getSignalPath(const daq::SignalPtr& signal) const;
 

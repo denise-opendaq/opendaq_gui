@@ -102,7 +102,7 @@ void InputPortFolderSelector::updateInputPorts()
     try
     {
         // Get all input ports from the folder
-        auto inputPorts = inputPortsFolder.getItems();
+        auto inputPorts = inputPortsFolder.getItems(AppContext::Instance()->showInvisibleComponents() ? daq::search::Any() : nullptr);
 
         if (!inputPorts.assigned() || inputPorts.getCount() == 0)
         {

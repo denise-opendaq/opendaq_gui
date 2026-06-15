@@ -1,13 +1,11 @@
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
-#include "context/QueuedEventHandler.h"
 #include "context/gui_styles.h"
 #include "context/icon_provider.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
-#include <QMetaObject>
 #include <opendaq/instance_ptr.h>
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
@@ -22,38 +20,10 @@ InputPortSignalSelector::InputPortSignalSelector(const daq::InputPortPtr& inputP
     , showGroupBox(true)
 {
     setupSignalSelection();
-
-    if (inputPort.assigned())
-    {
-        try
-        {
-            *AppContext::DaqEvent() += daq::event(this, &InputPortSignalSelector::onCoreEvent);
-        }
-        catch (const std::exception& e)
-        {
-            const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_W("Failed to subscribe to input port events: {}", e.what());
-        }
-    }
-
     populateSignals();
 }
 
-InputPortSignalSelector::~InputPortSignalSelector()
-{
-    if (inputPort.assigned())
-    {
-        try
-        {
-            *AppContext::DaqEvent() -= daq::event(this, &InputPortSignalSelector::onCoreEvent);
-        }
-        catch (const std::exception& e)
-        {
-            const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_W("Failed to unsubscribe from input port events: {}", e.what());
-        }
-    }
-}
+InputPortSignalSelector::~InputPortSignalSelector() = default;
 
 void InputPortSignalSelector::setShowGroupBox(bool show)
 {
@@ -117,6 +87,7 @@ void InputPortSignalSelector::setupSignalSelection()
     signalComboBox->setEditable(false);
     signalComboBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     signalComboBox->setStyleSheet(GUIStyles::roundedComboBoxStyle());
+    signalComboBox->installEventFilter(this);
     connect(signalComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &InputPortSignalSelector::onSignalSelected);
 
@@ -132,6 +103,14 @@ void InputPortSignalSelector::setupSignalSelection()
 
     row->addWidget(signalComboBox, 1);
     row->addWidget(disconnectButton, 0);
+}
+
+bool InputPortSignalSelector::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == signalComboBox && event->type() == QEvent::MouseButtonPress)
+        populateSignals();
+
+    return QWidget::eventFilter(obj, event);
 }
 
 void InputPortSignalSelector::populateSignals()
@@ -155,7 +134,7 @@ void InputPortSignalSelector::populateSignals()
 
         signalComboBox->addItem(tr("(Disconnect)"));
 
-        auto allSignals = instance.getSignalsRecursive();
+        auto allSignals = instance.getSignalsRecursive(AppContext::Instance()->showInvisibleComponents() ? daq::search::Any() : nullptr);
         if (!allSignals.assigned())
         {
             signalComboBox->addItem(tr("No signals available"));
@@ -289,24 +268,6 @@ void InputPortSignalSelector::disconnectSignal()
     {
         QMessageBox::critical(this, tr("Error"), tr("Failed to disconnect signal: %1").arg(e.what()));
         populateSignals();
-    }
-}
-
-void InputPortSignalSelector::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
-{
-    if (sender != inputPort)
-        return;
-
-    try
-    {
-        auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
-        if (eventId == daq::CoreEventId::SignalConnected || eventId == daq::CoreEventId::SignalDisconnected)
-            QMetaObject::invokeMethod(this, "populateSignals", Qt::QueuedConnection);
-    }
-    catch (const std::exception& e)
-    {
-        const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("Error handling core event: {}", e.what());
     }
 }
 
