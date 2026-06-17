@@ -6,11 +6,23 @@ on:
 
 jobs:
   build-linux-installer:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            artifact-name: OpenDAQ-Qt-GUI-Linux-x64-DEB
+            qt-host: linux
+            qt-arch: linux_gcc_64
+          - runner: ubuntu-24.04-arm
+            artifact-name: OpenDAQ-Qt-GUI-Linux-ARM-DEB
+            qt-host: linux_arm64
+            qt-arch: linux_gcc_arm64
+
+    runs-on: ${{ matrix.runner }}
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: recursive
 
@@ -23,15 +35,13 @@ jobs:
           build-essential \
           gcc-12 \
           g++-12 \
-          qt6-base-dev \
-          qt6-base-dev-tools \
-          libqt6core6 \
-          libqt6gui6 \
-          libqt6widgets6 \
-          libqt6charts6-dev \
           libxkbcommon-dev \
+          libxcb-cursor-dev \
+          libgl1-mesa-dev \
+          libfontconfig1-dev \
           dpkg-dev \
           fakeroot \
+          patchelf \
           mono-complete \
           libx11-dev \
           libxrandr-dev \
@@ -46,6 +56,15 @@ jobs:
         sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-12 100
         sudo update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-12 100
 
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.8.0'
+        host: ${{ matrix.qt-host }}
+        arch: ${{ matrix.qt-arch }}
+        modules: 'qtcharts'
+        cache: 'true'
+
     - name: Configure (Release)
       run: |
         cmake --preset opendaq-qt-gui -DCMAKE_BUILD_TYPE=Release -DEXTRA_MODULE_PATH="../lib/opendaq-qt-gui"
@@ -53,15 +72,27 @@ jobs:
     - name: Build (Release)
       run: cmake --build --preset opendaq-qt-gui --config Release
 
+    - name: Patch Qt library and plugin RPATHs
+      run: |
+        QT_LIB_DIR=$(qmake6 -query QT_INSTALL_LIBS)
+        QT_PLUGINS_DIR=$(qmake6 -query QT_INSTALL_PLUGINS)
+        # Qt libs: RPATH = $ORIGIN so they find each other in the same qt6/ dir
+        find "${QT_LIB_DIR}" -maxdepth 1 -name "libQt6*.so.6*" -type f \
+          -exec patchelf --set-rpath '$ORIGIN' {} \;
+        # Qt plugins sit two levels deep (plugins/<type>/lib.so),
+        # so $ORIGIN/../../ resolves to qt6/ where the Qt libs live
+        find "${QT_PLUGINS_DIR}" -name "*.so" \
+          -exec patchelf --set-rpath '$ORIGIN/../../' {} \;
+
     - name: Package with CPack (DEB)
       run: |
         mkdir -p build/dist/linux
         cpack -G DEB -C Release -B build/dist/linux --config build/CPackConfig.cmake
 
     - name: Upload DEB artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
-        name: OpenDAQ-Qt-GUI-Linux-DEB
+        name: ${{ matrix.artifact-name }}
         path: build/dist/linux/OpenDAQ.Qt.GUI-*-linux-*.deb
         retention-days: 30
 
@@ -72,4 +103,3 @@ jobs:
         files: build/dist/linux/OpenDAQ.Qt.GUI-*-linux-*.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-

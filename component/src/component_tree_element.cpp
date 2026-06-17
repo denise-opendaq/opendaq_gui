@@ -1,13 +1,14 @@
 #include "component/component_tree_element.h"
 #include "context/AppContext.h"
+#include "context/QueuedEventHandler.h"
 #include "widgets/property_object_view.h"
 #include "widgets/component_widget.h"
 #include <opendaq/opendaq.h>
 #include <opendaq/custom_log.h>
 #include <qt_widget_interface/qt_widget_interface.h>
 
-ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, LayoutManager* layoutManager, QObject* parent)
-    : BaseTreeElement(tree, layoutManager, parent)
+ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QWidget* contentHost, QObject* parent)
+    : BaseTreeElement(tree, contentHost, parent)
     , daqComponent(daqComponent)
 {
     this->localId = QString::fromStdString(daqComponent.getLocalId().toStdString());
@@ -19,6 +20,7 @@ ComponentTreeElement::ComponentTreeElement(QTreeWidget* tree, const daq::Compone
 void ComponentTreeElement::init(BaseTreeElement* parent)
 {
     BaseTreeElement::init(parent);
+    applyActiveStyle();
 
     // Subscribe to component core events
     try
@@ -58,12 +60,7 @@ bool ComponentTreeElement::visible() const
         if (!componentVisible && !AppContext::Instance()->showInvisibleComponents())
             return false;
 
-        // Check if we're filtering by component type
-        QSet<QString> allowedTypes = AppContext::Instance()->showComponentTypes();
-        if (allowedTypes.isEmpty())
-            return true;
-
-        return allowedTypes.contains(type);
+        return true;
     }
     catch (const std::exception&)
     {
@@ -73,6 +70,9 @@ bool ComponentTreeElement::visible() const
 
 void ComponentTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
+    if (sender != daqComponent)
+        return;
+
     try
     {
         auto eventId = static_cast<daq::CoreEventId>(args.getEventId());
@@ -113,6 +113,33 @@ void ComponentTreeElement::onChangedAttribute(const QString& attributeName, cons
             LOG_W("Error updating name: {}", e.what());
         }
     }
+    else if (attributeName == "Active")
+    {
+        applyActiveStyle();
+    }
+}
+
+void ComponentTreeElement::applyActiveStyle()
+{
+    if (!treeItem)
+        return;
+
+    bool active = true;
+    try
+    {
+        if (daqComponent.assigned())
+            active = daqComponent.getActive();
+    }
+    catch (...)
+    {
+        active = true;
+    }
+
+    const QPalette pal = tree ? tree->palette() : QApplication::palette();
+    const QColor normal = pal.color(QPalette::Normal, QPalette::Text);
+    const QColor disabled = pal.color(QPalette::Disabled, QPalette::Text);
+
+    treeItem->setForeground(0, QBrush(active ? normal : disabled));
 }
 
 daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
@@ -120,49 +147,17 @@ daq::ComponentPtr ComponentTreeElement::getDaqComponent() const
     return daqComponent;
 }
 
-QStringList ComponentTreeElement::getAvailableTabNames() const
+void ComponentTreeElement::openTab()
 {
-    QStringList tabs;
-    tabs << "Attributes";
-    tabs << "Properties";
-    if (daqComponent.supportsInterface<IQTWidget>())
-       tabs << "QTWidget";
-    return tabs;
-}
-
-void ComponentTreeElement::openTab(const QString& tabName)
-{
-    if (!layoutManager)
+    if (!contentHost)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
-        LOG_W("ComponentTreeElement::openTab: layoutManager is null for component '{}'", name.toStdString());
+        LOG_W("ComponentTreeElement::openTab: contentHost is null for component '{}'", name.toStdString());
         return;
     }
-        
-    if (tabName == "Attributes")
-    {
-        auto* componentWidget = new ComponentWidget(daqComponent);
-        addTab(componentWidget, tabName);
-    }
-    else if (tabName == "Properties")
-    {
-        auto* propertyView = new PropertyObjectView(daqComponent, nullptr, daqComponent);
-        addTab(propertyView, tabName, LayoutZone::Bottom, "Attributes");
-    }
-    else if (tabName == "QTWidget")
-    {
-        auto widgetComponent = daqComponent.asPtrOrNull<IQTWidget>(true);
-        if (widgetComponent.assigned())
-        {
-            QWidget* qtWidget;
-            widgetComponent->getWidget(&qtWidget);
-            if (qtWidget)
-            {
-                // QTWidget opens in left zone
-                addTab(qtWidget, tabName, LayoutZone::Left);
-            }
-        }
-    }
+
+    auto* componentWidget = ComponentWidget::create(daqComponent, nullptr, iconName);
+    setContent(componentWidget);
 }
 
 QMenu* ComponentTreeElement::onCreateRightClickMenu(QWidget* parent)
@@ -174,9 +169,29 @@ QMenu* ComponentTreeElement::onCreateRightClickMenu(QWidget* parent)
 
     QAction* endUpdateAction = menu->addAction("End Update");
     connect(endUpdateAction, &QAction::triggered, this, &ComponentTreeElement::onEndUpdate);
-    
+
     menu->addSeparator();
-    
+
+    bool active = true;
+    bool parentActive = true;
+    try
+    {
+        if (daqComponent.assigned())
+        {
+            parentActive = daqComponent.getParentActive();
+            active = daqComponent.getActive();
+        }
+    }
+    catch (...) {}
+
+    if (parentActive)
+    {
+        QAction* changeActiveAction = menu->addAction(active ? "Set Inactive" : "Set Active");
+        connect(changeActiveAction, &QAction::triggered, this, &ComponentTreeElement::onChangeActive);
+
+        menu->addSeparator();
+    }
+
     return menu;
 }
 
@@ -203,5 +218,18 @@ void ComponentTreeElement::onEndUpdate()
     {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_E("Failed to end update: {}", e.what());
+    }
+}
+
+void ComponentTreeElement::onChangeActive()
+{
+    try
+    {
+        daqComponent.setActive(!daqComponent.getActive());
+    }
+    catch (const std::exception& e)
+    {
+        const auto loggerComponent = AppContext::LoggerComponent();
+        LOG_E("Failed to change active state: {}", e.what());
     }
 }

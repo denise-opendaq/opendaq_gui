@@ -33,7 +33,7 @@ set(CMAKE_AUTOUIC ON)
 add_compile_definitions(QT_NO_KEYWORDS)
 
 # Find Qt6 (fetched or system-installed in external/qt)
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network DBus)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network DBus Charts)
 
 add_subdirectory(context)
 add_subdirectory(logger)
@@ -49,19 +49,11 @@ add_subdirectory(opendaq_qt_module)
 set(SOURCES
     main.cpp
     MainWindow.cpp
-    LayoutManager.cpp
-    DetachableTabWidget.cpp
-    DetachedWindow.cpp
-    DropOverlay.cpp
     UpdateChecker.cpp
 )
 
 set(HEADERS
     MainWindow.h
-    LayoutManager.h
-    DetachableTabWidget.h
-    DetachedWindow.h
-    DropOverlay.h
     UpdateChecker.h
 )
 
@@ -79,6 +71,7 @@ target_link_libraries(${PROJECT_NAME}
         Qt6::Widgets
         Qt6::Network
         Qt6::DBus
+        Qt6::Charts
         context
         logger
         component

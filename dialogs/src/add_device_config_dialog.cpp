@@ -3,6 +3,7 @@
 #include "opendaq/server_capability_ptr.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include <QSplitter>
 #include <QListWidgetItem>
 #include <QCheckBox>
@@ -18,7 +19,7 @@ AddDeviceConfigDialog::AddDeviceConfigDialog(const daq::DevicePtr& parentDevice,
     , deviceInfo(getDeviceInfo(connectionString.toStdString()))
     , defaultConnectionString(connectionString)
     , configurationProtocolComboBox(nullptr)
-    , streamingProtocolsComboBox(nullptr)
+    , streamingCheckboxContainer(nullptr)
     , configTabs(nullptr)
     , statusLabel(nullptr)
     , addButton(nullptr)
@@ -50,63 +51,82 @@ void AddDeviceConfigDialog::setupUI()
     // Create horizontal splitter for left and right panels
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     
-    // === LEFT PANEL ===
+    // === LEFT PANEL (styled like component tree view) ===
     auto* leftPanel = new QWidget(this);
+    leftPanel->setObjectName("leftPanel");
+    leftPanel->setAttribute(Qt::WA_StyledBackground, true);
+    leftPanel->setStyleSheet(GUIStyles::sidebarPanelStyle("leftPanel"));
     auto* leftLayout = new QVBoxLayout(leftPanel);
-    leftLayout->setContentsMargins(10, 10, 10, 10);
+    leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    // Configuration protocols combobox
-    auto* protocolLabel = new QLabel("Configuration protocols:", this);
-    protocolLabel->setStyleSheet("font-weight: bold;");
+    const QString checkboxStyle =
+        "QCheckBox {"
+        "  font-size: 13px;"
+        "  color: palette(text);"
+        "  spacing: 8px;"
+        "  padding: 4px 0;"
+        "}";
+
+    auto* protocolLabel = new QLabel(tr("Configuration protocols").toUpper(), leftPanel);
+    protocolLabel->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
     leftLayout->addWidget(protocolLabel);
-    
-    configurationProtocolComboBox = new QComboBox(this);
+
+    configurationProtocolComboBox = new QComboBox(leftPanel);
     configurationProtocolComboBox->setEditable(false);
-    connect(configurationProtocolComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), 
+    configurationProtocolComboBox->setStyleSheet(GUIStyles::roundedComboBoxStyle());
+    connect(configurationProtocolComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &AddDeviceConfigDialog::onProtocolSelected);
     leftLayout->addWidget(configurationProtocolComboBox);
 
-    // Streaming protocols combobox
-    leftLayout->addSpacing(10);
-    auto* streamingLabel = new QLabel("Streaming protocols:", this);
-    streamingLabel->setStyleSheet("font-weight: bold;");
+    leftLayout->addSpacing(4);
+    auto* streamingLabel = new QLabel(tr("Streaming protocols").toUpper(), leftPanel);
+    streamingLabel->setStyleSheet(GUIStyles::SMALL_CAPS_LABEL);
     leftLayout->addWidget(streamingLabel);
-    
-    streamingProtocolsComboBox = new QComboBox(this);
-    streamingProtocolsComboBox->setEditable(false);
-    streamingProtocolsComboBox->setMaxVisibleItems(10);
-    connect(streamingProtocolsComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
-            this, &AddDeviceConfigDialog::onStreamingProtocolSelected);
-    leftLayout->addWidget(streamingProtocolsComboBox);
+
+    streamingCheckboxContainer = new QWidget(leftPanel);
+    streamingCheckboxContainer->setStyleSheet(checkboxStyle);
+    auto* checkboxLayout = new QVBoxLayout(streamingCheckboxContainer);
+    checkboxLayout->setContentsMargins(0, 0, 0, 0);
+    checkboxLayout->setSpacing(4);
+    leftLayout->addWidget(streamingCheckboxContainer);
 
     leftLayout->addStretch();
-    leftPanel->setLayout(leftLayout);
     splitter->addWidget(leftPanel);
 
     // === RIGHT PANEL ===
     auto* rightPanel = new QWidget(this);
     auto* rightLayout = new QVBoxLayout(rightPanel);
-    rightLayout->setContentsMargins(0, 0, 0, 0);
+    rightLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    rightLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    // Config tabs
-    configTabs = new QTabWidget(this);
-    rightLayout->addWidget(configTabs);
+    configTabs = new QTabWidget(rightPanel);
+    configTabs->setDocumentMode(true);
+    configTabs->tabBar()->setDrawBase(false);
+    configTabs->setStyleSheet(GUIStyles::underlineTabBarAccentStyle());
+    rightLayout->addWidget(configTabs, 1);
 
-    // Bottom frame with status and button
-    auto* bottomFrame = new QWidget(this);
+    auto* bottomFrame = new QWidget(rightPanel);
     auto* bottomLayout = new QHBoxLayout(bottomFrame);
-    
-    statusLabel = new QLabel("", this);
+    bottomLayout->setContentsMargins(0, 0, 0, 0);
+
+    statusLabel = new QLabel("", bottomFrame);
     statusLabel->setWordWrap(true);
+    statusLabel->setStyleSheet(GUIStyles::CAPTION_LABEL);
     bottomLayout->addWidget(statusLabel, 1);
-    
-    addButton = new QPushButton("Add device", this);
+
+    addButton = new QPushButton(tr("Add device"), bottomFrame);
     addButton->setDefault(true);
     connect(addButton, &QPushButton::clicked, this, &AddDeviceConfigDialog::onAddClicked);
     bottomLayout->addWidget(addButton);
-    
+
     rightLayout->addWidget(bottomFrame);
-    rightPanel->setLayout(rightLayout);
     splitter->addWidget(rightPanel);
 
     // Set splitter proportions (left: 1, right: 3)
@@ -172,9 +192,6 @@ void AddDeviceConfigDialog::initSelectionWidgets()
 
     try
     {
-        // Always offer "None" for streaming (no streaming)
-        streamingProtocolsComboBox->addItem("None", "");
-
         const auto caps = deviceInfo.getServerCapabilities();
         for (const auto& cap : caps)
         {
@@ -182,22 +199,25 @@ void AddDeviceConfigDialog::initSelectionWidgets()
             daq::StringPtr protocolName = cap.getProtocolName();
             QString protocolIdStr = QString::fromStdString(protocolId.toStdString());
             QString protocolNameStr = QString::fromStdString(protocolName.toStdString());
-            
+
             switch (cap.getProtocolType())
             {
                 case daq::ProtocolType::ConfigurationAndStreaming:
                 case daq::ProtocolType::Configuration:
                 {
-                    // Use protocolId for property names in config (as that's what openDAQ uses)
                     if (configurationTypes.hasProperty(protocolId))
                         configurationProtocolComboBox->addItem(protocolNameStr, protocolIdStr);
                     break;
                 }
                 case daq::ProtocolType::Streaming:
                 {
-                    // Use protocolId for property names in config (as that's what openDAQ uses)
                     if (streamingTypes.hasProperty(protocolId))
-                        streamingProtocolsComboBox->addItem(protocolNameStr, protocolIdStr);
+                    {
+                        auto* cb = new QCheckBox(protocolNameStr, streamingCheckboxContainer);
+                        cb->setProperty("protocolId", protocolIdStr);
+                        streamingCheckboxContainer->layout()->addWidget(cb);
+                        streamingCheckboxes.append(cb);
+                    }
                     break;
                 }
                 default:
@@ -222,50 +242,48 @@ void AddDeviceConfigDialog::initSelectionWidgets()
             }
         }
 
-        if (streamingProtocolsComboBox->count() > 0)
+        if (!streamingCheckboxes.isEmpty())
         {
-            // Add streaming only option
             configurationProtocolComboBox->addItem("-- Streaming only --", "");
 
-            // Default streaming: first from PrioritizedStreamingProtocols (or "None" if empty)
+            // Pre-check protocols from PrioritizedStreamingProtocols
+            QSet<QString> prioritized;
             if (config.assigned() && config.hasProperty("General"))
             {
                 try
                 {
                     daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-                    daq::ListPtr<daq::IString> prioritizedList;
                     if (generalSection.hasProperty("PrioritizedStreamingProtocols"))
-                        prioritizedList = generalSection.getPropertyValue("PrioritizedStreamingProtocols");
-                    if (prioritizedList.assigned() && prioritizedList.getCount() > 0)
                     {
-                        QString firstId = QString::fromStdString(prioritizedList.getItemAt(0).toStdString());
-                        int idx = streamingProtocolsComboBox->findData(firstId);
-                        if (idx >= 0)
-                            streamingProtocolsComboBox->setCurrentIndex(idx);
+                        daq::ListPtr<daq::IString> list = generalSection.getPropertyValue("PrioritizedStreamingProtocols");
+                        if (list.assigned())
+                            for (const auto& id : list)
+                                prioritized.insert(QString::fromStdString(id.toStdString()));
                     }
                 }
                 catch (const std::exception&) { }
             }
 
-            // Set default selection for streaming protocol
-            selectedStreamingProtocol = streamingProtocolsComboBox->currentText();
-            selectedStreamingProtocolId = streamingProtocolsComboBox->currentData().toString();
-
-            // Apply initial AllowedStreamingProtocols (empty when "None" is selected)
-            if (config.assigned() && config.hasProperty("General"))
+            // Check matching checkboxes; if none prioritized, check the first one
+            bool anyChecked = false;
+            for (auto* cb : std::as_const(streamingCheckboxes))
             {
-                try
+                if (prioritized.contains(cb->property("protocolId").toString()))
                 {
-                    daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-                    if (selectedStreamingProtocolId.isEmpty())
-                        generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>());
-                    else
-                        generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>(selectedStreamingProtocolId.toStdString()));
+                    cb->setChecked(true);
+                    anyChecked = true;
                 }
-                catch (const std::exception&) { }
             }
+            if (!anyChecked && !streamingCheckboxes.isEmpty())
+                streamingCheckboxes.first()->setChecked(true);
+
+            // Connect after initial state is set
+            for (auto* cb : std::as_const(streamingCheckboxes))
+                connect(cb, &QCheckBox::checkStateChanged, this, &AddDeviceConfigDialog::onStreamingCheckboxChanged);
+
+            onStreamingCheckboxChanged();
         }
-        
+
         // Set default selection for configuration protocol
         if (configurationProtocolComboBox->count() > 0)
         {
@@ -307,14 +325,18 @@ void AddDeviceConfigDialog::updateConfigTabs()
             }
         }
 
-        if (!selectedStreamingProtocolId.isEmpty())
         {
-            daq::PropertyObjectPtr deviceProps = config.getPropertyValue("Streaming");
-            if (deviceProps.hasProperty(selectedStreamingProtocolId.toStdString()))
+            daq::PropertyObjectPtr streamingProps = config.getPropertyValue("Streaming");
+            for (const auto* cb : std::as_const(streamingCheckboxes))
             {
-                daq::PropertyObjectPtr streamingProtocolConfig = deviceProps.getPropertyValue(selectedStreamingProtocolId.toStdString());
-                auto streamingTab = new PropertyObjectView(streamingProtocolConfig, this);
-                configTabs->addTab(streamingTab, selectedStreamingProtocolId);
+                if (!cb->isChecked())
+                    continue;
+                QString protocolId = cb->property("protocolId").toString();
+                if (streamingProps.hasProperty(protocolId.toStdString()))
+                {
+                    auto* streamingTab = new PropertyObjectView(streamingProps.getPropertyValue(protocolId.toStdString()), this);
+                    configTabs->addTab(streamingTab, cb->text());
+                }
             }
         }
     }
@@ -328,9 +350,36 @@ void AddDeviceConfigDialog::updateConfigTabs()
 void AddDeviceConfigDialog::updateConnectionString()
 {
     if (!selectedConfigurationProtocolId.isEmpty())
+    {
         defaultConnectionString = QString::fromStdString(getConnectionStringFromServerCapability(selectedConfigurationProtocolId));
-    else if (!selectedStreamingProtocolId.isEmpty())
-        defaultConnectionString = QString::fromStdString(getConnectionStringFromServerCapability(selectedStreamingProtocolId));
+        return;
+    }
+    for (const auto* cb : std::as_const(streamingCheckboxes))
+    {
+        if (cb->isChecked())
+        {
+            defaultConnectionString = QString::fromStdString(getConnectionStringFromServerCapability(cb->property("protocolId").toString()));
+            return;
+        }
+    }
+}
+
+void AddDeviceConfigDialog::validateConfig()
+{
+    const bool streamingOnly = selectedConfigurationProtocolId.isEmpty() && !streamingCheckboxes.isEmpty();
+    const bool anyStreamingChecked = std::any_of(streamingCheckboxes.cbegin(), streamingCheckboxes.cend(),
+                                                  [](const QCheckBox* cb) { return cb->isChecked(); });
+
+    if (streamingOnly && !anyStreamingChecked)
+    {
+        addButton->setEnabled(false);
+        statusLabel->setText("Select at least one streaming protocol.");
+    }
+    else
+    {
+        addButton->setEnabled(true);
+        statusLabel->clear();
+    }
 }
 
 void AddDeviceConfigDialog::onProtocolSelected(int index)
@@ -341,40 +390,33 @@ void AddDeviceConfigDialog::onProtocolSelected(int index)
         selectedConfigurationProtocolId = configurationProtocolComboBox->itemData(index).toString();
         updateConfigTabs();
         updateConnectionString();
+        validateConfig();
     }
 }
 
-void AddDeviceConfigDialog::onStreamingProtocolSelected(int index)
+void AddDeviceConfigDialog::onStreamingCheckboxChanged()
 {
-    selectedStreamingProtocol.clear();
-    selectedStreamingProtocolId.clear();
-    
-    if (index >= 0 && index < streamingProtocolsComboBox->count())
+    if (!config.assigned() || !config.hasProperty("General"))
+        return;
+
+    try
     {
-        selectedStreamingProtocol = streamingProtocolsComboBox->itemText(index);
-        selectedStreamingProtocolId = streamingProtocolsComboBox->itemData(index).toString();
+        daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
+        auto allowedList = daq::List<daq::IString>();
+        for (const auto* cb : std::as_const(streamingCheckboxes))
+            if (cb->isChecked())
+                allowedList.pushBack(cb->property("protocolId").toString().toStdString());
+        generalSection.setPropertyValue("AllowedStreamingProtocols", allowedList);
     }
-    
-    // Update AllowedStreamingProtocols in General section
-    if (config.assigned() && config.hasProperty("General"))
+    catch (const std::exception& e)
     {
-        try
-        {
-            daq::PropertyObjectPtr generalSection = config.getPropertyValue("General");
-            if (selectedStreamingProtocolId.isEmpty())
-                generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>());
-            else
-                generalSection.setPropertyValue("AllowedStreamingProtocols", daq::List<daq::IString>(selectedStreamingProtocolId.toStdString()));
-        }
-        catch (const std::exception& e)
-        {
-            const auto loggerComponent = AppContext::LoggerComponent();
-            LOG_W("Error updating AllowedStreamingProtocols: {}", e.what());
-        }
+        const auto loggerComponent = AppContext::LoggerComponent();
+        LOG_W("Error updating AllowedStreamingProtocols: {}", e.what());
     }
-    
+
     updateConfigTabs();
     updateConnectionString();
+    validateConfig();
 }
 
 void AddDeviceConfigDialog::onAddClicked()

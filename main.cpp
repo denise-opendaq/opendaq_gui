@@ -5,6 +5,8 @@
 #include "MainWindow.h"
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
+#include "context/theme.h"
+#include "coreobjects/property_factory.h"
 
 #include <opendaq/instance_factory.h>
 #include <opendaq/logger_sink_ptr.h>
@@ -15,7 +17,8 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    
+    Theme::install(&app);
+
     // Disable all UI animations globally to prevent crashes during resize/zoom on macOS
     // This is a workaround for Qt bug where animations can access invalid memory
     app.setEffectEnabled(Qt::UI_AnimateMenu, false);
@@ -33,6 +36,7 @@ int main(int argc, char *argv[])
                                          .addLoggerSink(daq::StdOutLoggerSink())
                                          .addDiscoveryServer("mdns")
                                          .setDefaultRootDeviceInfo(deviceInfo)
+                                         .setSchedulerWorkerNum(1)
                                          .setUsingSchedulerMainLoop(true);
 
     // Add extra module path if defined (for bundle packaging)
@@ -44,6 +48,9 @@ int main(int argc, char *argv[])
 #endif
 
     auto instance = builder.build();
+
+    instance.addProperty(daq::ListProperty("list", daq::List<daq::IString>("123", "345")));
+    instance.addProperty(daq::DictProperty("dict", daq::Dict<daq::IString, daq::IInteger>({{"key1", 123}, {"key2", 345}})));
 
     // Set it in global context so it's accessible from anywhere
     AppContext::Instance()->setDaqInstance(instance);

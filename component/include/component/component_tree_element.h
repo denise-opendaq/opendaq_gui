@@ -3,7 +3,6 @@
 #include <QVBoxLayout>
 #include <QGroupBox>
 #include <QLabel>
-#include "DetachableTabWidget.h"
 #include "base_tree_element.h"
 
 #include <opendaq/component_ptr.h>
@@ -14,7 +13,7 @@ class ComponentTreeElement : public BaseTreeElement
     Q_OBJECT
 
 public:
-    ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, LayoutManager* layoutManager, QObject* parent = nullptr);
+    ComponentTreeElement(QTreeWidget* tree, const daq::ComponentPtr& daqComponent, QWidget* contentHost, QObject* parent = nullptr);
     ~ComponentTreeElement() override;
 
     void init(BaseTreeElement* parent = nullptr) override;
@@ -28,9 +27,7 @@ public:
     // Handle attribute changes
     void onChangedAttribute(const QString& attributeName, const daq::ObjectPtr<daq::IBaseObject>& value);
 
-    // Override to return available tabs
-    QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName) override;
+    void openTab() override;
 
     // Get the underlying openDAQ component
     daq::ComponentPtr getDaqComponent() const;
@@ -41,7 +38,11 @@ public:
 protected Q_SLOTS:
     void onBeginUpdate();
     void onEndUpdate();
+    void onChangeActive();
 
 protected:
     daq::ComponentPtr daqComponent;
+
+private:
+    void applyActiveStyle();
 };

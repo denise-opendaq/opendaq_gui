@@ -1,6 +1,8 @@
 #include "widgets/input_port_folder_selector.h"
 #include "widgets/input_port_signal_selector.h"
 #include "context/AppContext.h"
+#include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include "context/QueuedEventHandler.h"
 #include <QVBoxLayout>
 #include <QLabel>
@@ -91,7 +93,8 @@ void InputPortFolderSelector::updateInputPorts()
 {
     if (!inputPortsFolder.assigned())
     {
-        auto label = new QLabel("Input ports folder not assigned", this);
+        auto label = new QLabel(tr("Input ports folder not assigned"), this);
+        label->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
         inputPortsLayout->addWidget(label);
         return;
     }
@@ -99,7 +102,7 @@ void InputPortFolderSelector::updateInputPorts()
     try
     {
         // Get all input ports from the folder
-        auto inputPorts = inputPortsFolder.getItems();
+        auto inputPorts = inputPortsFolder.getItems(AppContext::Instance()->showInvisibleComponents() ? daq::search::Any() : nullptr);
 
         if (!inputPorts.assigned() || inputPorts.getCount() == 0)
         {
@@ -121,7 +124,8 @@ void InputPortFolderSelector::updateInputPorts()
 
             if (!hasNoPortsLabel)
             {
-                auto label = new QLabel("No input ports available", this);
+                auto label = new QLabel(tr("No input ports available"), this);
+                label->setStyleSheet(GUIStyles::EMPTY_STATE_LABEL);
                 inputPortsLayout->addWidget(label);
             }
             inputPortsLayout->addStretch();
@@ -226,7 +230,9 @@ void InputPortFolderSelector::updateInputPorts()
     }
     catch (const std::exception& e)
     {
-        auto label = new QLabel(QString("Error getting input ports: %1").arg(e.what()), this);
+        auto label = new QLabel(tr("Error getting input ports: %1").arg(e.what()), this);
+        label->setStyleSheet(
+            QString(GUIStyles::ERROR_INLINE_LABEL_FMT).arg(GUIConstants::Colors::ERROR_FG));
         inputPortsLayout->addWidget(label);
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting input ports: {}", e.what());

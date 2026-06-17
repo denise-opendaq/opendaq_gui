@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QTableWidget>
-#include <QSet>
 #include <QString>
 #include <memory>
 
@@ -48,9 +47,6 @@ public:
     void setShowInvisibleComponents(bool show);
     bool expandAllProperties() const;
     void setExpandAllProperties(bool expand);
-
-    QSet<QString> showComponentTypes() const;
-    void setShowComponentTypes(const QSet<QString>& types);
 
     // Update scheduler for periodic widget updates
     UpdateScheduler* updateScheduler() const;

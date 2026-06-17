@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QTreeWidget>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -27,19 +28,27 @@ private Q_SLOTS:
     void onServerSelected();
     void onServerDoubleClicked(QTreeWidgetItem* item, int column);
     void onAddClicked();
+    void onSearchFilterChanged(const QString& text);
 
 private:
     void setupUI();
     void initAvailableServers();
     void updateConfigView();
+    void replaceConfigView(const daq::PropertyObjectPtr& newConfig);
+    void updateSelectionHeader();
+    void applySearchFilter(const QString& filter);
 
     daq::PropertyObjectPtr config;
     daq::DictPtr<daq::IString, daq::IServerType> availableTypes;
     QString selectedServerType;
 
     // UI widgets
-    QTreeWidget* serverList;
-    PropertyObjectView* configView;
-    QPushButton* addButton;
+    QLineEdit* searchBox = nullptr;
+    QTreeWidget* serverList = nullptr;
+    QLabel* nameLabel = nullptr;
+    QLabel* descriptionLabel = nullptr;
+    QWidget* configContainer = nullptr;
+    PropertyObjectView* configView = nullptr;
+    QPushButton* addButton = nullptr;
 };
 

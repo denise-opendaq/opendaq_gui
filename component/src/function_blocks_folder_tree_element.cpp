@@ -5,8 +5,8 @@
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlocksFolderTreeElement::FunctionBlocksFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
-    : FolderTreeElement(tree, daqFolder, layoutManager, parent)
+FunctionBlocksFolderTreeElement::FunctionBlocksFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent)
+    : FolderTreeElement(tree, daqFolder, contentHost, parent)
 {
     this->type = "FunctionBlocksFolder";
     this->iconName = "folder";

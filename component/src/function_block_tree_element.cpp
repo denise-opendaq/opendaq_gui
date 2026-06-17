@@ -3,12 +3,13 @@
 #include "widgets/function_block_widget.h"
 #include "component/component_tree_widget.h"
 #include <qt_widget_interface/qt_widget_interface.h>
+#include <opendaq/function_block.h>
 #include <QMenu>
 #include <QAction>
 #include <QMessageBox>
 
-FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, LayoutManager* layoutManager, QObject* parent)
-    : FolderTreeElement(tree, daqFunctionBlock, layoutManager, parent)
+FunctionBlockTreeElement::FunctionBlockTreeElement(QTreeWidget* tree, const daq::FunctionBlockPtr& daqFunctionBlock, QWidget* contentHost, QObject* parent)
+    : FolderTreeElement(tree, daqFunctionBlock, contentHost, parent)
 {
     this->type = "FunctionBlock";
     this->iconName = "function_block";
@@ -25,9 +26,13 @@ QMenu* FunctionBlockTreeElement::onCreateRightClickMenu(QWidget* parent)
     connect(removeAction, &QAction::triggered, this, &FunctionBlockTreeElement::onRemove);
     menu->insertAction(firstAction, removeAction);
 
-    QAction* addFBAction = new QAction("Add Function Block", menu);
-    connect(addFBAction, &QAction::triggered, this, &FunctionBlockTreeElement::onAddFunctionBlock);
-    menu->insertAction(firstAction, addFBAction);
+    auto functionBlock = daqComponent.asPtr<daq::IFunctionBlock>(true);
+    if (functionBlock.getAvailableFunctionBlockTypes().getCount() > 0)
+    {
+        QAction* addFBAction = new QAction("Add Function Block", menu);
+        connect(addFBAction, &QAction::triggered, this, &FunctionBlockTreeElement::onAddFunctionBlock);
+        menu->insertAction(firstAction, addFBAction);
+    }
 
     menu->insertSeparator(firstAction);
 
@@ -76,31 +81,15 @@ void FunctionBlockTreeElement::onAddFunctionBlock()
     }
 }
 
-QStringList FunctionBlockTreeElement::getAvailableTabNames() const
+void FunctionBlockTreeElement::openTab()
 {
-    QStringList tabs = Super::getAvailableTabNames();
-    tabs << "Signal Selector";    
-    return tabs;
-}
-
-void FunctionBlockTreeElement::openTab(const QString& tabName)
-{
-    if (!layoutManager)
+    if (!contentHost)
         return;
-        
-    if (tabName == "Signal Selector")
-    {
-        auto componentTree = qobject_cast<ComponentTreeWidget*>(tree);
-        auto functionBlockWidget = new FunctionBlockWidget(daqComponent, componentTree);
-        if (daqComponent.supportsInterface<IQTWidget>())
-            addTab(functionBlockWidget, tabName, LayoutZone::Bottom, "Properties");
-        else
-            addTab(functionBlockWidget, tabName, LayoutZone::Left);
-    }
-    else
-    {
-        Super::openTab(tabName);
-    }
+
+    auto componentTree = ComponentTreeWidget::fromTreeWidget(tree);
+    auto fb = daqComponent.asPtr<daq::IFunctionBlock>(true);
+    auto* widget = new FunctionBlockWidget(fb, componentTree, nullptr, iconName);
+    setContent(widget);
 }
 
 daq::FunctionBlockPtr FunctionBlockTreeElement::getFunctionBlock() const

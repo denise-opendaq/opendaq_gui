@@ -1,27 +1,29 @@
 #pragma once
 
-#include "widgets/signal_value_widget.h"
+#include <QString>
 
+#include "widgets/component_widget.h"
 #include <opendaq/input_port_ptr.h>
 
 class ComponentTreeWidget;
 class InputPortSignalSelector;
 
-class InputPortWidget : public SignalValueWidget
+class InputPortWidget : public ComponentWidget
 {
     Q_OBJECT
 
 public:
-    explicit InputPortWidget(const daq::InputPortPtr& inputPort, ComponentTreeWidget* componentTree, QWidget* parent = nullptr);
+    explicit InputPortWidget(const daq::InputPortPtr& inputPort,
+                             ComponentTreeWidget* componentTree,
+                             QWidget* parent = nullptr,
+                             const QString& treeIconName = {});
     ~InputPortWidget() override;
 
-private Q_SLOTS:
-    void updateSignal();
-
 private:
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+    QStringList availableTabs() const override;
+    QWidget* openTab(const QString& title, QWidget* parent) override;
 
     daq::InputPortPtr inputPort;
-    ComponentTreeWidget* componentTree;
-    InputPortSignalSelector* signalSelector;
+    ComponentTreeWidget* componentTree = nullptr;
+    InputPortSignalSelector* signalSelector = nullptr;
 };

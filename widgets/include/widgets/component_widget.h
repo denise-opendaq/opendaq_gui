@@ -1,38 +1,76 @@
 #pragma once
 
+#include <QString>
+#include <QStringList>
+#include <vector>
 #include <QWidget>
-#include <QVBoxLayout>
-
-#include <context/QueuedEventHandler.h>
 
 #include <opendaq/component_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
 
-class PropertyObjectView;
+class QFrame;
+class QHBoxLayout;
+class QLabel;
+class QTabWidget;
 
 class ComponentWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit ComponentWidget(const daq::ComponentPtr& component, QWidget* parent = nullptr);
+    static ComponentWidget* create(const daq::ComponentPtr& component,
+                                   QWidget* parent = nullptr,
+                                   const QString& treeIconName = {});
     ~ComponentWidget() override;
 
-private:
+protected:
+    ComponentWidget(const daq::ComponentPtr& component,
+                      QWidget* parent,
+                      Qt::Initialization,
+                      const QString& treeIconName = {});
+
     void setupUI();
-    void createComponentPropertyObject();
-    void setupPropertyHandlers();
-    void updateStatuses();
-    void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
-    
-    // Async handlers for core events to avoid deadlocks
-    void handleAttributeChangedAsync(const daq::StringPtr& attributeName, const daq::BaseObjectPtr& value);
-    void handleTagsChangedAsync(const daq::TagsPtr& tags);
-    void handleStatusChangedAsync();
+    virtual QWidget* buildHeaderCard();
+
+    virtual QStringList availableTabs() const;
+    virtual QWidget* openTab(const QString& title, QWidget* parent);
+
+    // Prepends the 64×64 tree icon column (uses treeIconName + IconProvider).
+    void addTreeIconToHeaderLayout(QHBoxLayout* cardLayout, QWidget* card);
+
+    void updateStatus();
+    void updateStatusContainer();
+    void updateTags();
+
+    // Pop a tab out of `tabs` into its own top-level window. Ownership of the
+    // page widget is transferred to the new window, which auto-deletes itself
+    // (and the page) on close.
+    void detachTabToWindow(int index);
+
+    QSize minimumSizeHint() const override { return QSize(0, 0); }
+
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
+    virtual void onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
 
     daq::ComponentPtr component;
-    PropertyObjectView* propertyView;
-    daq::PropertyObjectPtr componentPropertyObject;
-    std::atomic<int> updatingFromComponent; // Counter to prevent recursive updates
-};
+    QString           treeIconName;
 
+    QLabel*     nameLabel            = nullptr;
+    QLabel*     descLabel            = nullptr;
+    QLabel*     statusLabel          = nullptr;
+    QFrame*     statusSep            = nullptr;
+    QWidget*    statusContainerBlock = nullptr;
+    QWidget*    tagsRow              = nullptr;
+    QTabWidget* tabs                 = nullptr;
+
+private:
+    void dispatchCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args);
+    void initTabs();
+    void ensureTabLoaded(int index);
+    QString qtWidgetTabTitle() const;
+
+    QStringList tabTitles;
+    std::vector<bool> tabLoaded;
+    bool loadingTab = false;
+};

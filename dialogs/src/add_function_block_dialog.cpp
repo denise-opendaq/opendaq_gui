@@ -1,6 +1,7 @@
 #include "dialogs/add_function_block_dialog.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include <QSplitter>
 #include <QTreeWidgetItem>
 #include <QHeaderView>
@@ -8,6 +9,11 @@
 #include <opendaq/custom_log.h>
 #include "context/AppContext.h"
 #include <opendaq/logger_component_ptr.h>
+
+namespace
+{
+constexpr int kDescriptionRole = Qt::UserRole + 1;
+} // namespace
 
 AddFunctionBlockDialog::AddFunctionBlockDialog(const daq::ComponentPtr& parent, QWidget* parentWidget)
     : QDialog(parentWidget)
@@ -34,49 +40,91 @@ void AddFunctionBlockDialog::setupUI()
     // Create horizontal splitter for left and right panels
     auto* splitter = new QSplitter(Qt::Horizontal, this);
     
-    // === LEFT PANEL ===
+    // === LEFT PANEL (styled like component tree view) ===
     auto* leftPanel = new QWidget(this);
+    leftPanel->setObjectName("leftPanel");
+    leftPanel->setAttribute(Qt::WA_StyledBackground, true);
+    leftPanel->setStyleSheet(GUIStyles::sidebarPanelStyle("leftPanel"));
     auto* leftLayout = new QVBoxLayout(leftPanel);
-    leftLayout->setContentsMargins(5, 5, 5, 5);
-    leftLayout->setSpacing(5);
+    leftLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                   GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    leftLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    // Function blocks list label
-    auto* listLabel = new QLabel("Available Function Blocks:", this);
-    listLabel->setStyleSheet("font-weight: bold;");
-    leftLayout->addWidget(listLabel);
-    
-    // Function blocks tree (with Name and Description columns)
-    functionBlockList = new QTreeWidget(this);
-    functionBlockList->setHeaderLabels(QStringList() << "Name" << "Description");
+    searchBox = new QLineEdit(leftPanel);
+    searchBox->setPlaceholderText(tr("Search function blocks..."));
+    searchBox->setClearButtonEnabled(true);
+    searchBox->setStyleSheet(GUIStyles::searchLineEditStyle());
+    connect(searchBox, &QLineEdit::textChanged, this, &AddFunctionBlockDialog::onSearchFilterChanged);
+    leftLayout->addWidget(searchBox);
+
+    functionBlockList = new QTreeWidget(leftPanel);
+    functionBlockList->setHeaderLabel(tr("Function Blocks"));
     functionBlockList->setRootIsDecorated(false);
-    functionBlockList->setAlternatingRowColors(true);
+    functionBlockList->setAlternatingRowColors(false);
+    functionBlockList->setSelectionBehavior(QAbstractItemView::SelectRows);
+    functionBlockList->setAllColumnsShowFocus(false);
     functionBlockList->setSelectionMode(QAbstractItemView::SingleSelection);
-    functionBlockList->header()->setStretchLastSection(true);
-    functionBlockList->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    functionBlockList->header()->setSectionResizeMode(1, QHeaderView::Stretch);
+    functionBlockList->setAttribute(Qt::WA_StyledBackground, true);
+    functionBlockList->setStyleSheet(GUIStyles::sidebarTreeStyle());
+    functionBlockList->viewport()->setAttribute(Qt::WA_Hover);
     connect(functionBlockList, &QTreeWidget::itemSelectionChanged, this, &AddFunctionBlockDialog::onFunctionBlockSelected);
     connect(functionBlockList, &QTreeWidget::itemDoubleClicked, this, &AddFunctionBlockDialog::onFunctionBlockDoubleClicked);
     leftLayout->addWidget(functionBlockList);
 
-    leftPanel->setLayout(leftLayout);
     splitter->addWidget(leftPanel);
 
     // === RIGHT PANEL ===
     auto* rightPanel = new QWidget(this);
     auto* rightLayout = new QVBoxLayout(rightPanel);
-    rightLayout->setContentsMargins(5, 5, 5, 5);
-    rightLayout->setSpacing(5);
+    rightLayout->setContentsMargins(GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN,
+                                    GUIConstants::DEFAULT_LAYOUT_MARGIN);
+    rightLayout->setSpacing(GUIConstants::DEFAULT_LAYOUT_SPACING);
 
-    // Config label
-    auto* configLabel = new QLabel("Configuration:", this);
-    configLabel->setStyleSheet("font-weight: bold;");
-    rightLayout->addWidget(configLabel);
+    auto* headerBlock = new QWidget(rightPanel);
+    auto* headerLayout = new QVBoxLayout(headerBlock);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(4);
 
-    // Config view (will be created when function block is selected)
-    // Create empty PropertyObject for initial state
+    nameLabel = new QLabel(headerBlock);
+    nameLabel->setStyleSheet(GUIStyles::HEADER_TITLE_LABEL);
+    nameLabel->hide();
+    headerLayout->addWidget(nameLabel);
+
+    descriptionLabel = new QLabel(headerBlock);
+    descriptionLabel->setWordWrap(true);
+    descriptionLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    descriptionLabel->setStyleSheet(GUIStyles::DESCRIPTION_LABEL);
+    descriptionLabel->hide();
+    headerLayout->addWidget(descriptionLabel);
+
+    rightLayout->addWidget(headerBlock);
+
+    configContainer = new QWidget(rightPanel);
+    auto* configLayout = new QVBoxLayout(configContainer);
+    configLayout->setContentsMargins(0, 0, 0, 0);
+    configLayout->setSpacing(0);
+
     auto emptyConfig = daq::PropertyObject();
-    configView = new PropertyObjectView(emptyConfig, this);
-    rightLayout->addWidget(configView);
+    configView = new PropertyObjectView(emptyConfig, configContainer);
+    configLayout->addWidget(configView, 1);
+    rightLayout->addWidget(configContainer, 1);
+
+    auto* buttonRowLayout = new QHBoxLayout();
+    buttonRowLayout->addStretch();
+
+    addButton = new QPushButton(tr("Add Function Block"), rightPanel);
+    addButton->setDefault(true);
+    addButton->setEnabled(false);
+    addButton->setCursor(Qt::PointingHandCursor);
+    addButton->setMinimumHeight(44);
+    addButton->setStyleSheet(GUIStyles::primaryButtonStyle());
+    connect(addButton, &QPushButton::clicked, this, &AddFunctionBlockDialog::onAddClicked);
+    buttonRowLayout->addWidget(addButton);
+    rightLayout->addLayout(buttonRowLayout);
 
     rightPanel->setLayout(rightLayout);
     splitter->addWidget(rightPanel);
@@ -87,19 +135,6 @@ void AddFunctionBlockDialog::setupUI()
     splitter->setSizes({350, 650});
 
     mainLayout->addWidget(splitter);
-
-    // Button layout
-    auto* buttonLayout = new QHBoxLayout();
-    buttonLayout->setContentsMargins(5, 0, 5, 0);
-    buttonLayout->addStretch();
-    
-    addButton = new QPushButton("Add Function Block", this);
-    addButton->setDefault(true);
-    addButton->setEnabled(false);
-    connect(addButton, &QPushButton::clicked, this, &AddFunctionBlockDialog::onAddClicked);
-    buttonLayout->addWidget(addButton);
-    
-    mainLayout->addLayout(buttonLayout);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
     setLayout(mainLayout);
@@ -107,17 +142,12 @@ void AddFunctionBlockDialog::setupUI()
 
 void AddFunctionBlockDialog::initAvailableFunctionBlocks()
 {
-    // Clear config view
-    auto* parentWidget = configView->parentWidget();
-    auto* parentLayout = qobject_cast<QVBoxLayout*>(parentWidget->layout());
-    if (parentLayout)
-    {
-        parentLayout->removeWidget(configView);
-        delete configView;
-        auto emptyConfig = daq::PropertyObject();
-        configView = new PropertyObjectView(emptyConfig, parentWidget);
-        parentLayout->insertWidget(1, configView);
-    }
+    functionBlockList->clear();
+    selectedFunctionBlockType.clear();
+    updateSelectionHeader();
+
+    replaceConfigView(daq::PropertyObject());
+    addButton->setEnabled(false);
 
     try
     {
@@ -140,15 +170,85 @@ void AddFunctionBlockDialog::initAvailableFunctionBlocks()
 
             auto* item = new QTreeWidgetItem(functionBlockList);
             item->setText(0, typeName);
-            item->setText(1, description);
             item->setData(0, Qt::UserRole, typeId);
+            item->setData(0, kDescriptionRole, description);
             item->setToolTip(0, description);
         }
+
+        applySearchFilter(searchBox ? searchBox->text() : QString());
     }
     catch (const std::exception& e)
     {
         const auto loggerComponent = AppContext::LoggerComponent();
         LOG_W("Error getting available function blocks: {}", e.what());
+    }
+}
+
+void AddFunctionBlockDialog::onSearchFilterChanged(const QString& text)
+{
+    applySearchFilter(text);
+}
+
+void AddFunctionBlockDialog::applySearchFilter(const QString& filter)
+{
+    if (!functionBlockList)
+        return;
+
+    if (filter.isEmpty())
+    {
+        for (int i = 0; i < functionBlockList->topLevelItemCount(); ++i)
+            functionBlockList->topLevelItem(i)->setHidden(false);
+        return;
+    }
+
+    for (int i = 0; i < functionBlockList->topLevelItemCount(); ++i)
+    {
+        auto* item = functionBlockList->topLevelItem(i);
+        const QString name = item->text(0);
+        const QString description = item->data(0, kDescriptionRole).toString();
+        const bool matches = name.contains(filter, Qt::CaseInsensitive)
+            || description.contains(filter, Qt::CaseInsensitive);
+        item->setHidden(!matches);
+    }
+
+    if (functionBlockList->currentItem() && functionBlockList->currentItem()->isHidden())
+        functionBlockList->clearSelection();
+}
+
+void AddFunctionBlockDialog::updateSelectionHeader()
+{
+    auto* selectedItem = functionBlockList ? functionBlockList->currentItem() : nullptr;
+    const QString name = selectedItem ? selectedItem->text(0) : QString();
+    const QString description = selectedItem
+        ? selectedItem->data(0, kDescriptionRole).toString()
+        : QString();
+
+    if (nameLabel)
+    {
+        if (name.isEmpty())
+        {
+            nameLabel->clear();
+            nameLabel->hide();
+        }
+        else
+        {
+            nameLabel->setText(name);
+            nameLabel->show();
+        }
+    }
+
+    if (descriptionLabel)
+    {
+        if (description.isEmpty())
+        {
+            descriptionLabel->clear();
+            descriptionLabel->hide();
+        }
+        else
+        {
+            descriptionLabel->setText(description);
+            descriptionLabel->show();
+        }
     }
 }
 
@@ -160,7 +260,7 @@ void AddFunctionBlockDialog::onFunctionBlockSelected()
     else
         selectedFunctionBlockType.clear();
 
-    // Create and display config
+    updateSelectionHeader();
     updateConfigView();
 }
 
@@ -181,6 +281,21 @@ void AddFunctionBlockDialog::onFunctionBlockDoubleClicked(QTreeWidgetItem* item,
         accept();
 }
 
+void AddFunctionBlockDialog::replaceConfigView(const daq::PropertyObjectPtr& newConfig)
+{
+    if (!configContainer || !configView)
+        return;
+
+    auto* layout = qobject_cast<QVBoxLayout*>(configContainer->layout());
+    if (!layout)
+        return;
+
+    layout->removeWidget(configView);
+    delete configView;
+    configView = new PropertyObjectView(newConfig, configContainer);
+    layout->addWidget(configView, 1);
+}
+
 void AddFunctionBlockDialog::updateConfigView()
 {
     try
@@ -199,15 +314,7 @@ void AddFunctionBlockDialog::updateConfigView()
             addButton->setEnabled(true);
         }
 
-        auto* parentWidget = configView->parentWidget();
-        auto* parentLayout = qobject_cast<QVBoxLayout*>(parentWidget->layout());
-        if (parentLayout)
-        {
-            parentLayout->removeWidget(configView);
-            delete configView;
-            configView = new PropertyObjectView(config, parentWidget);
-            parentLayout->insertWidget(1, configView);
-        }
+        replaceConfigView(config);
     }
     catch (const std::exception& e)
     {

@@ -39,7 +39,6 @@ set(SOURCES
     src/input_port_tree_element.cpp
     src/input_port_folder_tree_element.cpp
     src/component_factory.cpp
-    src/component.cpp
 )
 
 # Create library

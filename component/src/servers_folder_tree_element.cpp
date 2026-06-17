@@ -5,8 +5,8 @@
 #include <QAction>
 #include <QMessageBox>
 
-ServersFolderTreeElement::ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
-    : FolderTreeElement(tree, daqFolder, layoutManager, parent)
+ServersFolderTreeElement::ServersFolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent)
+    : FolderTreeElement(tree, daqFolder, contentHost, parent)
 {
     this->type = "ServersFolder";
     this->iconName = "folder";
@@ -76,7 +76,7 @@ void ServersFolderTreeElement::onAddServer()
             daq::PropertyObjectPtr config = dialog.getConfig();
             
             // Add server using instance interface
-            instance.addServer(serverType.toStdString(), config).enableDiscovery();
+            instance.addServer(serverType.toStdString(), config);
         }
         catch (const std::exception& e)
         {

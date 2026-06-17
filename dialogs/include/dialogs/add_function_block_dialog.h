@@ -2,6 +2,7 @@
 
 #include <QDialog>
 #include <QTreeWidget>
+#include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -27,11 +28,15 @@ private Q_SLOTS:
     void onFunctionBlockSelected();
     void onFunctionBlockDoubleClicked(QTreeWidgetItem* item, int column);
     void onAddClicked();
+    void onSearchFilterChanged(const QString& text);
 
 private:
     void setupUI();
     void initAvailableFunctionBlocks();
     void updateConfigView();
+    void replaceConfigView(const daq::PropertyObjectPtr& newConfig);
+    void updateSelectionHeader();
+    void applySearchFilter(const QString& filter);
 
     daq::ComponentPtr parentComponent;
     daq::PropertyObjectPtr config;
@@ -39,8 +44,12 @@ private:
     QString selectedFunctionBlockType;
 
     // UI widgets
-    QTreeWidget* functionBlockList;
-    PropertyObjectView* configView;
-    QPushButton* addButton;
+    QLineEdit* searchBox = nullptr;
+    QTreeWidget* functionBlockList = nullptr;
+    QLabel* nameLabel = nullptr;
+    QLabel* descriptionLabel = nullptr;
+    QWidget* configContainer = nullptr;
+    PropertyObjectView* configView = nullptr;
+    QPushButton* addButton = nullptr;
 };
 

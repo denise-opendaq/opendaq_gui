@@ -1,51 +1,48 @@
 #pragma once
-#include <QTreeWidget>
-#include <QSet>
+
+#include <QWidget>
 #include <QString>
 #include <memory>
 
+class QLineEdit;
+class QTreeWidget;
+class QTreeWidgetItem;
 class BaseTreeElement;
 class AppContext;
-class LayoutManager;
 
-// Forward declarations for openDAQ
-namespace daq 
+namespace daq
 {
     class InstancePtr;
 }
 
-// Main widget that wraps QTreeWidget for openDAQ components
-class ComponentTreeWidget : public QTreeWidget
+// Sidebar widget: search field + component tree.
+class ComponentTreeWidget : public QWidget
 {
     Q_OBJECT
 
 public:
-    ComponentTreeWidget(LayoutManager* layoutManager, QWidget* parent = nullptr);
+    ComponentTreeWidget(QWidget* contentHost, QWidget* parent = nullptr);
     ~ComponentTreeWidget() override;
 
-    // Load openDAQ instance into the tree
-    void loadInstance(const daq::InstancePtr& instance);
-    
-    // Set layout manager (for elements created after construction)
-    void setLayoutManager(LayoutManager* layoutManager);
+    QTreeWidget* treeWidget() const { return m_tree; }
 
-    // Get the selected BaseTreeElement
+    static ComponentTreeWidget* fromTreeWidget(QTreeWidget* tree);
+
+    void loadInstance(const daq::InstancePtr& instance);
+
+    void setContentHost(QWidget* contentHost);
+
     BaseTreeElement* getSelectedElement() const;
 
-    // Find element by globalId
     BaseTreeElement* findElementByGlobalId(const QString& globalId) const;
 
-    // Set whether to show hidden components
     void setShowHidden(bool show);
 
-    // Set component type filter
-    void setComponentTypeFilter(const QSet<QString>& types);
+    void setSearchFilter(const QString& text);
 
-    // Refresh visibility based on current filters
     void refreshVisibility();
 
 Q_SIGNALS:
-    // Emitted when a component is selected in the tree
     void componentSelected(BaseTreeElement* element);
 
 private:
@@ -56,6 +53,11 @@ private Q_SLOTS:
     void onContextMenuRequested(const QPoint& pos);
 
 private:
+    bool applySearchFilter(QTreeWidgetItem* item, const QString& filter);
+
+    QLineEdit* m_searchBox = nullptr;
+    QTreeWidget* m_tree = nullptr;
     std::unique_ptr<BaseTreeElement> rootElement;
-    LayoutManager* layoutManager = nullptr;
+    QWidget* contentHost = nullptr;
+    QString m_searchFilter;
 };

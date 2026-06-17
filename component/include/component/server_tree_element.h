@@ -8,12 +8,18 @@ class ServerTreeElement : public FolderTreeElement
     Q_OBJECT
 
 public:
-    ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, LayoutManager* layoutManager, QObject* parent = nullptr);
+    ServerTreeElement(QTreeWidget* tree, const daq::ServerPtr& daqServer, QWidget* contentHost, QObject* parent = nullptr);
 
     // Override context menu
     QMenu* onCreateRightClickMenu(QWidget* parent) override;
 
+    bool discoveryIsEnabled;
+
 private Q_SLOTS:
     void onRemove();
+    void onEnableDiscovery();
+    void onDisableDiscovery();
+
+
 };
 

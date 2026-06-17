@@ -10,20 +10,15 @@
 // DictPropertyItem implementation
 // ============================================================================
 
-void DictPropertyItem::refresh(PropertySubtreeBuilder& builder)
+void DictPropertyItem::refresh(PropertyObjectView& view)
 {
-    // Refresh dict reference
     dict = owner.getPropertyValue(getName());
-
-    // Call base refresh to update name and value display
-    BasePropertyItem::refresh(builder);
-
-    // If expanded, rebuild the subtree
+    BasePropertyItem::refresh(view);
     if (widgetItem)
-        build_subtree(builder, widgetItem, true);
+        build_subtree(view, widgetItem, true);
 }
 
-void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
+void DictPropertyItem::build_subtree(PropertyObjectView& view, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !dict.assigned()))
         return;
@@ -38,7 +33,7 @@ void DictPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
     auto dictEditable = !isReadOnly();
 
     // Add each key-value pair as a child item
-    QPalette palette = builder.view.palette();
+    QPalette palette = view.palette();
     for (const auto& [key, value] : dict)
     {
         auto* treeChild = new QTreeWidgetItem();
@@ -89,7 +84,8 @@ void DictPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
     if (!dict.assigned())
         return;
 
-    QString newText = item->text(column);
+    const QString raw = item->data(column, Qt::UserRole).toString();
+    QString newText = raw.isEmpty() ? item->text(column) : raw;
 
     if (column == 0)
     {
@@ -154,7 +150,7 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), dict);
 
             // Reload only this subtree
-            view->onPropertyValueChanged(owner);
+            this->refresh(*view);
         }
         catch (const std::exception& e)
         {
@@ -175,7 +171,7 @@ void DictPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), dict);
 
             // Reload only this subtree
-            view->onPropertyValueChanged(owner);
+            this->refresh(*view);
         }
         catch (const std::exception& e)
         {

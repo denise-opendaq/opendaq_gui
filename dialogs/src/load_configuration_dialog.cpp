@@ -1,6 +1,7 @@
 #include "dialogs/load_configuration_dialog.h"
 #include "widgets/property_object_view.h"
 #include "context/gui_constants.h"
+#include "context/gui_styles.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QGroupBox>
@@ -31,7 +32,9 @@ void LoadConfigurationDialog::setupUI()
 
     filePathLabel = new QLabel("No file selected", this);
     filePathLabel->setWordWrap(true);
-    filePathLabel->setStyleSheet("QLabel { padding: 5px; background-color: palette(base); border: 1px solid palette(mid); border-radius: 3px; }");
+    filePathLabel->setStyleSheet(
+        QStringLiteral("QLabel { padding: 5px; background-color: palette(base); border: 1px solid %1; border-radius: 3px; }")
+            .arg(GUIStyles::borderColor()));
     fileLayout->addWidget(filePathLabel, 1);
 
     browseButton = new QPushButton("Browse...", this);

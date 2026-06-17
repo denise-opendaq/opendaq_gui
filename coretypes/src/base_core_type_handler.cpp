@@ -4,6 +4,15 @@
 #include <QTreeWidget>
 #include <QMessageBox>
 
+bool BaseCoreTypeHandler::hasSubtree(const daq::BaseObjectPtr& /*value*/) const
+{
+    return false;
+}
+
+void BaseCoreTypeHandler::buildSubtree(QTreeWidgetItem* /*parent*/, const daq::BaseObjectPtr& /*value*/) const
+{
+}
+
 bool BaseCoreTypeHandler::handleDoubleClick(PropertyObjectView* view,
                                             QTreeWidgetItem* item,
                                             const daq::BaseObjectPtr& currentValue,

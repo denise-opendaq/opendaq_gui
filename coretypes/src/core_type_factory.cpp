@@ -3,6 +3,7 @@
 #include "coretypes/enumeration_core_type_handler.h"
 #include "coretypes/default_core_type_handler.h"
 #include "coretypes/list_core_type_handler.h"
+#include "coretypes/dict_core_type_handler.h"
 #include "context/AppContext.h"
 #include <opendaq/custom_log.h>
 #include <opendaq/logger_component_ptr.h>
@@ -70,6 +71,31 @@ std::shared_ptr<BaseCoreTypeHandler> CoreTypeFactory::createHandler(const daq::B
             }
             // Default to String item type if we can't determine
             return std::make_shared<ListCoreTypeHandler>(daq::CoreType::ctString);
+        }
+
+        case daq::CoreType::ctDict:
+        {
+            if (value.assigned())
+            {
+                try
+                {
+                    const auto dict = value.asPtrOrNull<daq::IDict>(true);
+                    if (dict.assigned() && dict.getCount() > 0)
+                    {
+                        for (const auto& [key, item] : dict)
+                        {
+                            daq::CoreType keyType = key.assigned() ? key.getCoreType() : daq::CoreType::ctString;
+                            daq::CoreType itemType = item.assigned() ? item.getCoreType() : daq::CoreType::ctString;
+                            return std::make_shared<DictCoreTypeHandler>(keyType, itemType);
+                        }
+                    }
+                }
+                catch (...)
+                {
+                    // Fall through to default
+                }
+            }
+            return std::make_shared<DictCoreTypeHandler>(daq::CoreType::ctString, daq::CoreType::ctString);
         }
 
         case daq::CoreType::ctInt:

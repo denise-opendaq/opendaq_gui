@@ -3,10 +3,11 @@
 #include <QtWidgets>
 
 #include <coreobjects/property_object_ptr.h>
+#include <coretypes/listobject.h>
+#include <coretypes/dictobject.h>
 
 // Forward declarations
 class PropertyObjectView;
-class PropertySubtreeBuilder;
 
 // ============================================================================
 // BasePropertyItem — логика одного свойства (render/edit/subtree/events)
@@ -25,6 +26,7 @@ public:
 
     // What to show in "Value" column
     virtual QString showValue() const;
+    virtual QString showDisplayValue() const;
 
     // Can user edit key (column 0)?
     virtual bool isKeyEditable() const;
@@ -51,9 +53,9 @@ public:
     virtual QString getMetadataValue(const QString& key) const;
 
     // Refresh property value (update internal state if needed)
-    virtual void refresh(PropertySubtreeBuilder&);
+    virtual void refresh(PropertyObjectView&);
 
-    virtual void build_subtree(PropertySubtreeBuilder&, QTreeWidgetItem*, bool force = false);
+    virtual void build_subtree(PropertyObjectView&, QTreeWidgetItem*, bool force = false);
 
     // Events
     virtual void handle_double_click(PropertyObjectView*, QTreeWidgetItem*);
@@ -69,6 +71,10 @@ public:
     void setWidgetItem(QTreeWidgetItem* item);
 
 protected:
+    bool hasSelectionValues() const;
+    QStringList getSelectionValues() const;
+    void setBySelectionValue(const QString& value);
+
     daq::PropertyObjectPtr owner;
     daq::PropertyPtr prop;
     bool expanded = false;

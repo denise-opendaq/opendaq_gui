@@ -5,8 +5,8 @@
 #include <QMetaObject>
 #include "context/AppContext.h"
 
-FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent)
-    : ComponentTreeElement(tree, daqFolder, layoutManager, parent)
+FolderTreeElement::FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent)
+    : ComponentTreeElement(tree, daqFolder, contentHost, parent)
 {
     this->type = "Folder";
     this->iconName = "folder";
@@ -17,18 +17,16 @@ void FolderTreeElement::init(BaseTreeElement* parent)
 {
     ComponentTreeElement::init(parent);
 
-    // If layoutManager is null, try to get it from parent
-    if (!layoutManager && parent)
-        layoutManager = parent->getLayoutManager();
+    if (!contentHost && parent)
+        contentHost = parent->getContentHost();
 
-    // Add all items from the folder as children
     try
     {
         auto folder = daqComponent.asPtr<daq::IFolder>(true);
 
-        for (const auto & item : folder.getItems())
+        for (const auto& item : folder.getItems(daq::search::Any()))
         {
-            auto childElement = createTreeElement(tree, item, layoutManager, this);
+            auto childElement = createTreeElement(tree, item, contentHost, this);
             if (childElement)
                 addChild(std::unique_ptr<BaseTreeElement>(childElement));
         }
@@ -51,24 +49,21 @@ bool FolderTreeElement::visible() const
 
 void FolderTreeElement::refresh()
 {
-    // If layoutManager is null, try to get it from parent
-    if (!layoutManager && parentElement)
-        layoutManager = parentElement->getLayoutManager();
+    if (!contentHost && parentElement)
+        contentHost = parentElement->getContentHost();
 
     try
     {
         auto folder = daqComponent.asPtr<daq::IFolder>(true);
-        auto items = folder.getItems();
+        auto items = folder.getItems(daq::search::Any());
 
-        // Add new items that don't exist yet
-        for (const auto & item : items)
+        for (const auto& item : items)
         {
             QString itemLocalId = QString::fromStdString(item.getLocalId());
-            
+
             if (children.find(itemLocalId) == children.end())
             {
-                // This is a new item, add it
-                auto childElement = createTreeElement(tree, item, layoutManager, this);
+                auto childElement = createTreeElement(tree, item, contentHost, this);
                 if (childElement)
                     addChild(std::unique_ptr<BaseTreeElement>(childElement));
             }
@@ -111,6 +106,9 @@ void FolderTreeElement::refresh()
 
 void FolderTreeElement::onCoreEvent(daq::ComponentPtr& sender, daq::CoreEventArgsPtr& args)
 {
+    if (sender != daqComponent)
+        return;
+
     // First call parent implementation to handle AttributeChanged events
     ComponentTreeElement::onCoreEvent(sender, args);
 

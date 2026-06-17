@@ -3,16 +3,14 @@
 #include <opendaq/folder_ptr.h>
 #include <coreobjects/core_event_args_ptr.h>
 
-// Forward declaration for factory function
-class LayoutManager;
-BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, LayoutManager* layoutManager, QObject* parent);
+BaseTreeElement* createTreeElement(QTreeWidget* tree, const daq::ComponentPtr& component, QWidget* contentHost, QObject* parent);
 
 class FolderTreeElement : public ComponentTreeElement
 {
     Q_OBJECT
 
 public:
-    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, LayoutManager* layoutManager, QObject* parent = nullptr);
+    FolderTreeElement(QTreeWidget* tree, const daq::FolderPtr& daqFolder, QWidget* contentHost, QObject* parent = nullptr);
 
     void init(BaseTreeElement* parent = nullptr) override;
 

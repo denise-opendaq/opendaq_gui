@@ -13,7 +13,7 @@ FetchContent_MakeAvailable(opendaq-cmake-utils)
 FetchContent_Declare(
     openDAQ
     GIT_REPOSITORY  https://github.com/openDAQ/openDAQ.git
-    GIT_TAG         be12629693fcbc1cdb22313968a23ec1af6d9052
+    GIT_TAG         a2c702d721516068cb0091a8938099697ba6df1c
     GIT_PROGRESS   ON
     GIT_SHALLOW    OFF
     SOURCE_SUBDIR  "INVALID"
@@ -44,7 +44,7 @@ if(OPENDAQ_ENABLE_OPCUA AND (DAQMODULES_OPENDAQ_SERVER_MODULE OR DAQMODULES_OPEN
     FetchContent_Declare(
         OpcUaModules
         GIT_REPOSITORY https://github.com/openDAQ/OpcUaModules.git
-        GIT_TAG        5bce4a3421e715354317f316947eb6a716aca01e
+        GIT_TAG        5b5c9c1721aed5c452ebbef68f63e67d3d7ff82b
         GIT_PROGRESS   ON
         GIT_SHALLOW    OFF
         SOURCE_SUBDIR  "INVALID"

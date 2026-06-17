@@ -1,6 +1,5 @@
 #pragma once
 #include "component_tree_element.h"
-#include "widgets/signal_value_widget.h"
 #include <opendaq/signal_ptr.h>
 
 class SignalTreeElement : public ComponentTreeElement
@@ -9,8 +8,7 @@ class SignalTreeElement : public ComponentTreeElement
     using Super = ComponentTreeElement;
 
 public:
-    SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, LayoutManager* layoutManager, QObject* parent = nullptr);
+    SignalTreeElement(QTreeWidget* tree, const daq::SignalPtr& daqSignal, QWidget* contentHost, QObject* parent = nullptr);
 
-    QStringList getAvailableTabNames() const override;
-    void openTab(const QString& tabName) override;
+    void openTab() override;
 };

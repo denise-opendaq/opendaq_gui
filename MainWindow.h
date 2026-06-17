@@ -1,20 +1,17 @@
 #pragma once
 
-#include <QMainWindow>
-#include <QComboBox>
-#include <QTextEdit>
-#include <QSplitter>
 #include <QList>
-#include <QStringList>
-#include <QMap>
-#include <QEvent>
+#include <QMainWindow>
 #include <QShowEvent>
 
-#include "LayoutManager.h"
 #include "UpdateChecker.h"
 #include "context/release_asset.h"
 
-class DetachedWindow;
+class QAction;
+class QMenu;
+class QSplitter;
+class QWidget;
+
 class BaseTreeElement;
 class ComponentTreeWidget;
 
@@ -27,19 +24,14 @@ public:
     ~MainWindow() override;
 
 protected:
-    bool eventFilter(QObject* obj, QEvent* event) override;
-    void resizeEvent(QResizeEvent* event) override;
-    void changeEvent(QEvent* event) override;
     void showEvent(QShowEvent* event) override;
-    void setGeometry(const QRect& rect);
 
 private:
     void setupUI();
     void setupMenuBar();
-    void stopAllAnimations();
+    void clearContent();
 
 private Q_SLOTS:
-    void onViewSelectionChanged(int index);
     void onShowHiddenComponentsToggled(bool checked);
     void onComponentSelected(BaseTreeElement* element);
     void onUpdateAvailable(const QString& version, const QString& changelog, const QString& releaseUrl,
@@ -48,22 +40,18 @@ private Q_SLOTS:
 
 private:
     // Main splitters
-    QSplitter* mainSplitter = nullptr;      // Horizontal: left + right
-    QSplitter* verticalSplitter = nullptr;  // Vertical: tabs + log
-    QSplitter* contentSplitter = nullptr;   // Root for split views in content area
+    QSplitter* mainSplitter = nullptr;
+    QSplitter* verticalSplitter = nullptr;
+
+    // Single content slot: hosts the widget of the currently selected component
+    QWidget* contentHost = nullptr;
 
     // Left panel
-    QComboBox* viewSelector = nullptr;
     ComponentTreeWidget* componentTreeWidget = nullptr;
-
-    // Layout manager for tab and window management
-    LayoutManager* layoutManager = nullptr;
 
     // Menu
     QAction* showHiddenAction = nullptr;
     QAction* expandAllPropertiesAction = nullptr;
-    QAction* resetLayoutAction = nullptr;
-    QMenu* availableTabsMenu = nullptr;
 
     UpdateChecker* m_updateChecker = nullptr;
 };

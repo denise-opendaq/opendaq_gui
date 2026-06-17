@@ -10,21 +10,15 @@
 // ListPropertyItem implementation
 // ============================================================================
 
-void ListPropertyItem::refresh(PropertySubtreeBuilder& builder)
+void ListPropertyItem::refresh(PropertyObjectView& view)
 {
-    // Refresh list reference
     list = owner.getPropertyValue(getName());
-
-    // Call base refresh to update name and value display
-    BasePropertyItem::refresh(builder);
-
-    // If expanded, rebuild the subtree
+    BasePropertyItem::refresh(view);
     if (widgetItem)
-        build_subtree(builder, widgetItem, true);
+        build_subtree(view, widgetItem, true);
 }
 
-
-void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidgetItem* self, bool force)
+void ListPropertyItem::build_subtree(PropertyObjectView& view, QTreeWidgetItem* self, bool force)
 {
     if (!force && (expanded || !list.assigned()))
         return;
@@ -40,7 +34,7 @@ void ListPropertyItem::build_subtree(PropertySubtreeBuilder& builder, QTreeWidge
     auto listEditable = isValueEditable();
 
     // Add each element as a child item
-    QPalette palette = builder.view.palette();
+    QPalette palette = view.palette();
     for (size_t i = 0; i < list.getCount(); i++)
     {
         auto* treeChild = new QTreeWidgetItem();
@@ -92,8 +86,9 @@ void ListPropertyItem::commitEdit(QTreeWidgetItem* item, int column)
 
     if (column == 1)
     {
-        // Edit value
-        QString newText = item->text(column);
+        // Edit value — delegate stores the raw edited text in UserRole
+        const QString raw = item->data(column, Qt::UserRole).toString();
+        QString newText = raw.isEmpty() ? item->text(column) : raw;
         auto currentValue = list[index];
         auto valueHandler = CoreTypeFactory::createHandler(currentValue, prop.getItemType());
 
@@ -136,7 +131,7 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
 
             // Reload only this subtree
             QTreeWidgetItem* parentItem = isChildItem ? item->parent() : item;
-            view->onPropertyValueChanged(owner);
+            this->refresh(*view);
         }
         catch (const std::exception& e)
         {
@@ -157,7 +152,7 @@ void ListPropertyItem::handle_right_click(PropertyObjectView* view, QTreeWidgetI
             owner.setPropertyValue(getName(), list);
 
             // Reload only this subtree
-            view->onPropertyValueChanged(owner);
+            this->refresh(*view);
         }
         catch (const std::exception& e)
         {

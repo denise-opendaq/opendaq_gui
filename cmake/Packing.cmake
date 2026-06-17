@@ -51,7 +51,7 @@ elseif(UNIX)
     set(CPACK_PACKAGE_FILE_NAME "OpenDAQ.Qt.GUI-${PROJECT_VERSION}-linux-${_PKG_ARCH}")
     set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "OpenDAQ <denis.erokhin@opendaq.com>")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS    "libc6, libstdc++6, libgcc-s1, libx11-6, libxcb1, libgl1")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS    "libc6, libstdc++6, libgcc-s1, libx11-6, libxcb1, libxcb-cursor0, libxkbcommon0, libgl1")
 
 elseif(WIN32)
     # openDAQ adds ZIP/TXZ — keep only NSIS for the app installer.
@@ -60,6 +60,8 @@ elseif(WIN32)
     set(CPACK_NSIS_DISPLAY_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_PACKAGE_NAME "OpenDAQ Qt GUI")
     set(CPACK_NSIS_MODIFY_PATH OFF)
+    # Start menu shortcut — required for Windows Search to find the app
+    set(CPACK_NSIS_MENU_LINKS "bin/opendaq_qt_gui.exe" "OpenDAQ Qt GUI")
     # CPACK_NSIS_MUI_ICON / INSTALLED_ICON_NAME set in bundle_configuration.cmake
 endif()
 
