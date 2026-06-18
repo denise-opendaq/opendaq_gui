@@ -25,6 +25,7 @@ set(HEADERS
     include/widgets/component_widget.h
     include/widgets/device_widget.h
     include/widgets/device_logs_widget.h
+    include/widgets/synchronization_widget.h
     include/widgets/status_message_stack.h
 )
 
@@ -44,6 +45,7 @@ set(SOURCES
     src/component_widget.cpp
     src/device_widget.cpp
     src/device_logs_widget.cpp
+    src/synchronization_widget.cpp
     src/status_message_stack.cpp
 )
 

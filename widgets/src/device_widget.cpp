@@ -1,6 +1,7 @@
 #include "widgets/device_widget.h"
 #include "widgets/property_object_view.h"
 #include "widgets/device_logs_widget.h"
+#include "widgets/synchronization_widget.h"
 #include "widgets/status_message_stack.h"
 #include "context/AppContext.h"
 #include "context/gui_constants.h"
@@ -236,6 +237,14 @@ QStringList DeviceWidget::availableTabs() const
 {
     QStringList result = ComponentWidget::availableTabs();
     result << tr("Overview");
+
+    try
+    {
+        if (device.getSynchronization().assigned())
+            result << tr("Synchronization");
+    }
+    catch (...) {}
+
     result << tr("Logs");
     return result;
 }
@@ -260,6 +269,9 @@ QWidget* DeviceWidget::openTab(const QString& title, QWidget* parent)
             return page;
         }
     }
+
+    if (title == tr("Synchronization"))
+        return new SynchronizationWidget(device, parent);
 
     if (title == tr("Logs"))
         return new DeviceLogsWidget(device, parent);

@@ -13,7 +13,7 @@ FetchContent_MakeAvailable(opendaq-cmake-utils)
 FetchContent_Declare(
     openDAQ
     GIT_REPOSITORY  https://github.com/openDAQ/openDAQ.git
-    GIT_TAG         a2c702d721516068cb0091a8938099697ba6df1c
+    GIT_TAG         sync_component_to_synchronization
     GIT_PROGRESS   ON
     GIT_SHALLOW    OFF
     SOURCE_SUBDIR  "INVALID"
@@ -28,7 +28,7 @@ if(OPENDAQ_ENABLE_WEBSOCKET_STREAMING AND (DAQMODULES_OPENDAQ_SERVER_MODULE OR D
     FetchContent_Declare(
         LtStreamingModulesModern
         GIT_REPOSITORY https://github.com/openDAQ/LTStreamingModulesModern.git
-        GIT_TAG        29973836172ed53bc4b199436e5d732447dbf40d
+        GIT_TAG        v4.0.0
         GIT_PROGRESS   ON
         GIT_SHALLOW    OFF
         SOURCE_SUBDIR  "INVALID"
@@ -44,7 +44,7 @@ if(OPENDAQ_ENABLE_OPCUA AND (DAQMODULES_OPENDAQ_SERVER_MODULE OR DAQMODULES_OPEN
     FetchContent_Declare(
         OpcUaModules
         GIT_REPOSITORY https://github.com/openDAQ/OpcUaModules.git
-        GIT_TAG        5b5c9c1721aed5c452ebbef68f63e67d3d7ff82b
+        GIT_TAG        v4.0.0
         GIT_PROGRESS   ON
         GIT_SHALLOW    OFF
         SOURCE_SUBDIR  "INVALID"
