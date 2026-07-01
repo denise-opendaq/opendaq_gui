@@ -1,0 +1,21 @@
+;
+; AD7606-8 SPI read (mode 3: CPOL=1, CPHA=1)
+; BUSY fall = data valid; minimal CS setup [1] only.
+; Bit loop keeps [1] delays — 4 SM cycles/bit for reliable MISO sampling.
+
+.program ad7606_spi_read
+.side_set 1 opt
+
+.wrap_target
+    wait 1 gpio 25
+    wait 0 gpio 25
+    set pins, 0            [1] side 1    ; CS low
+    set x, 3                     side 1
+wordloop:
+    set y, 31                    side 1
+bitloop:
+    in pins, 1             [1] side 1
+    jmp y-- bitloop        [1] side 0
+    jmp x-- wordloop             side 1
+    set pins, 1            [1] side 1    ; CS high
+.wrap

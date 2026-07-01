@@ -1,0 +1,95 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			ad7606_avcc: ad7606_avcc {
+				compatible = "regulator-fixed";
+				regulator-name = "ad7606-avcc";
+				regulator-min-microvolt = <5000000>;
+				regulator-max-microvolt = <5000000>;
+				regulator-always-on;
+			};
+
+			ad7606_vdrive: ad7606_vdrive {
+				compatible = "regulator-fixed";
+				regulator-name = "ad7606-vdrive";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-always-on;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			ad7606_busy_pins: ad7606_busy_pins {
+				pins = "gpio25";
+				function = "gpio";
+				bias-disable;
+			};
+
+			ad7606_convst_pwm: ad7606_convst_pwm {
+				pins = "gpio12";
+				function = "pwm0";
+				bias-disable;
+			};
+
+			ad7606_spi_pio_pins: ad7606_spi_pio_pins {
+				pins = "gpio8", "gpio9", "gpio11";
+				function = "gpio";
+				bias-disable;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&rp1_pwm0>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&ad7606_convst_pwm>;
+			status = "okay";
+		};
+	};
+
+	/* Release SPI pins for RP1 PIO state machine */
+	fragment@3 {
+		target = <&spi0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	/*
+	 * Phase 2: platform device + RP1 PIO SPI sequencer.
+	 * Do not run userspace ad7606-pio or ad7606-piolib.dtbo at the same time.
+	 */
+	fragment@4 {
+		target-path = "/";
+		__overlay__ {
+			ad7606_pio: ad7606-pio {
+				compatible = "ad7606,rp1-pio";
+				status = "okay";
+
+				interrupt-parent = <&gpio>;
+				interrupts = <25 2>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&ad7606_busy_pins &ad7606_spi_pio_pins>;
+
+				pwms = <&rp1_pwm0 0 1000 0>;
+				reset-gpios = <&gpio 5 0>;
+				adi,range-gpios = <&gpio 6 0>;
+
+				avcc-supply = <&ad7606_avcc>;
+				vdrive-supply = <&ad7606_vdrive>;
+
+				ad7606,rp1-pio-spi;
+			};
+		};
+	};
+};
