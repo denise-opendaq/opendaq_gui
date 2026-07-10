@@ -32,6 +32,7 @@ static constexpr const char* K_ORIGIN       = "Origin";
 static constexpr const char* K_RANGE        = "Range";
 static constexpr const char* K_DIMENSIONS   = "Dimensions";
 static constexpr const char* K_STRUCT_FIELDS = "Struct Fields";
+static constexpr const char* K_METADATA = "Metadata";
 
 static daq::PropertyObjectPtr createDescriptorObject()
 {
@@ -86,6 +87,7 @@ static daq::PropertyObjectPtr createDescriptorObject()
     obj.addProperty(daq::ObjectPropertyBuilder(K_RANGE, range).setReadOnly(true).build());
     obj.addProperty(daq::IntPropertyBuilder(K_DIMENSIONS, 1).setReadOnly(true).build());
     obj.addProperty(daq::StringPropertyBuilder(K_STRUCT_FIELDS, "—").setReadOnly(true).build());
+    obj.addProperty(daq::DictPropertyBuilder(K_METADATA, daq::Dict<daq::IString, daq::IString>()).setReadOnly(true).build());
 
     return obj;
 }
@@ -187,6 +189,11 @@ void SignalDescriptorWidget::update()
                 s += f.getName().toStdString();;
         }
         prot.setProtectedPropertyValue(K_STRUCT_FIELDS, s);
+    }
+
+    if (const auto metadata = d.getMetadata(); metadata.assigned())
+    {
+        prot.setProtectedPropertyValue(K_METADATA, metadata);
     }
 
     view->refresh();
